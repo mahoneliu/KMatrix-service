@@ -6,6 +6,7 @@
 项目简介：
 -----------------------------------
 - 本项目为科亿知识库的重构版本，重新技术选型了Ruoyi-Vue-Plus，第一阶段的目标是先搭建AI平台，借鉴MaxKB、Dify等产品思路。
+- 当前是框架代码，未实现任何业务功能，我们相约2026上半年，敬请期待。。。
 - 这是后端项目，前端项目链接：[https://gitee.com/kyxxjs/kmatrix-web](https://gitee.com/kyxxjs/kmatrix-web)
   
 链接与交流互动
