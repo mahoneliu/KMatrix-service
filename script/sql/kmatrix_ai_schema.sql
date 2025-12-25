@@ -1,0 +1,279 @@
+-- ----------------------------
+-- KMatrix AI 模块数据库脚本 (RuoYi 规范版 - 完整版)
+-- ----------------------------
+
+-- ----------------------------
+-- 0. 模型供应商表 (新增)
+-- ----------------------------
+DROP TABLE IF EXISTS km_model_provider;
+CREATE TABLE km_model_provider (
+    provider_id     BIGINT(20)      NOT NULL COMMENT '供应商ID',
+    provider_name   VARCHAR(64)     NOT NULL COMMENT '供应商名称',
+    provider_key    VARCHAR(64)     NOT NULL COMMENT '供应商标识(openai/ollama)',
+    provider_type   CHAR(1)         DEFAULT '1' COMMENT '供应商类型（1公用 2本地）',
+    default_endpoint VARCHAR(255)   DEFAULT '' COMMENT '默认API地址',
+    site_url        VARCHAR(255)    DEFAULT '' COMMENT '官网URL',
+    icon_url        VARCHAR(500)    DEFAULT '' COMMENT '图标URL',
+    config_schema   JSON            DEFAULT NULL COMMENT '配置参数定义',
+    status          CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
+    sort            INT(4)          DEFAULT 0 COMMENT '排序',
+    models          JSON            DEFAULT NULL COMMENT '支持的模型标识(JSON)',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (provider_id),
+    UNIQUE KEY uk_provider_key (provider_key)
+) ENGINE=InnoDB COMMENT='模型供应商表';
+
+-- 初始化供应商数据
+INSERT INTO km_model_provider (provider_id, provider_name, provider_key, provider_type, default_endpoint, site_url, icon_url, models, status, sort, create_time) VALUES
+(1, 'OpenAI', 'openai', '1', 'https://api.openai.com/v1', 'https://openai.com', 'https://upload.wikimedia.org/wikipedia/commons/4/4d/OpenAI_Logo.svg', '[{"modelKey":"gpt-4o","modelType":"1"},{"modelKey":"gpt-4o-mini","modelType":"1"},{"modelKey":"gpt-4","modelType":"1"},{"modelKey":"gpt-3.5-turbo","modelType":"1"},{"modelKey":"text-embedding-3-small","modelType":"2"},{"modelKey":"text-embedding-3-large","modelType":"2"},{"modelKey":"text-embedding-ada-002","modelType":"2"}]', '0', 1, NOW()),
+(2, 'Gemini', 'gemini', '1', 'https://generativelanguage.googleapis.com', 'https://ai.google.dev', 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg', '[{"modelKey":"gemini-1.5-pro","modelType":"1"},{"modelKey":"gemini-1.5-flash","modelType":"1"},{"modelKey":"gemini-pro","modelType":"1"},{"modelKey":"text-embedding-004","modelType":"2"}]', '0', 2, NOW()),
+(3, 'Ollama', 'ollama', '2', 'http://localhost:11434', 'https://ollama.com', 'https://ollama.com/public/ollama.png', '[{"modelKey":"llama3","modelType":"1"},{"modelKey":"llama2","modelType":"1"},{"modelKey":"mistral","modelType":"1"},{"modelKey":"mixtral","modelType":"1"},{"modelKey":"phi3","modelType":"1"},{"modelKey":"qwen2","modelType":"1"},{"modelKey":"gemma2","modelType":"1"},{"modelKey":"nomic-embed-text","modelType":"2"},{"modelKey":"mxbai-embed-large","modelType":"2"}]', '0', 3, NOW()),
+(4, 'DeepSeek', 'deepseek', '1', 'https://api.deepseek.com', 'https://www.deepseek.com', 'https://chat.deepseek.com/favicon.ico', '[{"modelKey":"deepseek-chat","modelType":"1"},{"modelKey":"deepseek-coder","modelType":"1"}]', '0', 4, NOW()),
+(5, 'vLLM', 'vllm', '2', 'http://localhost:8000/v1', 'https://docs.vllm.ai', 'https://raw.githubusercontent.com/vllm-project/vllm/main/docs/source/assets/logos/vllm-logo-text-light.png', '[]', '0', 5, NOW()),
+(6, 'Azure OpenAI', 'azure', '1', 'https://{resource}.openai.azure.com', 'https://azure.microsoft.com/products/ai-services/openai-service', 'https://azure.microsoft.com/svghandler/openai/', '[{"modelKey":"gpt-4","modelType":"1"},{"modelKey":"gpt-4-turbo","modelType":"1"},{"modelKey":"gpt-35-turbo","modelType":"1"}]', '0', 6, NOW()),
+(7, '通义千问', 'qwen', '1', 'https://dashscope.aliyuncs.com/api/v1', 'https://tongyi.aliyun.com', 'https://img.alicdn.com/imgextra/i4/O1CN01c26iB51qyRzWNH85d_!!6000000005566-2-tps-120-120.png', '[{"modelKey":"qwen-max","modelType":"1"},{"modelKey":"qwen-plus","modelType":"1"},{"modelKey":"qwen-turbo","modelType":"1"},{"modelKey":"text-embedding-v1","modelType":"2"},{"modelKey":"text-embedding-v2","modelType":"2"}]', '0', 7, NOW()),
+(8, '智谱AI', 'zhipu', '1', 'https://open.bigmodel.cn/api/paas/v4', 'https://open.bigmodel.cn', 'https://global.discourse-cdn.com/business7/uploads/zhipuai/original/1X/c9a6a893022560636d3d234131f60876d2e73891.png', '[{"modelKey":"glm-4","modelType":"1"},{"modelKey":"glm-4-flash","modelType":"1"},{"modelKey":"glm-3-turbo","modelType":"1"}]', '0', 8, NOW()),
+(9, '豆包', 'doubao', '1', 'https://ark.cn-beijing.volces.com/api/v3', 'https://www.volcengine.com/product/doubao', 'https://lf-flow-web-cdn.doubao.com/obj/flow-web-cdn/doubao/favicon.ico', '[{"modelKey":"doubao-pro-32k","modelType":"1"},{"modelKey":"doubao-lite-32k","modelType":"1"}]', '0', 9, NOW()),
+(10, 'Moonshot', 'moonshot', '1', 'https://api.moonshot.cn/v1', 'https://www.moonshot.cn', 'https://statics.moonshot.cn/kimi-chat/favicon.ico', '[{"modelKey":"moonshot-v1-8k","modelType":"1"},{"modelKey":"moonshot-v1-32k","modelType":"1"},{"modelKey":"moonshot-v1-128k","modelType":"1"}]', '0', 10, NOW());
+
+-- ----------------------------
+-- 1. 模型管理表
+-- ----------------------------
+DROP TABLE IF EXISTS km_model;
+CREATE TABLE km_model (
+    model_id        BIGINT(20)      NOT NULL COMMENT '模型ID',
+    provider_id     BIGINT(20)      DEFAULT NULL COMMENT '关联供应商ID',
+    model_name      VARCHAR(64)     NOT NULL COMMENT '模型名称',
+    model_type      CHAR(1)         NOT NULL COMMENT '模型类型（1语言模型 2向量模型）',
+    `model_key` varchar(100) NOT NULL COMMENT '基础模型 (e.g. gpt-4)',
+    api_key         VARCHAR(255)    DEFAULT '' COMMENT 'API Key',
+    api_base        VARCHAR(255)    DEFAULT '' COMMENT 'API Base URL',
+    config          JSON            DEFAULT NULL COMMENT '其它配置参数',
+    status          CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
+    is_builtin      CHAR(1)         DEFAULT 'N' COMMENT '是否内置（Y是 N否）',
+    model_source    CHAR(1)         DEFAULT '1' COMMENT '模型来源（1公有 2本地）',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 1代表删除）',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (model_id)
+) ENGINE=InnoDB COMMENT='AI模型配置表';
+
+-- ----------------------------
+-- 2. 知识库表
+-- ----------------------------
+DROP TABLE IF EXISTS km_knowledge;
+CREATE TABLE km_knowledge (
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '知识库ID',
+    knowledge_name  VARCHAR(64)     NOT NULL COMMENT '知识库名称',
+    description     VARCHAR(500)    DEFAULT '' COMMENT '描述',
+    embed_model_id  BIGINT(20)      DEFAULT NULL COMMENT '关联的向量模型ID',
+    index_name      VARCHAR(64)     DEFAULT '' COMMENT 'ES索引名称',
+    permission      CHAR(1)         DEFAULT '1' COMMENT '权限范围（1私有 2公开）',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (knowledge_id)
+) ENGINE=InnoDB COMMENT='知识库表';
+
+-- ----------------------------
+-- 3. 知识库文档表
+-- ----------------------------
+DROP TABLE IF EXISTS km_document;
+CREATE TABLE km_document (
+    doc_id          BIGINT(20)      NOT NULL COMMENT '文档ID',
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '所属知识库ID',
+    file_name       VARCHAR(128)    NOT NULL COMMENT '文件名',
+    file_url        VARCHAR(500)    NOT NULL COMMENT '文件路径',
+    file_type       VARCHAR(10)     DEFAULT '' COMMENT '文件类型',
+    file_size       BIGINT(20)      DEFAULT 0 COMMENT '文件大小',
+    char_count      INT(11)         DEFAULT 0 COMMENT '字符数',
+    status          CHAR(1)         DEFAULT '0' COMMENT '状态（0待解析 1解析中 2完成 3失败）',
+    error_msg       VARCHAR(1000)   DEFAULT '' COMMENT '错误信息',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (doc_id),
+    KEY idx_kb_id (knowledge_id)
+) ENGINE=InnoDB COMMENT='知识库文档表';
+
+-- ----------------------------
+-- 3.1 文档分段表 (Paragraph)
+-- ----------------------------
+DROP TABLE IF EXISTS km_paragraph;
+CREATE TABLE km_paragraph (
+    paragraph_id    BIGINT(20)      NOT NULL COMMENT '分段ID',
+    doc_id          BIGINT(20)      NOT NULL COMMENT '所属文档ID',
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '所属知识库ID',
+    content         LONGTEXT        NOT NULL COMMENT '分段内容',
+    title           VARCHAR(255)    DEFAULT '' COMMENT '分段标题',
+    status          CHAR(1)         DEFAULT '1' COMMENT '状态（1启用 0禁用）',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (paragraph_id),
+    KEY idx_doc_id (doc_id),
+    KEY idx_kb_id (knowledge_id)
+) ENGINE=InnoDB COMMENT='文档分段表';
+
+-- ----------------------------
+-- 3.2 相关问题表 (Problem)
+-- ----------------------------
+DROP TABLE IF EXISTS km_problem;
+CREATE TABLE km_problem (
+    problem_id      BIGINT(20)      NOT NULL COMMENT '问题ID',
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '所属知识库ID',
+    content         VARCHAR(500)    NOT NULL COMMENT '问题内容',
+    hit_count       INT(11)         DEFAULT 0 COMMENT '命中次数',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (problem_id),
+    KEY idx_kb_id (knowledge_id)
+) ENGINE=InnoDB COMMENT='知识库相关问题表';
+
+-- ----------------------------
+-- 3.3 问题与分段关联表 (Mapping)
+-- ----------------------------
+DROP TABLE IF EXISTS km_problem_paragraph;
+CREATE TABLE km_problem_paragraph (
+    id              BIGINT(20)      NOT NULL COMMENT '主键',
+    problem_id      BIGINT(20)      NOT NULL COMMENT '问题ID',
+    paragraph_id    BIGINT(20)      NOT NULL COMMENT '分段ID',
+    doc_id          BIGINT(20)      NOT NULL COMMENT '文档ID',
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '知识库ID',
+    PRIMARY KEY (id),
+    KEY idx_problem (problem_id),
+    KEY idx_paragraph (paragraph_id)
+) ENGINE=InnoDB COMMENT='问题与分段关联表';
+
+-- ----------------------------
+-- 4. AI应用表
+-- ----------------------------
+DROP TABLE IF EXISTS km_app;
+CREATE TABLE km_app (
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    app_name        VARCHAR(64)     NOT NULL COMMENT '应用名称',
+    description     VARCHAR(500)    DEFAULT '' COMMENT '应用描述',
+    icon            VARCHAR(255)    DEFAULT '' COMMENT '应用图标',
+    app_type        CHAR(1)         DEFAULT '1' COMMENT '应用类型（1基础对话 2工作流）',
+    status          CHAR(1)         DEFAULT '0' COMMENT '状态（0草稿 1发布）',
+
+    -- 简易配置
+    model_id        BIGINT(20)      DEFAULT NULL COMMENT '关联LLM模型ID',
+    temperature     DECIMAL(3,2)    DEFAULT 0.70 COMMENT '温度',
+    pre_prompt      TEXT            DEFAULT NULL COMMENT '预设提示词',
+    knowledge_ids   VARCHAR(500)    DEFAULT '' COMMENT '关联知识库ID集合(逗号分隔)',
+
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (app_id)
+) ENGINE=InnoDB COMMENT='AI应用表';
+
+-- ----------------------------
+-- 5. 工作流定义表
+-- ----------------------------
+DROP TABLE IF EXISTS km_workflow;
+CREATE TABLE km_workflow (
+    flow_id         BIGINT(20)      NOT NULL COMMENT '工作流ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '所属应用ID',
+    graph_data      LONGTEXT        DEFAULT NULL COMMENT '前端画布数据(JSON)',
+    dsl_data        LONGTEXT        DEFAULT NULL COMMENT '后端执行DSL(JSON)',
+    version         INT(11)         DEFAULT 1 COMMENT '版本号',
+    is_active       CHAR(1)         DEFAULT '1' COMMENT '是否激活（1是 0否）',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (flow_id),
+    KEY idx_app_id (app_id)
+) ENGINE=InnoDB COMMENT='工作流定义表';
+
+-- ----------------------------
+-- 6. 聊天会话表
+-- ----------------------------
+DROP TABLE IF EXISTS km_chat_session;
+CREATE TABLE km_chat_session (
+    session_id      BIGINT(20)      NOT NULL COMMENT '会话ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    title           VARCHAR(128)    DEFAULT '新会话' COMMENT '会话标题',
+    user_id         BIGINT(20)      NOT NULL COMMENT '用户ID',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    PRIMARY KEY (session_id),
+    KEY idx_user_app (user_id, app_id)
+) ENGINE=InnoDB COMMENT='聊天会话表';
+
+-- ----------------------------
+-- 7. 聊天消息表
+-- ----------------------------
+DROP TABLE IF EXISTS km_chat_message;
+CREATE TABLE km_chat_message (
+    message_id      BIGINT(20)      NOT NULL COMMENT '消息ID',
+    session_id      BIGINT(20)      NOT NULL COMMENT '会话ID',
+    role            VARCHAR(20)     NOT NULL COMMENT '角色(user/assistant)',
+    content         LONGTEXT        NOT NULL COMMENT '内容',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (message_id),
+    KEY idx_session (session_id)
+) ENGINE=InnoDB COMMENT='聊天消息表';
+
+-- ----------------------------
+-- 8. 工具管理表
+-- ----------------------------
+DROP TABLE IF EXISTS km_tool;
+CREATE TABLE km_tool (
+    tool_id         BIGINT(20)      NOT NULL COMMENT '工具ID',
+    tool_name       VARCHAR(64)     NOT NULL COMMENT '工具名称(唯一标识)',
+    tool_label      VARCHAR(64)     NOT NULL COMMENT '显示名称',
+    description     VARCHAR(500)    DEFAULT '' COMMENT '描述',
+    tool_type       CHAR(1)         NOT NULL COMMENT '类型（1内置 2API 3MCP）',
+    icon            VARCHAR(255)    DEFAULT '' COMMENT '图标',
+    config_schema   JSON            DEFAULT NULL COMMENT '参数定义(JSON Schema)',
+    api_spec        LONGTEXT        DEFAULT NULL COMMENT 'OpenAPI定义',
+    mcp_config      JSON            DEFAULT NULL COMMENT 'MCP连接配置',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    PRIMARY KEY (tool_id)
+) ENGINE=InnoDB COMMENT='AI工具表';
+
+-- ----------------------------
+-- 9. 菜单初始化 (Menu Init)
+-- ----------------------------
+-- 一级菜单: AI 管理
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (2000, 'AI 管理', 0, 10, 'ai', NULL, 1, 0, 'M', '0', '0', '', 'robot', 1, NOW(), NULL, NULL, 'AI模块根菜单');
+
+-- 二级菜单: 模型管理
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+VALUES (2001, '模型管理', 2000, 1, 'model-manager', 'ai/model-manager/index', 1, 0, 'C', '0', '0', 'ai:model:list', 'model-alt', 1, NOW(), NULL, NULL, '模型管理菜单');
+
+-- 角色菜单关联 (给超级管理员授权)
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (1, 2000);
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES (1, 2001);

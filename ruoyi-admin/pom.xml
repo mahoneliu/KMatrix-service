@@ -93,6 +93,12 @@
             <artifactId>ruoyi-workflow</artifactId>
         </dependency>-->
 
+        <!--  AI模块  -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>de.codecentric</groupId>
             <artifactId>spring-boot-admin-starter-client</artifactId>
