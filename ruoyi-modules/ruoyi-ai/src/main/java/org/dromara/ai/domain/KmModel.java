@@ -1,5 +1,6 @@
 package org.dromara.ai.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -29,6 +30,12 @@ public class KmModel extends BaseEntity {
      * 关联供应商ID
      */
     private Long providerId;
+
+    /**
+     * 供应商图标
+     */
+    @TableField(exist = false)
+    private String providerIcon;
 
     /**
      * 模型名称

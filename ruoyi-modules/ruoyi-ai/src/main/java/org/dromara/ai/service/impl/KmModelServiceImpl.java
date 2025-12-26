@@ -39,7 +39,18 @@ public class KmModelServiceImpl implements IKmModelService {
         lqw.like(StrUtil.isNotBlank(bo.getModelName()), KmModel::getModelName, bo.getModelName());
         lqw.eq(StrUtil.isNotBlank(bo.getModelType()), KmModel::getModelType, bo.getModelType());
         lqw.eq(StrUtil.isNotBlank(bo.getModelSource()), KmModel::getModelSource, bo.getModelSource());
-        return baseMapper.selectList(lqw);
+        List<KmModel> list = baseMapper.selectList(lqw);
+
+        // 填充供应商图标
+        if (!list.isEmpty()) {
+            List<KmModelProvider> providers = providerMapper.selectList(Wrappers.emptyWrapper());
+            java.util.Map<Long, String> iconMap = providers.stream()
+                    .collect(java.util.stream.Collectors.toMap(KmModelProvider::getProviderId,
+                            KmModelProvider::getIconUrl, (v1, v2) -> v1));
+            list.forEach(m -> m.setProviderIcon(iconMap.get(m.getProviderId())));
+        }
+
+        return list;
     }
 
     @Override
