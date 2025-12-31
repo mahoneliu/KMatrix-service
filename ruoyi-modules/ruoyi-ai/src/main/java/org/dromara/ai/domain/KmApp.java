@@ -1,0 +1,97 @@
+package org.dromara.ai.domain;
+
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.dromara.ai.domain.vo.config.AppKnowledgeConfig;
+import org.dromara.ai.domain.vo.config.AppModelConfig;
+import org.dromara.ai.domain.vo.config.AppWorkflowConfig;
+import org.dromara.common.mybatis.core.domain.BaseEntity;
+
+/**
+ * AI应用对象 km_app
+ *
+ * @author Mahone
+ * @date 2025-12-27
+ */
+@Data
+@EqualsAndHashCode(callSuper = true)
+@TableName(value = "km_app", autoResultMap = true)
+public class KmApp extends BaseEntity {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 应用ID
+     */
+    @TableId(type = IdType.ASSIGN_ID,value = "app_id")
+    private Long appId;
+
+    /**
+     * 应用名称
+     */
+    private String appName;
+
+    /**
+     * 应用描述
+     */
+    private String description;
+
+    /**
+     * 应用图标
+     */
+    private String icon;
+
+    /**
+     * 应用类型（1基础对话 2工作流）
+     */
+    private String appType;
+
+    /**
+     * 状态（0草稿 1发布）
+     */
+    private String status;
+
+    /**
+     * 开场白
+     */
+    private String prologue;
+
+    /**
+     * 模型配置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private AppModelConfig modelSetting;
+
+    /**
+     * 知识库配置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private AppKnowledgeConfig knowledgeSetting;
+
+    /**
+     * 工作流配置
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private AppWorkflowConfig workflowConfig;
+
+    /**
+     * 关联LLM模型ID
+     */
+    private Long modelId;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
+     * 删除标志
+     */
+    private String delFlag;
+
+}

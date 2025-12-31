@@ -30,17 +30,16 @@ CREATE TABLE km_model_provider (
 ) ENGINE=InnoDB COMMENT='模型供应商表';
 
 -- 初始化供应商数据
-INSERT INTO km_model_provider (provider_id, provider_name, provider_key, provider_type, default_endpoint, site_url, icon_url, models, status, sort, create_time) VALUES
-(1, 'OpenAI', 'openai', '1', 'https://api.openai.com/v1', 'https://openai.com', 'https://upload.wikimedia.org/wikipedia/commons/4/4d/OpenAI_Logo.svg', '[{"modelKey":"gpt-4o","modelType":"1"},{"modelKey":"gpt-4o-mini","modelType":"1"},{"modelKey":"gpt-4","modelType":"1"},{"modelKey":"gpt-3.5-turbo","modelType":"1"},{"modelKey":"text-embedding-3-small","modelType":"2"},{"modelKey":"text-embedding-3-large","modelType":"2"},{"modelKey":"text-embedding-ada-002","modelType":"2"}]', '0', 1, NOW()),
-(2, 'Gemini', 'gemini', '1', 'https://generativelanguage.googleapis.com', 'https://ai.google.dev', 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg', '[{"modelKey":"gemini-1.5-pro","modelType":"1"},{"modelKey":"gemini-1.5-flash","modelType":"1"},{"modelKey":"gemini-pro","modelType":"1"},{"modelKey":"text-embedding-004","modelType":"2"}]', '0', 2, NOW()),
-(3, 'Ollama', 'ollama', '2', 'http://localhost:11434', 'https://ollama.com', 'https://ollama.com/public/ollama.png', '[{"modelKey":"llama3","modelType":"1"},{"modelKey":"llama2","modelType":"1"},{"modelKey":"mistral","modelType":"1"},{"modelKey":"mixtral","modelType":"1"},{"modelKey":"phi3","modelType":"1"},{"modelKey":"qwen2","modelType":"1"},{"modelKey":"gemma2","modelType":"1"},{"modelKey":"nomic-embed-text","modelType":"2"},{"modelKey":"mxbai-embed-large","modelType":"2"}]', '0', 3, NOW()),
-(4, 'DeepSeek', 'deepseek', '1', 'https://api.deepseek.com', 'https://www.deepseek.com', 'https://chat.deepseek.com/favicon.ico', '[{"modelKey":"deepseek-chat","modelType":"1"},{"modelKey":"deepseek-coder","modelType":"1"}]', '0', 4, NOW()),
-(5, 'vLLM', 'vllm', '2', 'http://localhost:8000/v1', 'https://docs.vllm.ai', 'https://raw.githubusercontent.com/vllm-project/vllm/main/docs/source/assets/logos/vllm-logo-text-light.png', '[]', '0', 5, NOW()),
-(6, 'Azure OpenAI', 'azure', '1', 'https://{resource}.openai.azure.com', 'https://azure.microsoft.com/products/ai-services/openai-service', 'https://azure.microsoft.com/svghandler/openai/', '[{"modelKey":"gpt-4","modelType":"1"},{"modelKey":"gpt-4-turbo","modelType":"1"},{"modelKey":"gpt-35-turbo","modelType":"1"}]', '0', 6, NOW()),
-(7, '通义千问', 'qwen', '1', 'https://dashscope.aliyuncs.com/api/v1', 'https://tongyi.aliyun.com', 'https://img.alicdn.com/imgextra/i4/O1CN01c26iB51qyRzWNH85d_!!6000000005566-2-tps-120-120.png', '[{"modelKey":"qwen-max","modelType":"1"},{"modelKey":"qwen-plus","modelType":"1"},{"modelKey":"qwen-turbo","modelType":"1"},{"modelKey":"text-embedding-v1","modelType":"2"},{"modelKey":"text-embedding-v2","modelType":"2"}]', '0', 7, NOW()),
-(8, '智谱AI', 'zhipu', '1', 'https://open.bigmodel.cn/api/paas/v4', 'https://open.bigmodel.cn', 'https://global.discourse-cdn.com/business7/uploads/zhipuai/original/1X/c9a6a893022560636d3d234131f60876d2e73891.png', '[{"modelKey":"glm-4","modelType":"1"},{"modelKey":"glm-4-flash","modelType":"1"},{"modelKey":"glm-3-turbo","modelType":"1"}]', '0', 8, NOW()),
-(9, '豆包', 'doubao', '1', 'https://ark.cn-beijing.volces.com/api/v3', 'https://www.volcengine.com/product/doubao', 'https://lf-flow-web-cdn.doubao.com/obj/flow-web-cdn/doubao/favicon.ico', '[{"modelKey":"doubao-pro-32k","modelType":"1"},{"modelKey":"doubao-lite-32k","modelType":"1"}]', '0', 9, NOW()),
-(10, 'Moonshot', 'moonshot', '1', 'https://api.moonshot.cn/v1', 'https://www.moonshot.cn', 'https://statics.moonshot.cn/kimi-chat/favicon.ico', '[{"modelKey":"moonshot-v1-8k","modelType":"1"},{"modelKey":"moonshot-v1-32k","modelType":"1"},{"modelKey":"moonshot-v1-128k","modelType":"1"}]', '0', 10, NOW());
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (1, 'OpenAI', 'openai', '1', 'https://api.openai.com/v1', 'https://openai.com', '/model-provider-icon/openai.png', NULL, '0', 1, '[{\"modelKey\": \"gpt-4o\", \"modelType\": \"1\"}, {\"modelKey\": \"gpt-4o-mini\", \"modelType\": \"1\"}, {\"modelKey\": \"gpt-4\", \"modelType\": \"1\"}, {\"modelKey\": \"gpt-3.5-turbo\", \"modelType\": \"1\"}, {\"modelKey\": \"text-embedding-3-small\", \"modelType\": \"2\"}, {\"modelKey\": \"text-embedding-3-large\", \"modelType\": \"2\"}, {\"modelKey\": \"text-embedding-ada-002\", \"modelType\": \"2\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (2, 'Gemini', 'gemini', '1', 'https://generativelanguage.googleapis.com', 'https://ai.google.dev', '/model-provider-icon/gemini.svg', NULL, '0', 2, '[{\"modelKey\": \"gemini-1.5-pro\", \"modelType\": \"1\"}, {\"modelKey\": \"gemini-1.5-flash\", \"modelType\": \"1\"}, {\"modelKey\": \"gemini-pro\", \"modelType\": \"1\"}, {\"modelKey\": \"text-embedding-004\", \"modelType\": \"2\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (3, 'Ollama', 'ollama', '2', 'http://localhost:11434', 'https://ollama.com', '/model-provider-icon/ollama.png', NULL, '0', 3, '[{\"modelKey\": \"llama3\", \"modelType\": \"1\"}, {\"modelKey\": \"llama2\", \"modelType\": \"1\"}, {\"modelKey\": \"mistral\", \"modelType\": \"1\"}, {\"modelKey\": \"mixtral\", \"modelType\": \"1\"}, {\"modelKey\": \"phi3\", \"modelType\": \"1\"}, {\"modelKey\": \"qwen2\", \"modelType\": \"1\"}, {\"modelKey\": \"gemma2\", \"modelType\": \"1\"}, {\"modelKey\": \"nomic-embed-text\", \"modelType\": \"2\"}, {\"modelKey\": \"mxbai-embed-large\", \"modelType\": \"2\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (4, 'DeepSeek', 'deepseek', '1', 'https://api.deepseek.com', 'https://www.deepseek.com', '/model-provider-icon/deepseek.png', NULL, '0', 4, '[{\"modelKey\": \"deepseek-chat\", \"modelType\": \"1\"}, {\"modelKey\": \"deepseek-coder\", \"modelType\": \"1\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (5, 'vLLM', 'vllm', '2', 'http://localhost:8000/v1', 'https://docs.vllm.ai', '/model-provider-icon/vllm.ico', NULL, '0', 5, '[]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (6, 'Azure OpenAI', 'azure', '1', 'https://{resource}.openai.azure.com', 'https://azure.microsoft.com/products/ai-services/openai-service', '/model-provider-icon/azure.png', NULL, '0', 6, '[{\"modelKey\": \"gpt-4\", \"modelType\": \"1\"}, {\"modelKey\": \"gpt-4-turbo\", \"modelType\": \"1\"}, {\"modelKey\": \"gpt-35-turbo\", \"modelType\": \"1\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (7, '阿里云百炼', 'bailian', '1', 'https://dashscope.aliyuncs.com/api/v1', 'https://www.aliyun.com/product/bailian', '/model-provider-icon/bailian.jpeg', NULL, '0', 7, '[{\"modelKey\": \"qwen-max\", \"modelType\": \"1\"}, {\"modelKey\": \"qwen-plus\", \"modelType\": \"1\"}, {\"modelKey\": \"qwen-turbo\", \"modelType\": \"1\"}, {\"modelKey\": \"text-embedding-v1\", \"modelType\": \"2\"}, {\"modelKey\": \"text-embedding-v2\", \"modelType\": \"2\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (8, '智谱AI', 'zhipu', '1', 'https://open.bigmodel.cn/api/paas/v4', 'https://open.bigmodel.cn', '/model-provider-icon/zhipu.png', NULL, '0', 8, '[{\"modelKey\": \"glm-4\", \"modelType\": \"1\"}, {\"modelKey\": \"glm-4-flash\", \"modelType\": \"1\"}, {\"modelKey\": \"glm-3-turbo\", \"modelType\": \"1\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (9, '豆包', 'doubao', '1', 'https://ark.cn-beijing.volces.com/api/v3', 'https://www.volcengine.com/product/doubao', '/model-provider-icon/doubao.png', NULL, '0', 9, '[{\"modelKey\": \"doubao-pro-32k\", \"modelType\": \"1\"}, {\"modelKey\": \"doubao-lite-32k\", \"modelType\": \"1\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
+INSERT INTO `km_model_provider`(`provider_id`, `provider_name`, `provider_key`, `provider_type`, `default_endpoint`, `site_url`, `icon_url`, `config_schema`, `status`, `sort`, `models`, `create_dept`, `create_by`, `create_time`, `update_by`, `update_time`, `del_flag`, `remark`) VALUES (10, 'Moonshot', 'moonshot', '1', 'https://api.moonshot.cn/v1', 'https://www.moonshot.cn', '/model-provider-icon/moonshot.ico', NULL, '0', 10, '[{\"modelKey\": \"moonshot-v1-8k\", \"modelType\": \"1\"}, {\"modelKey\": \"moonshot-v1-32k\", \"modelType\": \"1\"}, {\"modelKey\": \"moonshot-v1-128k\", \"modelType\": \"1\"}]', NULL, NULL, '2025-12-25 22:41:24', NULL, NULL, '0', NULL);
 
 -- ----------------------------
 -- 1. 模型管理表
@@ -175,12 +174,15 @@ CREATE TABLE km_app (
     icon            VARCHAR(255)    DEFAULT '' COMMENT '应用图标',
     app_type        CHAR(1)         DEFAULT '1' COMMENT '应用类型（1基础对话 2工作流）',
     status          CHAR(1)         DEFAULT '0' COMMENT '状态（0草稿 1发布）',
+    prologue        VARCHAR(1000)   DEFAULT '' COMMENT '开场白',
 
-    -- 简易配置
+    -- 配置 (JSONB in Postgres, JSON in MySQL)
+    model_setting   JSON            DEFAULT NULL COMMENT '模型配置(temperature, prompt等)',
+    knowledge_setting JSON          DEFAULT NULL COMMENT '知识库配置(topK, threshold等)',
+    workflow_config JSON            DEFAULT NULL COMMENT '工作流配置',
+
+    -- 基础字段
     model_id        BIGINT(20)      DEFAULT NULL COMMENT '关联LLM模型ID',
-    temperature     DECIMAL(3,2)    DEFAULT 0.70 COMMENT '温度',
-    pre_prompt      TEXT            DEFAULT NULL COMMENT '预设提示词',
-    knowledge_ids   VARCHAR(500)    DEFAULT '' COMMENT '关联知识库ID集合(逗号分隔)',
 
     create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
     create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
@@ -193,6 +195,49 @@ CREATE TABLE km_app (
 ) ENGINE=InnoDB COMMENT='AI应用表';
 
 -- ----------------------------
+-- 4.1 应用-知识库关联表
+-- ----------------------------
+DROP TABLE IF EXISTS km_app_knowledge;
+CREATE TABLE km_app_knowledge (
+    id              BIGINT(20)      NOT NULL COMMENT 'ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    knowledge_id    BIGINT(20)      NOT NULL COMMENT '知识库ID',
+    sort            INT(4)          DEFAULT 0 COMMENT '排序',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_app_kb (app_id, knowledge_id)
+) ENGINE=InnoDB COMMENT='应用-知识库关联表';
+
+-- ----------------------------
+-- 4.2 应用版本表
+-- ----------------------------
+DROP TABLE IF EXISTS km_app_version;
+CREATE TABLE km_app_version (
+    version_id      BIGINT(20)      NOT NULL COMMENT '版本ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    version         INT(11)         NOT NULL COMMENT '版本号',
+    app_snapshot    JSON            NOT NULL COMMENT '应用配置快照',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '版本说明',
+    PRIMARY KEY (version_id),
+    KEY idx_app_version (app_id, version)
+) ENGINE=InnoDB COMMENT='应用历史版本表';
+
+-- ----------------------------
+-- 4.3 应用访问统计表
+-- ----------------------------
+DROP TABLE IF EXISTS km_app_access_stat;
+CREATE TABLE km_app_access_stat (
+    id              BIGINT(20)      NOT NULL COMMENT 'ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    user_id         BIGINT(20)      NOT NULL COMMENT '用户ID',
+    access_count    BIGINT(20)      DEFAULT 0 COMMENT '总访问次数',
+    last_access_time DATETIME       DEFAULT NULL COMMENT '最后访问时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_app_user (app_id, user_id)
+) ENGINE=InnoDB COMMENT='应用访问统计表';
+
+-- ----------------------------
 -- 5. 工作流定义表
 -- ----------------------------
 DROP TABLE IF EXISTS km_workflow;
@@ -203,8 +248,11 @@ CREATE TABLE km_workflow (
     dsl_data        LONGTEXT        DEFAULT NULL COMMENT '后端执行DSL(JSON)',
     version         INT(11)         DEFAULT 1 COMMENT '版本号',
     is_active       CHAR(1)         DEFAULT '1' COMMENT '是否激活（1是 0否）',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
     create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
     create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
     remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (flow_id),
     KEY idx_app_id (app_id)
@@ -219,7 +267,12 @@ CREATE TABLE km_chat_session (
     app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
     title           VARCHAR(128)    DEFAULT '新会话' COMMENT '会话标题',
     user_id         BIGINT(20)      NOT NULL COMMENT '用户ID',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
     create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
     del_flag        CHAR(1)         DEFAULT '0' COMMENT '删除标志',
     PRIMARY KEY (session_id),
     KEY idx_user_app (user_id, app_id)
@@ -233,8 +286,13 @@ CREATE TABLE km_chat_message (
     message_id      BIGINT(20)      NOT NULL COMMENT '消息ID',
     session_id      BIGINT(20)      NOT NULL COMMENT '会话ID',
     role            VARCHAR(20)     NOT NULL COMMENT '角色(user/assistant)',
-    content         LONGTEXT        NOT NULL COMMENT '内容',
+    content         LONGTEXT        COMMENT '消息内容',
+    create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
     create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (message_id),
     KEY idx_session (session_id)
 ) ENGINE=InnoDB COMMENT='聊天消息表';
@@ -250,7 +308,8 @@ CREATE TABLE km_tool (
     description     VARCHAR(500)    DEFAULT '' COMMENT '描述',
     tool_type       CHAR(1)         NOT NULL COMMENT '类型（1内置 2API 3MCP）',
     icon            VARCHAR(255)    DEFAULT '' COMMENT '图标',
-    config_schema   JSON            DEFAULT NULL COMMENT '参数定义(JSON Schema)',
+    input_params_schema   JSON      DEFAULT NULL COMMENT '输入参数定义(JSON Schema)',
+    init_params_schema   JSON      DEFAULT NULL COMMENT '初始化参数定义(JSON Schema)',
     api_spec        LONGTEXT        DEFAULT NULL COMMENT 'OpenAPI定义',
     mcp_config      JSON            DEFAULT NULL COMMENT 'MCP连接配置',
     create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
