@@ -2,10 +2,10 @@ package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
+import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * AI聊天Service接口
@@ -46,6 +46,14 @@ public interface IKmChatService {
      * @return 会话列表
      */
     List<Long> getSessionsByAppId(Long appId);
+
+    /**
+     * 获取应用下的会话列表
+     *
+     * @param appId 应用ID
+     * @return 会话列表
+     */
+    List<KmChatSessionVo> getSessionList(Long appId);
 
     /**
      * 清除会话历史

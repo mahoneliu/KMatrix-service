@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
+import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
@@ -61,6 +62,15 @@ public class KmChatController extends BaseController {
     @GetMapping("/history/{sessionId}")
     public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId) {
         return R.ok(chatService.getHistory(sessionId));
+    }
+
+    /**
+     * 获取应用下的会话列表
+     */
+    @SaCheckPermission("ai:chat:history")
+    @GetMapping("/sessions/{appId}")
+    public R<List<KmChatSessionVo>> getSessionList(@PathVariable Long appId) {
+        return R.ok(chatService.getSessionList(appId));
     }
 
     /**

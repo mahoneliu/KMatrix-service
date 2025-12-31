@@ -19,6 +19,7 @@ import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
+import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.dromara.ai.domain.vo.config.AppModelConfig;
 import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmChatSessionMapper;
@@ -39,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -249,6 +249,21 @@ public class KmChatServiceImpl implements IKmChatService {
             return sessionMapper.updateById(session) > 0;
         }
         return false;
+    }
+
+    /**
+     * 获取应用下的会话列表
+     */
+    @Override
+    public List<KmChatSessionVo> getSessionList(Long appId) {
+        Long userId = LoginHelper.getUserId();
+        List<KmChatSession> sessions = sessionMapper.selectList(
+                new LambdaQueryWrapper<KmChatSession>()
+                        .eq(KmChatSession::getAppId, appId)
+                        .eq(KmChatSession::getUserId, userId)
+                        .eq(KmChatSession::getDelFlag, "0")
+                        .orderByDesc(KmChatSession::getCreateTime));
+        return MapstructUtils.convert(sessions, KmChatSessionVo.class);
     }
 
     /**
