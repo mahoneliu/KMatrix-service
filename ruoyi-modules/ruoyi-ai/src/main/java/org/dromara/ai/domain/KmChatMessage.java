@@ -40,4 +40,9 @@ public class KmChatMessage extends BaseEntity {
      * 内容
      */
     private String content;
+
+    /**
+     * 工作流实例ID
+     */
+    private Long instanceId;
 }

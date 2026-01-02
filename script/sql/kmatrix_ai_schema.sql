@@ -320,6 +320,7 @@ CREATE TABLE km_chat_session (
 DROP TABLE IF EXISTS km_chat_message;
 CREATE TABLE km_chat_message (
     message_id      BIGINT(20)      NOT NULL COMMENT '消息ID',
+    instance_id     BIGINT(20)      NOT NULL COMMENT '实例ID',
     session_id      BIGINT(20)      NOT NULL COMMENT '会话ID',
     role            VARCHAR(20)     NOT NULL COMMENT '角色(user/assistant)',
     content         LONGTEXT        COMMENT '消息内容',

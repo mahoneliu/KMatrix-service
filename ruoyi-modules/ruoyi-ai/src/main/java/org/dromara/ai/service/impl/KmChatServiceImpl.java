@@ -20,6 +20,7 @@ import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
+import org.dromara.ai.domain.vo.KmNodeExecutionVo;
 import org.dromara.ai.domain.vo.config.AppModelConfig;
 import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmChatSessionMapper;
@@ -38,7 +39,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -58,9 +61,46 @@ public class KmChatServiceImpl implements IKmChatService {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final IKmAppService appService;
+    private final org.dromara.ai.mapper.KmNodeExecutionMapper executionMapper;
     private final org.dromara.ai.workflow.WorkflowExecutor workflowExecutor;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
+
+    /**
+     * 获取会话历史消息
+     */
+    @Override
+    public List<KmChatMessageVo> getHistory(Long sessionId) {
+        List<KmChatMessage> messages = messageMapper.selectList(
+                new LambdaQueryWrapper<KmChatMessage>()
+                        .eq(KmChatMessage::getSessionId, sessionId)
+                        .orderByAsc(KmChatMessage::getCreateTime));
+
+        List<KmChatMessageVo> vos = MapstructUtils.convert(messages, KmChatMessageVo.class);
+
+        // 填充节点执行记录
+        for (KmChatMessageVo vo : vos) {
+            if (vo.getInstanceId() != null) {
+                List<org.dromara.ai.domain.KmNodeExecution> executions = executionMapper.selectList(
+                        new LambdaQueryWrapper<org.dromara.ai.domain.KmNodeExecution>()
+                                .eq(org.dromara.ai.domain.KmNodeExecution::getInstanceId, vo.getInstanceId())
+                                .orderByAsc(org.dromara.ai.domain.KmNodeExecution::getStartTime));
+
+                if (!executions.isEmpty()) {
+                    List<KmNodeExecutionVo> executionVos = MapstructUtils.convert(executions, KmNodeExecutionVo.class);
+                    // 尝试从工作流配置中恢复节点名称（暂简略处理，后续可优化为缓存或从DSL提取）
+                    for (KmNodeExecutionVo execVo : executionVos) {
+                        if (StrUtil.isBlank(execVo.getNodeName())) {
+                            execVo.setNodeName(execVo.getNodeType() + " [" + execVo.getNodeId() + "]");
+                        }
+                    }
+                    vo.setExecutions(executionVos);
+                }
+            }
+        }
+
+        return vos;
+    }
 
     /**
      * 流式对话
@@ -96,12 +136,15 @@ public class KmChatServiceImpl implements IKmChatService {
                     log.info("使用工作流处理对话, appId={}, isNewSession={}", app.getAppId(), isNewSession);
                     try {
                         // 执行工作流
-                        String aiResponse = workflowExecutor.executeWorkflow(
+                        Map<String, Object> result = workflowExecutor.executeWorkflow(
                                 app, sessionId, bo.getMessage(), emitter, userId);
+
+                        String aiResponse = (String) result.get("finalResponse");
+                        Long instanceId = (Long) result.get("instanceId");
 
                         // 保存AI响应
                         if (aiResponse != null) {
-                            saveMessage(sessionId, "assistant", aiResponse, userId);
+                            saveMessage(sessionId, "assistant", aiResponse, instanceId, userId);
                         }
 
                         // 异步生成标题（仅在首次对话时）
@@ -263,18 +306,6 @@ public class KmChatServiceImpl implements IKmChatService {
         saveMessage(sessionId, "assistant", aiResponse, LoginHelper.getUserId());
 
         return aiResponse;
-    }
-
-    /**
-     * 获取会话历史消息
-     */
-    @Override
-    public List<KmChatMessageVo> getHistory(Long sessionId) {
-        List<KmChatMessage> messages = messageMapper.selectList(
-                new LambdaQueryWrapper<KmChatMessage>()
-                        .eq(KmChatMessage::getSessionId, sessionId)
-                        .orderByAsc(KmChatMessage::getCreateTime));
-        return MapstructUtils.convert(messages, KmChatMessageVo.class);
     }
 
     /**
@@ -461,10 +492,18 @@ public class KmChatServiceImpl implements IKmChatService {
      * 保存消息
      */
     private void saveMessage(Long sessionId, String role, String content, Long userId) {
+        saveMessage(sessionId, role, content, null, userId);
+    }
+
+    /**
+     * 保存带有进度实例的消息
+     */
+    private void saveMessage(Long sessionId, String role, String content, Long instanceId, Long userId) {
         KmChatMessage message = new KmChatMessage();
         message.setSessionId(sessionId);
         message.setRole(role);
         message.setContent(content);
+        message.setInstanceId(instanceId);
         message.setCreateTime(new Date());
 
         // 手动设置BaseEntity字段

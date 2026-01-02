@@ -7,6 +7,7 @@ import org.dromara.ai.domain.KmChatMessage;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 聊天消息视图对象 km_chat_message
@@ -42,7 +43,17 @@ public class KmChatMessageVo implements Serializable {
     private String content;
 
     /**
+     * 工作流实例ID
+     */
+    private Long instanceId;
+
+    /**
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 节点执行记录列表
+     */
+    private List<KmNodeExecutionVo> executions;
 }

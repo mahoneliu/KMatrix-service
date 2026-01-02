@@ -42,9 +42,9 @@ public class WorkflowExecutor {
      * @param userInput 用户输入
      * @param emitter   SSE推送器
      * @param userId    用户ID
-     * @return 最终响应
+     * @return 结果Map，包含 finalResponse 和 instanceId
      */
-    public String executeWorkflow(KmAppVo app, Long sessionId, String userInput,
+    public Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, String userInput,
             SseEmitter emitter, Long userId) throws Exception {
 
         // 1. 解析工作流配置
@@ -66,10 +66,13 @@ public class WorkflowExecutor {
         context.setGlobalValue("userInput", userInput);
 
         String finalResponse = null;
+        Map<String, Object> result = new HashMap<>();
+        result.put("instanceId", instanceId);
 
         try {
             // 4. 执行节点
             finalResponse = executeNodes(config, context, instanceId, emitter);
+            result.put("finalResponse", finalResponse);
 
             // 5. 标记实例完成
             instanceService.completeInstance(instanceId);
@@ -89,7 +92,7 @@ public class WorkflowExecutor {
             throw e;
         }
 
-        return finalResponse;
+        return result;
     }
 
     /**
