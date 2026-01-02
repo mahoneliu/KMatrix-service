@@ -177,12 +177,14 @@ CREATE TABLE km_app (
     prologue        VARCHAR(1000)   DEFAULT '' COMMENT '开场白',
 
     -- 配置 (JSONB in Postgres, JSON in MySQL)
-    model_setting   JSON            DEFAULT NULL COMMENT '模型配置(temperature, prompt等)',
-    knowledge_setting JSON          DEFAULT NULL COMMENT '知识库配置(topK, threshold等)',
-    workflow_config JSON            DEFAULT NULL COMMENT '工作流配置',
+    model_setting   JSON            DEFAULT NULL COMMENT '模型配置(JSON)',
+    knowledge_setting JSON          DEFAULT NULL COMMENT '知识库配置(JSON)',
+    workflow_config JSON            DEFAULT NULL COMMENT '工作流配置(JSON,已废弃,使用dsl_data)',
+    graph_data      JSON            DEFAULT NULL COMMENT '前端画布数据(JSON)',
+    dsl_data        JSON            DEFAULT NULL COMMENT '工作流DSL配置(JSON)',
 
     -- 基础字段
-    model_id        BIGINT(20)      DEFAULT NULL COMMENT '关联LLM模型ID',
+    model_id        BIGINT(20)      DEFAULT NULL COMMENT '关联模型ID',
 
     create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
     create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
@@ -238,25 +240,59 @@ CREATE TABLE km_app_access_stat (
 ) ENGINE=InnoDB COMMENT='应用访问统计表';
 
 -- ----------------------------
--- 5. 工作流定义表
+-- 5. 工作流定义表 (已废弃,工作流数据存储在 km_app 表中)
 -- ----------------------------
-DROP TABLE IF EXISTS km_workflow;
-CREATE TABLE km_workflow (
-    flow_id         BIGINT(20)      NOT NULL COMMENT '工作流ID',
-    app_id          BIGINT(20)      NOT NULL COMMENT '所属应用ID',
-    graph_data      LONGTEXT        DEFAULT NULL COMMENT '前端画布数据(JSON)',
-    dsl_data        LONGTEXT        DEFAULT NULL COMMENT '后端执行DSL(JSON)',
-    version         INT(11)         DEFAULT 1 COMMENT '版本号',
-    is_active       CHAR(1)         DEFAULT '1' COMMENT '是否激活（1是 0否）',
+-- DROP TABLE IF EXISTS km_workflow;
+
+-- ----------------------------
+-- 5.1 工作流实例表
+-- ----------------------------
+DROP TABLE IF EXISTS km_workflow_instance;
+CREATE TABLE km_workflow_instance (
+    instance_id     BIGINT(20)      NOT NULL COMMENT '实例ID',
+    app_id          BIGINT(20)      NOT NULL COMMENT '应用ID',
+    session_id      BIGINT(20)      NOT NULL COMMENT '会话ID',
+    workflow_config JSON            NOT NULL COMMENT '工作流配置快照(JSON)',
+    status          VARCHAR(20)     NOT NULL COMMENT '实例状态(RUNNING/PAUSED/COMPLETED/FAILED)',
+    current_node    VARCHAR(64)     DEFAULT NULL COMMENT '当前执行节点ID',
+    global_state    JSON            DEFAULT NULL COMMENT '全局状态数据',
+    start_time      DATETIME        DEFAULT NULL COMMENT '开始时间',
+    end_time        DATETIME        DEFAULT NULL COMMENT '结束时间',
+    error_message   VARCHAR(1000)   DEFAULT NULL COMMENT '错误信息',
     create_dept     BIGINT(20)      DEFAULT NULL COMMENT '创建部门',
     create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
     create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
     update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
     update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
-    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-    PRIMARY KEY (flow_id),
-    KEY idx_app_id (app_id)
-) ENGINE=InnoDB COMMENT='工作流定义表';
+    PRIMARY KEY (instance_id),
+    KEY idx_app_session (app_id, session_id),
+    KEY idx_status (status)
+) ENGINE=InnoDB COMMENT='工作流实例表';
+
+-- ----------------------------
+-- 5.2 节点执行记录表
+-- ----------------------------
+DROP TABLE IF EXISTS km_node_execution;
+CREATE TABLE km_node_execution (
+    execution_id    BIGINT(20)      NOT NULL COMMENT '执行ID',
+    instance_id     BIGINT(20)      NOT NULL COMMENT '实例ID',
+    node_id         VARCHAR(64)     NOT NULL COMMENT '节点ID',
+    node_type       VARCHAR(64)     NOT NULL COMMENT '节点类型',
+    status          VARCHAR(20)     NOT NULL COMMENT '执行状态(PENDING/RUNNING/COMPLETED/FAILED/SKIPPED)',
+    input_params    JSON            DEFAULT NULL COMMENT '输入参数',
+    output_params   JSON            DEFAULT NULL COMMENT '输出参数',
+    start_time      DATETIME        DEFAULT NULL COMMENT '开始时间',
+    end_time        DATETIME        DEFAULT NULL COMMENT '结束时间',
+    error_message   VARCHAR(1000)   DEFAULT NULL COMMENT '错误信息',
+    retry_count     INT(4)          DEFAULT 0 COMMENT '重试次数',
+    create_by       BIGINT(20)      DEFAULT NULL COMMENT '创建者',
+    create_time     DATETIME        DEFAULT NULL COMMENT '创建时间',
+    update_by       BIGINT(20)      DEFAULT NULL COMMENT '更新者',
+    update_time     DATETIME        DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (execution_id),
+    KEY idx_instance (instance_id),
+    KEY idx_node (instance_id, node_id)
+) ENGINE=InnoDB COMMENT='节点执行记录表';
 
 -- ----------------------------
 -- 6. 聊天会话表

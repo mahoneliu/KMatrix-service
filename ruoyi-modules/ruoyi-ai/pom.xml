@@ -18,6 +18,8 @@
     <properties>
         <!-- 统一定义 LangChain4j 版本 -->
         <langchain4j.version>0.36.2</langchain4j.version>
+        <!-- LangGraph4j版本 -->
+        <langgraph4j.version>1.7.9</langgraph4j.version>
         <!-- 匹配服务端 ES 版本 -->
         <elasticsearch.version>8.9.0</elasticsearch.version>
     </properties>
@@ -113,6 +115,13 @@
                     <artifactId>slf4j-simple</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <!-- LangGraph4j 核心 -->
+        <dependency>
+            <groupId>org.bsc.langgraph4j</groupId>
+            <artifactId>langgraph4j-core</artifactId>
+            <version>${langgraph4j.version}</version>
         </dependency>
 
     </dependencies>

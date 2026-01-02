@@ -22,7 +22,20 @@ public class AppSnapshot implements Serializable {
     // 配置
     private AppModelConfig modelSetting;
     private AppKnowledgeConfig knowledgeSetting;
+    /**
+     * 工作流配置(元配置)
+     */
     private AppWorkflowConfig workflowConfig;
+
+    /**
+     * 前端画布数据(JSON)
+     */
+    private String graphData;
+
+    /**
+     * 后端执行DSL(JSON)
+     */
+    private String dslData;
 
     // 关联
     private Long modelId;

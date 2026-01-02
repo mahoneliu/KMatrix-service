@@ -58,6 +58,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final IKmAppService appService;
+    private final org.dromara.ai.workflow.WorkflowExecutor workflowExecutor;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -79,14 +80,57 @@ public class KmChatServiceImpl implements IKmChatService {
             try {
                 // 1. 加载应用和模型配置
                 KmAppVo app = loadApp(bo.getAppId());
-                KmModel model = loadModel(app.getModelId());
-                KmModelProvider provider = loadProvider(model.getProviderId());
 
                 // 2. 获取或创建会话
                 Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId);
 
+                // 判断是否为新会话（首次对话）
+                boolean isNewSession = (bo.getSessionId() == null);
+
                 // 3. 保存用户消息
                 saveMessage(sessionId, "user", bo.getMessage(), userId);
+
+                // 4. 检查应用类型
+                if ("2".equals(app.getAppType())) {
+                    // 工作流类型应用
+                    log.info("使用工作流处理对话, appId={}, isNewSession={}", app.getAppId(), isNewSession);
+                    try {
+                        // 执行工作流
+                        String aiResponse = workflowExecutor.executeWorkflow(
+                                app, sessionId, bo.getMessage(), emitter, userId);
+
+                        // 保存AI响应
+                        if (aiResponse != null) {
+                            saveMessage(sessionId, "assistant", aiResponse, userId);
+                        }
+
+                        // 异步生成标题（仅在首次对话时）
+                        if (isNewSession && aiResponse != null) {
+                            KmModel model = loadModel(app.getModelId());
+                            KmModelProvider provider = loadProvider(model.getProviderId());
+                            CompletableFuture.runAsync(() -> {
+                                try {
+                                    generateSessionTitle(sessionId, bo.getMessage(), aiResponse, model,
+                                            provider.getProviderKey());
+                                } catch (Exception e) {
+                                    log.warn("异步生成工作流标题失败", e);
+                                }
+                            });
+                        }
+
+                        // SSE完成信号由WorkflowExecutor发送
+                        emitter.complete();
+
+                    } catch (Exception e) {
+                        log.error("工作流执行失败", e);
+                        emitter.completeWithError(e);
+                    }
+                    return;
+                }
+
+                // 基础对话类型 - 使用原有逻辑
+                KmModel model = loadModel(app.getModelId());
+                KmModelProvider provider = loadProvider(model.getProviderId());
 
                 // 4. 构建对话上下文
                 List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
@@ -126,8 +170,24 @@ public class KmChatServiceImpl implements IKmChatService {
                                                 tokenUsage.totalTokenCount());
                                     }
 
-                                    // 发送完成信号
-                                    emitter.send(SseEmitter.event().name("done").data(""));
+                                    // 异步生成会话标题(仅在首次对话时)
+                                    CompletableFuture.runAsync(() -> {
+                                        try {
+                                            // 检查是否是首次对话(消息数量为2:一问一答)
+                                            long messageCount = messageMapper.selectCount(
+                                                    new LambdaQueryWrapper<KmChatMessage>()
+                                                            .eq(KmChatMessage::getSessionId, sessionId));
+                                            if (messageCount == 2) {
+                                                generateSessionTitle(sessionId, bo.getMessage(), aiResponse, model,
+                                                        provider.getProviderKey());
+                                            }
+                                        } catch (Exception e) {
+                                            log.warn("异步生成标题失败", e);
+                                        }
+                                    });
+
+                                    // 发送完成信号,携带sessionId供前端保存
+                                    emitter.send(SseEmitter.event().name("done").data(sessionId.toString()));
                                     emitter.complete();
                                 } catch (IOException e) {
                                     log.error("完成SSE流失败", e);
@@ -308,9 +368,6 @@ public class KmChatServiceImpl implements IKmChatService {
         if (app == null) {
             throw new ServiceException("应用不存在");
         }
-        if (app.getModelId() == null) {
-            throw new ServiceException("应用未配置模型");
-        }
         return app;
     }
 
@@ -416,5 +473,77 @@ public class KmChatServiceImpl implements IKmChatService {
         message.setUpdateTime(new Date());
 
         messageMapper.insert(message);
+    }
+
+    /**
+     * 生成会话标题
+     */
+    private void generateSessionTitle(Long sessionId, String userMessage, String aiResponse,
+            KmModel model, String providerKey) {
+        try {
+            // 构建标题生成prompt
+            String titlePrompt = String.format(
+                    "请根据以下对话生成一个简洁的标题(5-15个字),只返回标题内容,不要其他解释:\n\n" +
+                            "用户: %s\n" +
+                            "助手: %s\n\n" +
+                            "标题:",
+                    userMessage.length() > 100 ? userMessage.substring(0, 100) + "..." : userMessage,
+                    aiResponse.length() > 100 ? aiResponse.substring(0, 100) + "..." : aiResponse);
+
+            // 构建简单的消息列表
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(new UserMessage(titlePrompt));
+
+            // 使用同步模型快速生成标题
+            ChatLanguageModel chatModel = ModelBuilder.buildChatModel(model, providerKey);
+            Response<AiMessage> response = chatModel.generate(messages);
+            String title = response.content().text().trim();
+
+            // 清理标题(去除引号等)
+            title = title.replaceAll("^\"|\"$", "")
+                    .replaceAll("^'|'$", "")
+                    .replaceAll("^《|》$", "")
+                    .trim();
+
+            // 限制标题长度
+            if (title.length() > 30) {
+                title = title.substring(0, 30);
+            }
+
+            // 更新session标题
+            KmChatSession session = sessionMapper.selectById(sessionId);
+            if (session != null && "新会话".equals(session.getTitle())) {
+                session.setTitle(title);
+                session.setUpdateTime(new Date());
+                sessionMapper.updateById(session);
+                log.info("会话标题已更新: sessionId={}, title={}", sessionId, title);
+            }
+        } catch (Exception e) {
+            log.warn("生成会话标题失败: sessionId={}, error={}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * 更新会话标题
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateSessionTitle(Long sessionId, String title) {
+        Long userId = LoginHelper.getUserId();
+        KmChatSession session = sessionMapper.selectById(sessionId);
+
+        if (session == null) {
+            throw new ServiceException("会话不存在");
+        }
+
+        // 验证权限:只能修改自己的会话
+        if (!session.getUserId().equals(userId)) {
+            throw new ServiceException("无权限修改此会话");
+        }
+
+        session.setTitle(title);
+        session.setUpdateTime(new Date());
+        session.setUpdateBy(userId);
+        return sessionMapper.updateById(session) > 0;
     }
 }

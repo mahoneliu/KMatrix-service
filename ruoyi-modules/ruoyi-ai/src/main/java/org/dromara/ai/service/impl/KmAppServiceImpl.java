@@ -191,6 +191,8 @@ public class KmAppServiceImpl implements IKmAppService {
         snapshot.setModelSetting(app.getModelSetting());
         snapshot.setKnowledgeSetting(app.getKnowledgeSetting());
         snapshot.setWorkflowConfig(app.getWorkflowConfig());
+        snapshot.setGraphData(app.getGraphData());
+        snapshot.setDslData(app.getDslData());
         snapshot.setModelId(app.getModelId());
 
         version.setAppSnapshot(snapshot);

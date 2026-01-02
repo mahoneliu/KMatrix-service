@@ -70,4 +70,13 @@ public interface IKmChatService {
      * @return 是否成功
      */
     Boolean clearAppHistory(Long appId);
+
+    /**
+     * 更新会话标题
+     *
+     * @param sessionId 会话ID
+     * @param title     新标题
+     * @return 是否成功
+     */
+    Boolean updateSessionTitle(Long sessionId, String title);
 }

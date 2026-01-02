@@ -28,7 +28,7 @@ public class KmApp extends BaseEntity {
     /**
      * 应用ID
      */
-    @TableId(type = IdType.ASSIGN_ID,value = "app_id")
+    @TableId(type = IdType.ASSIGN_ID, value = "app_id")
     private Long appId;
 
     /**
@@ -74,10 +74,20 @@ public class KmApp extends BaseEntity {
     private AppKnowledgeConfig knowledgeSetting;
 
     /**
-     * 工作流配置
+     * 工作流配置(元配置)
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private AppWorkflowConfig workflowConfig;
+
+    /**
+     * 前端画布数据(JSON)
+     */
+    private String graphData;
+
+    /**
+     * 后端执行DSL(JSON)
+     */
+    private String dslData;
 
     /**
      * 关联LLM模型ID

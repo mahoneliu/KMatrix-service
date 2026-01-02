@@ -92,4 +92,18 @@ public class KmChatController extends BaseController {
     public R<Void> clearAppHistory(@PathVariable Long appId) {
         return toAjax(chatService.clearAppHistory(appId));
     }
+
+    /**
+     * 更新会话标题
+     */
+    @SaCheckPermission("ai:chat:edit")
+    @Log(title = "更新会话标题", businessType = BusinessType.UPDATE)
+    @PutMapping("/session/{sessionId}/title")
+    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody java.util.Map<String, String> body) {
+        String title = body.get("title");
+        if (org.dromara.common.core.utils.StringUtils.isBlank(title)) {
+            return R.fail("标题不能为空");
+        }
+        return toAjax(chatService.updateSessionTitle(sessionId, title));
+    }
 }

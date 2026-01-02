@@ -68,9 +68,19 @@ public class KmAppVo implements Serializable {
     private AppKnowledgeConfig knowledgeSetting;
 
     /**
-     * 工作流配置
+     * 工作流配置(元配置)
      */
     private AppWorkflowConfig workflowConfig;
+
+    /**
+     * 前端画布数据(JSON)
+     */
+    private String graphData;
+
+    /**
+     * 后端执行DSL(JSON)
+     */
+    private String dslData;
 
     /**
      * 关联LLM模型ID
