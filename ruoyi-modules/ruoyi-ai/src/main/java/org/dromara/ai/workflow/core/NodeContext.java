@@ -37,11 +37,6 @@ public class NodeContext {
     private SseEmitter sseEmitter;
 
     /**
-     * 应用信息
-     */
-    private KmAppVo app;
-
-    /**
      * 会话ID
      */
     private Long sessionId;
@@ -55,11 +50,6 @@ public class NodeContext {
      * 用户ID
      */
     private Long userId;
-
-    /**
-     * 是否为新会话（首次对话）
-     */
-    private boolean isNewSession;
 
     /**
      * 获取全局状态值

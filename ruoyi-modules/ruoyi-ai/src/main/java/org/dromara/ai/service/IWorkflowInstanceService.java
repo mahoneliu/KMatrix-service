@@ -1,6 +1,5 @@
 package org.dromara.ai.service;
 
-import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.KmWorkflowInstance;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.enums.WorkflowInstanceStatus;

@@ -95,4 +95,52 @@ public class WorkflowConfig {
          */
         private String condition;
     }
+
+    /**
+     * 首选引擎类型
+     */
+    private org.dromara.ai.workflow.engine.WorkflowEngineType preferredEngine;
+
+    /**
+     * 判断是否包含循环
+     */
+    public boolean hasLoop() {
+        // TODO: 实现循环检测算法
+        return false;
+    }
+
+    /**
+     * 判断是否有并行节点
+     */
+    public boolean hasParallelNodes() {
+        if (edges == null)
+            return false;
+        // 检查是否有节点有多个出边
+        java.util.Map<String, Long> outDegree = edges.stream()
+                .collect(java.util.stream.Collectors.groupingBy(EdgeConfig::getFrom,
+                        java.util.stream.Collectors.counting()));
+        return outDegree.values().stream().anyMatch(count -> count > 1);
+    }
+
+    /**
+     * 判断是否有子工作流
+     */
+    public boolean hasSubWorkflow() {
+        if (nodes == null)
+            return false;
+        return nodes.stream()
+                .anyMatch(node -> "SUB_WORKFLOW".equals(node.getType()));
+    }
+
+    /**
+     * 判断是否为 Multi-Agent 工作流
+     */
+    public boolean isMultiAgent() {
+        if (nodes == null)
+            return false;
+        long agentCount = nodes.stream()
+                .filter(node -> "AGENT".equals(node.getType()))
+                .count();
+        return agentCount >= 2;
+    }
 }

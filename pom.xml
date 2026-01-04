@@ -477,7 +477,7 @@
         </resources>
     </build>
 
-    <repositories>
+    <!-- <repositories>
         <repository>
             <id>public</id>
             <name>huawei nexus</name>
@@ -486,7 +486,6 @@
                 <enabled>true</enabled>
             </releases>
         </repository>
-        <!-- Maven Central Repository (备用,用于下载LangGraph4j等较新的库) -->
         <repository>
             <id>central</id>
             <name>Maven Central</name>
@@ -498,7 +497,7 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-    </repositories>
+    </repositories> -->
 
     <pluginRepositories>
         <pluginRepository>

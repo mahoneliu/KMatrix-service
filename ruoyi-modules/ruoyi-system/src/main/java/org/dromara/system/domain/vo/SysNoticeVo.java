@@ -10,8 +10,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
-
-
 /**
  * 通知公告视图对象 sys_notice
  *

@@ -6,7 +6,8 @@ import org.dromara.ai.domain.KmApp;
 import org.dromara.ai.domain.vo.config.AppKnowledgeConfig;
 import org.dromara.ai.domain.vo.config.AppModelConfig;
 import org.dromara.ai.domain.vo.config.AppWorkflowConfig;
-
+import org.dromara.common.translation.annotation.Translation;
+import org.dromara.common.translation.constant.TransConstant;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -91,6 +92,28 @@ public class KmAppVo implements Serializable {
      * 备注
      */
     private String remark;
+
+    /**
+     * 创建者
+     */
+    private String createBy;
+
+    /**
+     * 创建人名称
+     */
+    @Translation(type = TransConstant.USER_ID_TO_NAME, mapper = "createBy")
+    private String createByName;
+
+    /**
+     * 更新者
+     */
+    private String updateBy;
+
+    /**
+     * 更新人名称
+     */
+    @Translation(type = TransConstant.USER_ID_TO_NAME, mapper = "updateBy")
+    private String updateByName;
 
     /**
      * 创建时间

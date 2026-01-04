@@ -47,7 +47,6 @@ public class IntentClassifierNode implements WorkflowNode {
             text = (String) context.getGlobalValue("userInput");
         }
 
-        @SuppressWarnings("unchecked")
         List<String> intents = (List<String>) context.getConfig("intents");
 
         // 加载模型
