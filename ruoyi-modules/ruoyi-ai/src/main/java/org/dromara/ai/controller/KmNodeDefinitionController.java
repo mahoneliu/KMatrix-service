@@ -1,14 +1,18 @@
 package org.dromara.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
 import org.dromara.ai.service.IKmNodeDefinitionService;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.log.annotation.Log;
+import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -46,12 +50,12 @@ public class KmNodeDefinitionController extends BaseController {
      * @param pageQuery 分页参数
      * @return 分页结果
      */
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:list")
+    @SaCheckPermission("ai:workflow:node:list")
     @GetMapping("/definition/list")
-    public org.dromara.common.mybatis.core.page.TableDataInfo<KmNodeDefinitionVo> list(
-            org.dromara.ai.domain.query.KmNodeDefinitionQuery query,
-            org.dromara.common.mybatis.core.page.PageQuery pageQuery) {
-        return workflowNodeService.queryPageList(query, pageQuery);
+    public TableDataInfo<KmNodeDefinitionVo> list(
+            KmNodeDefinitionBo bo,
+            PageQuery pageQuery) {
+        return workflowNodeService.queryPageList(bo, pageQuery);
     }
 
     /**
@@ -60,10 +64,10 @@ public class KmNodeDefinitionController extends BaseController {
      * @param nodeDefId 节点定义ID
      * @return 节点定义详情
      */
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:query")
+    @SaCheckPermission("ai:workflow:node:query")
     @GetMapping("/definition/{nodeDefId}")
     public R<KmNodeDefinitionVo> getInfo(
-            @org.springframework.web.bind.annotation.PathVariable Long nodeDefId) {
+            @PathVariable Long nodeDefId) {
         KmNodeDefinitionVo vo = workflowNodeService.getNodeDefinitionById(nodeDefId);
         return R.ok(vo);
     }
@@ -74,11 +78,11 @@ public class KmNodeDefinitionController extends BaseController {
      * @param bo 节点定义业务对象
      * @return 新节点定义ID
      */
-    @org.dromara.common.log.annotation.Log(title = "节点定义管理", businessType = org.dromara.common.log.enums.BusinessType.INSERT)
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:add")
-    @org.springframework.web.bind.annotation.PostMapping("/definition")
+    @Log(title = "节点定义管理", businessType = BusinessType.INSERT)
+    @SaCheckPermission("ai:workflow:node:add")
+    @PostMapping("/definition")
     public R<Long> add(
-            @Validated @org.springframework.web.bind.annotation.RequestBody org.dromara.ai.domain.bo.KmNodeDefinitionBo bo) {
+            @Validated @RequestBody KmNodeDefinitionBo bo) {
         Long nodeDefId = workflowNodeService.addNodeDefinition(bo);
         return R.ok(nodeDefId);
     }
@@ -90,12 +94,12 @@ public class KmNodeDefinitionController extends BaseController {
      * @param newNodeType 新节点类型
      * @return 新节点定义ID
      */
-    @org.dromara.common.log.annotation.Log(title = "节点定义管理", businessType = org.dromara.common.log.enums.BusinessType.INSERT)
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:add")
-    @org.springframework.web.bind.annotation.PostMapping("/definition/copy/{nodeDefId}")
+    @Log(title = "节点定义管理", businessType = BusinessType.INSERT)
+    @SaCheckPermission("ai:workflow:node:add")
+    @PostMapping("/definition/copy/{nodeDefId}")
     public R<Long> copy(
-            @org.springframework.web.bind.annotation.PathVariable Long nodeDefId,
-            @org.springframework.web.bind.annotation.RequestParam String newNodeType) {
+            @PathVariable Long nodeDefId,
+            @RequestParam String newNodeType) {
         Long newNodeDefId = workflowNodeService.copyNodeDefinition(nodeDefId, newNodeType);
         return R.ok(newNodeDefId);
     }
@@ -106,11 +110,11 @@ public class KmNodeDefinitionController extends BaseController {
      * @param bo 节点定义业务对象
      * @return 操作结果
      */
-    @org.dromara.common.log.annotation.Log(title = "节点定义管理", businessType = org.dromara.common.log.enums.BusinessType.UPDATE)
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:edit")
-    @org.springframework.web.bind.annotation.PutMapping("/definition")
+    @Log(title = "节点定义管理", businessType = BusinessType.UPDATE)
+    @SaCheckPermission("ai:workflow:node:edit")
+    @PutMapping("/definition")
     public R<Void> edit(
-            @Validated @org.springframework.web.bind.annotation.RequestBody org.dromara.ai.domain.bo.KmNodeDefinitionBo bo) {
+            @Validated @RequestBody KmNodeDefinitionBo bo) {
         workflowNodeService.updateNodeDefinition(bo);
         return R.ok();
     }
@@ -121,11 +125,11 @@ public class KmNodeDefinitionController extends BaseController {
      * @param nodeDefIds 节点定义ID数组
      * @return 操作结果
      */
-    @org.dromara.common.log.annotation.Log(title = "节点定义管理", businessType = org.dromara.common.log.enums.BusinessType.DELETE)
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:workflow:node:remove")
-    @org.springframework.web.bind.annotation.DeleteMapping("/definition/{nodeDefIds}")
+    @Log(title = "节点定义管理", businessType = BusinessType.DELETE)
+    @SaCheckPermission("ai:workflow:node:remove")
+    @DeleteMapping("/definition/{nodeDefIds}")
     public R<Void> remove(
-            @org.springframework.web.bind.annotation.PathVariable Long[] nodeDefIds) {
+            @PathVariable Long[] nodeDefIds) {
         workflowNodeService.deleteNodeDefinitions(nodeDefIds);
         return R.ok();
     }

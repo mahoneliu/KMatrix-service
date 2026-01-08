@@ -30,12 +30,13 @@ public class EndNode implements WorkflowNode {
         }
 
         // 保存到输出
-        output.addOutput("finalResponse", finalResponse);
-
+        if (finalResponse != null) {
+            output.addOutput("finalResponse", finalResponse);
+            log.info("END节点执行完成, finalResponse={}", finalResponse);
+        }
         // 标记为结束
         output.setFinished(true);
 
-        log.info("END节点执行完成, finalResponse={}", finalResponse);
         return output;
     }
 

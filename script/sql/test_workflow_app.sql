@@ -67,7 +67,7 @@ INSERT INTO `km_app` (
       "type": "FIXED_RESPONSE",
       "name": "打招呼回复",
       "config": {
-        "responseText": "您好！！"
+        "content": "您好！！"
       },
       "inputs": {}
     },
@@ -87,7 +87,7 @@ INSERT INTO `km_app` (
       "type": "FIXED_RESPONSE",
       "name": "其他回复",
       "config": {
-        "responseText": "我还不懂这个问题"
+        "content": "我还不懂这个问题"
       },
       "inputs": {}
     },

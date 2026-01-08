@@ -1,18 +1,29 @@
 package org.dromara.ai.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmNodeDefinition;
+import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
+import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
 import org.dromara.ai.mapper.KmNodeDefinitionMapper;
 import org.dromara.ai.service.IKmNodeDefinitionService;
 import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.utils.MessageUtils;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 工作流节点定义服务实现
@@ -48,7 +59,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
             // 转换为VO
             List<KmNodeDefinitionVo> result = entities.stream()
                     .map(this::convertToVo)
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
 
             log.info("从数据库成功加载 {} 个节点类型定义", result.size());
             return result;
@@ -63,22 +74,24 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      */
     private KmNodeDefinitionVo convertToVo(KmNodeDefinition entity) {
         KmNodeDefinitionVo vo = new KmNodeDefinitionVo();
-        vo.setType(entity.getNodeType());
-        vo.setLabel(entity.getNodeLabel());
-        vo.setIcon(entity.getNodeIcon());
-        vo.setColor(entity.getNodeColor());
+        vo.setNodeDefId(entity.getNodeDefId());
+        vo.setNodeType(entity.getNodeType());
+        vo.setNodeLabel(entity.getNodeLabel());
+        vo.setNodeIcon(entity.getNodeIcon());
+        vo.setNodeColor(entity.getNodeColor());
         vo.setCategory(entity.getCategory());
         vo.setDescription(entity.getDescription());
-        vo.setIsSystem("1".equals(entity.getIsSystem()));
+        vo.setIsSystem(entity.getIsSystem());
+        vo.setIsEnabled(entity.getIsEnabled());
 
         // 解析JSON参数定义
-        if (cn.hutool.core.util.StrUtil.isNotBlank(entity.getInputParams())) {
+        if (StrUtil.isNotBlank(entity.getInputParams())) {
             vo.setInputParams(
-                    JSONUtil.toList(entity.getInputParams(), org.dromara.ai.domain.vo.NodeParamDefinitionVo.class));
+                    JSONUtil.toList(entity.getInputParams(), NodeParamDefinitionVo.class));
         }
-        if (cn.hutool.core.util.StrUtil.isNotBlank(entity.getOutputParams())) {
+        if (StrUtil.isNotBlank(entity.getOutputParams())) {
             vo.setOutputParams(
-                    JSONUtil.toList(entity.getOutputParams(), org.dromara.ai.domain.vo.NodeParamDefinitionVo.class));
+                    JSONUtil.toList(entity.getOutputParams(), NodeParamDefinitionVo.class));
         }
 
         return vo;
@@ -90,38 +103,38 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 分页查询节点定义列表
      */
     @Override
-    public org.dromara.common.mybatis.core.page.TableDataInfo<KmNodeDefinitionVo> queryPageList(
-            org.dromara.ai.domain.query.KmNodeDefinitionQuery query,
-            org.dromara.common.mybatis.core.page.PageQuery pageQuery) {
+    public TableDataInfo<KmNodeDefinitionVo> queryPageList(
+            KmNodeDefinitionBo bo,
+            PageQuery pageQuery) {
         LambdaQueryWrapper<KmNodeDefinition> wrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
-        wrapper.like(cn.hutool.core.util.StrUtil.isNotBlank(query.getNodeType()),
-                KmNodeDefinition::getNodeType, query.getNodeType())
-                .like(cn.hutool.core.util.StrUtil.isNotBlank(query.getNodeLabel()),
-                        KmNodeDefinition::getNodeLabel, query.getNodeLabel())
-                .eq(cn.hutool.core.util.StrUtil.isNotBlank(query.getCategory()),
-                        KmNodeDefinition::getCategory, query.getCategory())
-                .eq(cn.hutool.core.util.StrUtil.isNotBlank(query.getIsSystem()),
-                        KmNodeDefinition::getIsSystem, query.getIsSystem())
-                .eq(cn.hutool.core.util.StrUtil.isNotBlank(query.getIsEnabled()),
-                        KmNodeDefinition::getIsEnabled, query.getIsEnabled())
+        wrapper.like(StrUtil.isNotBlank(bo.getNodeType()),
+                KmNodeDefinition::getNodeType, bo.getNodeType())
+                .like(StrUtil.isNotBlank(bo.getNodeLabel()),
+                        KmNodeDefinition::getNodeLabel, bo.getNodeLabel())
+                .eq(StrUtil.isNotBlank(bo.getCategory()),
+                        KmNodeDefinition::getCategory, bo.getCategory())
+                .eq(StrUtil.isNotBlank(bo.getIsSystem()),
+                        KmNodeDefinition::getIsSystem, bo.getIsSystem())
+                .eq(StrUtil.isNotBlank(bo.getIsEnabled()),
+                        KmNodeDefinition::getIsEnabled, bo.getIsEnabled())
                 .orderByAsc(KmNodeDefinition::getCategory)
                 .orderByAsc(KmNodeDefinition::getNodeType);
 
         // 分页查询
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<KmNodeDefinition> page = nodeDefinitionMapper
+        Page<KmNodeDefinition> page = nodeDefinitionMapper
                 .selectPage(pageQuery.build(), wrapper);
 
         // 转换为VO Page
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<KmNodeDefinitionVo> voPage = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(
+        Page<KmNodeDefinitionVo> voPage = new Page<>(
                 page.getCurrent(), page.getSize(), page.getTotal());
         List<KmNodeDefinitionVo> voList = page.getRecords().stream()
                 .map(this::convertToVo)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         voPage.setRecords(voList);
 
-        return org.dromara.common.mybatis.core.page.TableDataInfo.build(voPage);
+        return TableDataInfo.build(voPage);
     }
 
     /**
@@ -140,28 +153,28 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 新增节点定义
      */
     @Override
-    @org.springframework.cache.annotation.CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
-    public Long addNodeDefinition(org.dromara.ai.domain.bo.KmNodeDefinitionBo bo) {
+    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    public Long addNodeDefinition(KmNodeDefinitionBo bo) {
         // 1. 校验节点类型是否已存在
         LambdaQueryWrapper<KmNodeDefinition> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KmNodeDefinition::getNodeType, bo.getNodeType());
         if (nodeDefinitionMapper.exists(wrapper)) {
             throw new ServiceException(
-                    org.dromara.common.core.utils.MessageUtils.message("node.type.exists", bo.getNodeType()));
+                    MessageUtils.message("node.type.exists", bo.getNodeType()));
         }
 
         // 2. 转换并保存
-        KmNodeDefinition entity = cn.hutool.core.bean.BeanUtil.toBean(bo, KmNodeDefinition.class);
+        KmNodeDefinition entity = BeanUtil.toBean(bo, KmNodeDefinition.class);
         entity.setVersion(1);
         entity.setIsSystem("0"); // 用户创建的节点非系统节点
 
         // 3. 序列化参数为JSON
-        if (cn.hutool.core.collection.CollUtil.isNotEmpty(bo.getInputParams())) {
+        if (CollUtil.isNotEmpty(bo.getInputParams())) {
             entity.setInputParams(JSONUtil.toJsonStr(bo.getInputParams()));
         } else {
             entity.setInputParams("[]");
         }
-        if (cn.hutool.core.collection.CollUtil.isNotEmpty(bo.getOutputParams())) {
+        if (CollUtil.isNotEmpty(bo.getOutputParams())) {
             entity.setOutputParams(JSONUtil.toJsonStr(bo.getOutputParams()));
         } else {
             entity.setOutputParams("[]");
@@ -176,7 +189,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 复制节点定义
      */
     @Override
-    @org.springframework.cache.annotation.CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
     public Long copyNodeDefinition(Long nodeDefId, String newNodeType) {
         // 1. 查询原节点
         KmNodeDefinition source = nodeDefinitionMapper.selectById(nodeDefId);
@@ -189,12 +202,12 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         wrapper.eq(KmNodeDefinition::getNodeType, newNodeType);
         if (nodeDefinitionMapper.exists(wrapper)) {
             throw new ServiceException(
-                    org.dromara.common.core.utils.MessageUtils.message("node.type.exists", newNodeType));
+                    MessageUtils.message("node.type.exists", newNodeType));
         }
 
         // 3. 创建副本
         KmNodeDefinition copy = new KmNodeDefinition();
-        cn.hutool.core.bean.BeanUtil.copyProperties(source, copy, "nodeDefId", "nodeType", "createTime", "updateTime",
+        BeanUtil.copyProperties(source, copy, "nodeDefId", "nodeType", "createTime", "updateTime",
                 "createBy", "updateBy");
         copy.setNodeType(newNodeType);
         copy.setNodeLabel(source.getNodeLabel() + "_副本");
@@ -210,8 +223,8 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 更新节点定义
      */
     @Override
-    @org.springframework.cache.annotation.CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
-    public void updateNodeDefinition(org.dromara.ai.domain.bo.KmNodeDefinitionBo bo) {
+    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    public void updateNodeDefinition(KmNodeDefinitionBo bo) {
         // 1. 查询原节点
         KmNodeDefinition entity = nodeDefinitionMapper.selectById(bo.getNodeDefId());
         if (entity == null) {
@@ -224,16 +237,16 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         }
 
         // 3. 更新字段
-        cn.hutool.core.bean.BeanUtil.copyProperties(bo, entity, "nodeDefId", "version", "isSystem", "createTime",
+        BeanUtil.copyProperties(bo, entity, "nodeDefId", "version", "isSystem", "createTime",
                 "createBy");
 
         // 4. 序列化参数
-        if (cn.hutool.core.collection.CollUtil.isNotEmpty(bo.getInputParams())) {
+        if (CollUtil.isNotEmpty(bo.getInputParams())) {
             entity.setInputParams(JSONUtil.toJsonStr(bo.getInputParams()));
         } else {
             entity.setInputParams("[]");
         }
-        if (cn.hutool.core.collection.CollUtil.isNotEmpty(bo.getOutputParams())) {
+        if (CollUtil.isNotEmpty(bo.getOutputParams())) {
             entity.setOutputParams(JSONUtil.toJsonStr(bo.getOutputParams()));
         } else {
             entity.setOutputParams("[]");
@@ -247,7 +260,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 删除节点定义
      */
     @Override
-    @org.springframework.cache.annotation.CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
     public void deleteNodeDefinition(Long nodeDefId) {
         KmNodeDefinition entity = nodeDefinitionMapper.selectById(nodeDefId);
         if (entity == null) {
@@ -268,7 +281,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 批量删除节点定义
      */
     @Override
-    @org.springframework.cache.annotation.CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
     public void deleteNodeDefinitions(Long[] nodeDefIds) {
         for (Long nodeDefId : nodeDefIds) {
             deleteNodeDefinition(nodeDefId);

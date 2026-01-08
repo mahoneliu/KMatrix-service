@@ -24,13 +24,13 @@ public class FixedResponseNode implements WorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 从配置获取固定回复内容
-        String responseText = (String) context.getConfig("responseText");
-        if (responseText == null) {
-            responseText = (String) context.getInput("responseText");
+        String content = (String) context.getConfig("content");
+        if (content == null) {
+            content = (String) context.getInput("content");
         }
 
-        if (responseText == null) {
-            responseText = "抱歉，未配置回复内容";
+        if (content == null) {
+            content = "抱歉，未配置回复内容";
         }
 
         // 发送消息事件
@@ -38,20 +38,20 @@ public class FixedResponseNode implements WorkflowNode {
         if (emitter != null) {
             try {
                 emitter.send(
-                        org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().data(responseText));
+                        org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().data(content));
             } catch (java.io.IOException e) {
                 log.error("发送SSE消息失败", e);
             }
         }
 
         // 保存输出
-        output.addOutput("response", responseText);
-        output.addOutput("finalResponse", responseText);
+        output.addOutput("response", content);
+        output.addOutput("finalResponse", content);
 
         // 保存到全局状态，与LLM_CHAT节点保持一致
-        context.setGlobalValue("aiResponse", responseText);
+        context.setGlobalValue("aiResponse", content);
 
-        log.info("FIXED_RESPONSE节点执行完成, response={}", responseText);
+        log.info("FIXED_RESPONSE节点执行完成, response={}", content);
         return output;
     }
 

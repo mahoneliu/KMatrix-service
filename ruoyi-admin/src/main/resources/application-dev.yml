@@ -11,6 +11,10 @@ spring.boot.admin.client:
   username: @monitor.username@
   password: @monitor.password@
 
+--- # AI配置
+ai:
+  log-chat: true
+
 --- # snail-job 配置
 snail-job:
   enabled: false

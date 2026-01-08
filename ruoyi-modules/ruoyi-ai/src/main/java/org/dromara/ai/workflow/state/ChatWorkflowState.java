@@ -6,7 +6,6 @@ import org.bsc.langgraph4j.state.Channel;
 import org.bsc.langgraph4j.state.Channels;
 import org.dromara.ai.workflow.core.NodeContext;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,37 +44,34 @@ public class ChatWorkflowState extends AgentState implements Serializable {
     }
 
     // SCHEMA: 定义字段的合并策略
-    // nodeOutputs 使用 appender 策略追加新消息(记录每个节点的输出),
-    // finalResponse 使用 appender 策略追加新消息(记录多个最终响应并汇总),
-    // 其他字段默认使用 last-value 语义(最新值覆盖)
+    // nodeOutputs, globalState, error, finalResponse 均使用 last-value 语义(最新值覆盖)
+    // 初始值通过 factory 提供，确保类型正确
     public static final Map<String, Channel<?>> SCHEMA = Map.of(
-            "nodeOutputs", Channels.appender(ArrayList::new),
-            "error", Channels.appender(ArrayList::new),
-            "finalResponse", Channels.appender(ArrayList::new),
-            "currentNodeId", Channels.base(() -> ""),
-            "globalState", Channels.base(() -> ""),
-            "finished", Channels.base(() -> false));
+            "nodeOutputs", Channels.<Map<String, Object>>base(() -> new HashMap<>()),
+            "error", Channels.<String>base(() -> null),
+            "finalResponse", Channels.<String>base(() -> null),
+            "currentNodeId", Channels.<String>base(() -> ""),
+            "globalState", Channels.<Map<String, Object>>base(() -> new HashMap<>()),
+            "finished", Channels.<Boolean>base(() -> false));
 
     // ========== 执行状态 ==========
 
     public String getCurrentNodeId() {
-        return this.<String>value("currentNodeId").orElse(null);
+        return this.value("currentNodeId").map(Object::toString).orElse("");
     }
 
-    @SuppressWarnings("unchecked")
     public Map<String, Object> getGlobalState() {
-        return this.<Map<String, Object>>value("globalState").orElse(new HashMap<>());
+        return this.<Map<String, Object>>value("globalState").orElseGet(HashMap::new);
     }
 
-    @SuppressWarnings("unchecked")
     public Map<String, Object> getNodeOutputs() {
-        return this.<Map<String, Object>>value("nodeOutputs").orElse(new HashMap<>());
+        return this.<Map<String, Object>>value("nodeOutputs").orElseGet(HashMap::new);
     }
 
     // ========== 结果与状态 ==========
 
     public String getFinalResponse() {
-        return this.<String>value("finalResponse").orElse(null);
+        return this.value("finalResponse").map(Object::toString).orElse(null);
     }
 
     public boolean isFinished() {
@@ -87,6 +83,7 @@ public class ChatWorkflowState extends AgentState implements Serializable {
     /**
      * 获取节点输出
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getNodeOutput(String nodeId) {
         return (Map<String, Object>) getNodeOutputs().get(nodeId);
     }
@@ -105,32 +102,29 @@ public class ChatWorkflowState extends AgentState implements Serializable {
     }
 
     public String getError() {
-        return this.<String>value("error").orElse(null);
+        return this.value("error").map(Object::toString).orElse(null);
     }
 
     // ========== 基础信息访问方法 ==========
     // 从 globalState map 中读取基础信息
 
     public String getUserInput() {
-        Map<String, Object> globalState = getGlobalState();
-        return (String) globalState.get(KEY_USER_INPUT);
+        Object val = getGlobalState().get(KEY_USER_INPUT);
+        return val != null ? val.toString() : null;
     }
 
     public Long getSessionId() {
-        Map<String, Object> globalState = getGlobalState();
-        Object value = globalState.get(KEY_SESSION_ID);
+        Object value = getGlobalState().get(KEY_SESSION_ID);
         return value != null ? ((Number) value).longValue() : null;
     }
 
     public Long getInstanceId() {
-        Map<String, Object> globalState = getGlobalState();
-        Object value = globalState.get(KEY_INSTANCE_ID);
+        Object value = getGlobalState().get(KEY_INSTANCE_ID);
         return value != null ? ((Number) value).longValue() : null;
     }
 
     public Long getUserId() {
-        Map<String, Object> globalState = getGlobalState();
-        Object value = globalState.get(KEY_USER_ID);
+        Object value = getGlobalState().get(KEY_USER_ID);
         return value != null ? ((Number) value).longValue() : null;
     }
 }

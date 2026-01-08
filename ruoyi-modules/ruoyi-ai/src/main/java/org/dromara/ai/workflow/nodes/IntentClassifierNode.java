@@ -15,7 +15,9 @@ import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 意图识别节点
@@ -31,6 +33,7 @@ public class IntentClassifierNode implements WorkflowNode {
 
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
+    private final ModelBuilder modelBuilder;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -47,17 +50,18 @@ public class IntentClassifierNode implements WorkflowNode {
             text = (String) context.getGlobalValue("userInput");
         }
 
-        List<String> intents = (List<String>) context.getConfig("intents");
+        // 获取意图配置并提取意图名称
+        List<String> intentNames = extractIntentNames(context.getConfig("intents"));
 
         // 加载模型
         KmModel model = modelMapper.selectById(modelId);
         KmModelProvider provider = providerMapper.selectById(model.getProviderId());
 
         // 构建提示词
-        String systemPrompt = buildIntentPrompt(intents);
+        String systemPrompt = buildIntentPrompt(intentNames);
 
         // 调用LLM识别意图
-        ChatLanguageModel chatModel = ModelBuilder.buildChatModel(model, provider.getProviderKey());
+        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
         String response = chatModel.generate(
                 new SystemMessage(systemPrompt),
                 new UserMessage(text)).content().text();
@@ -66,18 +70,48 @@ public class IntentClassifierNode implements WorkflowNode {
         String intent = response.trim().toLowerCase();
 
         // 验证意图是否在列表中
-        if (intents != null && !intents.contains(intent)) {
-            intent = "other";
+        if (intentNames != null && !intentNames.contains(intent)) {
+            intent = "else"; // 使用 'else' 匹配前端条件表达式
         }
 
         // 保存输出
         output.addOutput("intent", intent);
         output.addOutput("confidence", 0.9); // 简化实现,固定置信度
 
+        // 同时保存到全局状态,方便下游节点直接访问
         context.setGlobalValue("intent", intent);
 
         log.info("INTENT_CLASSIFIER节点执行完成, intent={}", intent);
         return output;
+    }
+
+    /**
+     * 从配置中提取意图名称列表
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> extractIntentNames(Object intentsConfig) {
+        if (intentsConfig == null) {
+            return new ArrayList<>();
+        }
+
+        List<String> intentNames = new ArrayList<>();
+        if (intentsConfig instanceof List) {
+            List<?> intentList = (List<?>) intentsConfig;
+            for (Object item : intentList) {
+                if (item instanceof Map) {
+                    // 前端传来的是对象数组: [{name: 'xxx', description: 'yyy', examples: []}, ...]
+                    Map<String, Object> intentMap = (Map<String, Object>) item;
+                    String name = (String) intentMap.get("name");
+                    if (name != null) {
+                        intentNames.add(name);
+                    }
+                } else if (item instanceof String) {
+                    // 兼容纯字符串数组
+                    intentNames.add((String) item);
+                }
+            }
+        }
+        return intentNames;
     }
 
     private String buildIntentPrompt(List<String> intents) {
@@ -89,7 +123,7 @@ public class IntentClassifierNode implements WorkflowNode {
                 prompt.append("- ").append(intent).append("\n");
             }
         }
-        prompt.append("如果不属于以上任何意图,返回 'other'");
+        prompt.append("如果不属于以上任何意图,返回 'else'");
         return prompt.toString();
     }
 

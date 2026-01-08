@@ -34,6 +34,7 @@ public class LlmChatNode implements WorkflowNode {
 
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
+    private final ModelBuilder modelBuilder;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -65,7 +66,7 @@ public class LlmChatNode implements WorkflowNode {
         List<ChatMessage> messages = buildMessages(context, systemPrompt);
 
         // 使用流式模型
-        dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = ModelBuilder
+        dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
                 .buildStreamingChatModel(model, provider.getProviderKey());
 
         StringBuilder fullResponse = new StringBuilder();

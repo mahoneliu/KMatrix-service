@@ -1,6 +1,9 @@
 package org.dromara.ai.service;
 
+import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 
 import java.util.List;
 
@@ -27,9 +30,8 @@ public interface IKmNodeDefinitionService {
      * @param query 查询条件
      * @return 分页结果
      */
-    org.dromara.common.mybatis.core.page.TableDataInfo<KmNodeDefinitionVo> queryPageList(
-            org.dromara.ai.domain.query.KmNodeDefinitionQuery query,
-            org.dromara.common.mybatis.core.page.PageQuery pageQuery);
+    TableDataInfo<KmNodeDefinitionVo> queryPageList(
+            KmNodeDefinitionBo kmNodeDefinitionBo, PageQuery pageQuery);
 
     /**
      * 根据ID查询节点定义详情
@@ -45,7 +47,7 @@ public interface IKmNodeDefinitionService {
      * @param bo 节点定义业务对象
      * @return 节点定义ID
      */
-    Long addNodeDefinition(org.dromara.ai.domain.bo.KmNodeDefinitionBo bo);
+    Long addNodeDefinition(KmNodeDefinitionBo bo);
 
     /**
      * 复制节点定义
@@ -61,7 +63,7 @@ public interface IKmNodeDefinitionService {
      *
      * @param bo 节点定义业务对象
      */
-    void updateNodeDefinition(org.dromara.ai.domain.bo.KmNodeDefinitionBo bo);
+    void updateNodeDefinition(KmNodeDefinitionBo bo);
 
     /**
      * 删除节点定义

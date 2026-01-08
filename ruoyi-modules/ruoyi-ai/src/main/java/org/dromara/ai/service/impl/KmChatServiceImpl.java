@@ -63,6 +63,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final IKmAppService appService;
     private final org.dromara.ai.mapper.KmNodeExecutionMapper executionMapper;
     private final org.dromara.ai.workflow.WorkflowExecutor workflowExecutor;
+    private final ModelBuilder modelBuilder;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -179,7 +180,7 @@ public class KmChatServiceImpl implements IKmChatService {
                 List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
 
                 // 5. 构建流式模型并生成响应
-                StreamingChatLanguageModel streamingModel = ModelBuilder.buildStreamingChatModel(model,
+                StreamingChatLanguageModel streamingModel = modelBuilder.buildStreamingChatModel(model,
                         provider.getProviderKey());
 
                 // 使用Token级流式处理
@@ -287,7 +288,7 @@ public class KmChatServiceImpl implements IKmChatService {
         List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
 
         // 5. 构建模型并生成响应
-        ChatLanguageModel chatModel = ModelBuilder.buildChatModel(model, provider.getProviderKey());
+        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
         Response<AiMessage> response = chatModel.generate(messages);
 
         // 6. 获取AI响应
@@ -534,7 +535,7 @@ public class KmChatServiceImpl implements IKmChatService {
             messages.add(new UserMessage(titlePrompt));
 
             // 使用同步模型快速生成标题
-            ChatLanguageModel chatModel = ModelBuilder.buildChatModel(model, providerKey);
+            ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, providerKey);
             Response<AiMessage> response = chatModel.generate(messages);
             String title = response.content().text().trim();
 

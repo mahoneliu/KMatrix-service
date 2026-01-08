@@ -59,9 +59,10 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             ChatWorkflowState finalState = compiled.invoke(chatWorkflowState.data())
                     .orElseThrow(() -> new RuntimeException("工作流执行失败：未返回结果"));
 
-            // 4. 检查错误
-            if (finalState.getError() != null) {
-                throw new RuntimeException(finalState.getError());
+            // 4. 检查错误 - 安全处理各种类型的 error
+            String errorMessage = finalState.getError();
+            if (errorMessage != null && !errorMessage.isEmpty()) {
+                throw new RuntimeException(errorMessage);
             }
 
             // 5. 返回最终响应

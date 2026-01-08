@@ -9,9 +9,12 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.config.KmAiProperties;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.common.core.exception.ServiceException;
+import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
@@ -22,7 +25,11 @@ import java.time.Duration;
  * @date 2025-12-31
  */
 @Slf4j
+@RequiredArgsConstructor
+@Component
 public class ModelBuilder {
+
+    private final KmAiProperties aiProperties;
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
 
@@ -33,7 +40,7 @@ public class ModelBuilder {
      * @param providerKey 供应商标识
      * @return 聊天模型实例
      */
-    public static ChatLanguageModel buildChatModel(KmModel model, String providerKey) {
+    public ChatLanguageModel buildChatModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException("模型配置或供应商标识为空");
         }
@@ -55,7 +62,7 @@ public class ModelBuilder {
      * @param providerKey 供应商标识
      * @return 流式聊天模型实例
      */
-    public static StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey) {
+    public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException("模型配置或供应商标识为空");
         }
@@ -73,10 +80,12 @@ public class ModelBuilder {
     /**
      * 构建OpenAI类型模型
      */
-    private static ChatLanguageModel buildOpenAiModel(KmModel model) {
+    private ChatLanguageModel buildOpenAiModel(KmModel model) {
         var builder = OpenAiChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
@@ -89,10 +98,12 @@ public class ModelBuilder {
     /**
      * 构建OpenAI类型流式模型
      */
-    private static StreamingChatLanguageModel buildOpenAiStreamingModel(KmModel model) {
+    private StreamingChatLanguageModel buildOpenAiStreamingModel(KmModel model) {
         var builder = OpenAiStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
@@ -105,7 +116,7 @@ public class ModelBuilder {
     /**
      * 构建Ollama类型模型
      */
-    private static ChatLanguageModel buildOllamaModel(KmModel model) {
+    private ChatLanguageModel buildOllamaModel(KmModel model) {
         String baseUrl = StrUtil.isNotBlank(model.getApiBase())
                 ? model.getApiBase()
                 : "http://localhost:11434";
@@ -113,6 +124,8 @@ public class ModelBuilder {
         return OllamaChatModel.builder()
                 .baseUrl(baseUrl)
                 .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
@@ -120,7 +133,7 @@ public class ModelBuilder {
     /**
      * 构建Ollama类型流式模型
      */
-    private static StreamingChatLanguageModel buildOllamaStreamingModel(KmModel model) {
+    private StreamingChatLanguageModel buildOllamaStreamingModel(KmModel model) {
         String baseUrl = StrUtil.isNotBlank(model.getApiBase())
                 ? model.getApiBase()
                 : "http://localhost:11434";
@@ -128,6 +141,8 @@ public class ModelBuilder {
         return OllamaStreamingChatModel.builder()
                 .baseUrl(baseUrl)
                 .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
@@ -135,7 +150,7 @@ public class ModelBuilder {
     /**
      * 构建通义千问类型模型
      */
-    private static ChatLanguageModel buildQwenModel(KmModel model) {
+    private ChatLanguageModel buildQwenModel(KmModel model) {
         return QwenChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -145,7 +160,7 @@ public class ModelBuilder {
     /**
      * 构建通义千问类型流式模型
      */
-    private static StreamingChatLanguageModel buildQwenStreamingModel(KmModel model) {
+    private StreamingChatLanguageModel buildQwenStreamingModel(KmModel model) {
         return QwenStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())

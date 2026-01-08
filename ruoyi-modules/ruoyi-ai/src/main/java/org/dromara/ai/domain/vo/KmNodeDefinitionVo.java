@@ -12,27 +12,32 @@ public class KmNodeDefinitionVo implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 节点类型
+     * 节点定义ID
      */
-    private String type;
+    private Long nodeDefId;
+
+    /**
+     * 节点类型标识 (如 LLM_CHAT)
+     */
+    private String nodeType;
 
     /**
      * 节点显示名称
      */
-    private String label;
+    private String nodeLabel;
 
     /**
-     * 节点图标
+     * 节点图标 (Iconify)
      */
-    private String icon;
+    private String nodeIcon;
 
     /**
-     * 节点颜色
+     * 节点颜色 (HEX)
      */
-    private String color;
+    private String nodeColor;
 
     /**
-     * 节点分类 (basic, ai, logic, action)
+     * 节点分类 (basic/ai/logic/action)
      */
     private String category;
 
@@ -42,9 +47,14 @@ public class KmNodeDefinitionVo implements Serializable {
     private String description;
 
     /**
-     * 是否为系统节点
+     * 是否系统节点 (0否/1是)
      */
-    private Boolean isSystem;
+    private String isSystem;
+
+    /**
+     * 是否启用 (0停用/1启用)
+     */
+    private String isEnabled;
 
     /**
      * 输入参数定义
