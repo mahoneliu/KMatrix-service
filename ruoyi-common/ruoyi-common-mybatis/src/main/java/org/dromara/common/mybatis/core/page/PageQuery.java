@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.core.utils.sql.SqlUtil;
@@ -21,6 +22,7 @@ import java.util.List;
  * @author Lion Li
  */
 @Data
+@NoArgsConstructor
 public class PageQuery implements Serializable {
 
     @Serial
@@ -79,8 +81,10 @@ public class PageQuery implements Serializable {
      * 支持的用法如下:
      * {isAsc:"asc",orderByColumn:"id"} order by id asc
      * {isAsc:"asc",orderByColumn:"id,createTime"} order by id asc,create_time asc
-     * {isAsc:"desc",orderByColumn:"id,createTime"} order by id desc,create_time desc
-     * {isAsc:"asc,desc",orderByColumn:"id,createTime"} order by id asc,create_time desc
+     * {isAsc:"desc",orderByColumn:"id,createTime"} order by id desc,create_time
+     * desc
+     * {isAsc:"asc,desc",orderByColumn:"id,createTime"} order by id asc,create_time
+     * desc
      */
     private List<OrderItem> buildOrderItem() {
         if (StringUtils.isBlank(orderByColumn) || StringUtils.isBlank(isAsc)) {
@@ -90,7 +94,8 @@ public class PageQuery implements Serializable {
         orderBy = StringUtils.toUnderScoreCase(orderBy);
 
         // 兼容前端排序类型
-        isAsc = StringUtils.replaceEach(isAsc, new String[]{"ascending", "descending"}, new String[]{"asc", "desc"});
+        isAsc = StringUtils.replaceEach(isAsc, new String[] { "ascending", "descending" },
+                new String[] { "asc", "desc" });
 
         String[] orderByArr = orderBy.split(StringUtils.SEPARATOR);
         String[] isAscArr = isAsc.split(StringUtils.SEPARATOR);

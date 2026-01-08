@@ -1,0 +1,181 @@
+{
+    "nodeTypes": [
+        {
+            "type": "APP_INFO",
+            "label": "基础信息",
+            "icon": "mdi:information",
+            "color": "#10b981",
+            "category": "basic",
+            "description": "应用的基础信息配置",
+            "isSystem": true,
+            "inputParams": [],
+            "outputParams": []
+        },
+        {
+            "type": "START",
+            "label": "开始",
+            "icon": "mdi:play-circle",
+            "color": "#10b981",
+            "category": "basic",
+            "description": "工作流的入口节点",
+            "isSystem": true,
+            "inputParams": [],
+            "outputParams": [
+                {
+                    "key": "userInput",
+                    "label": "用户输入",
+                    "type": "string",
+                    "required": true,
+                    "description": "用户的输入内容"
+                },
+                {
+                    "key": "sessionId",
+                    "label": "会话ID",
+                    "type": "string",
+                    "required": true,
+                    "description": "当前会话的唯一标识"
+                },
+                {
+                    "key": "userId",
+                    "label": "用户ID",
+                    "type": "string",
+                    "required": false,
+                    "description": "当前用户的ID"
+                }
+            ]
+        },
+        {
+            "type": "END",
+            "label": "结束",
+            "icon": "mdi:stop-circle",
+            "color": "#ef4444",
+            "category": "basic",
+            "description": "工作流的结束节点",
+            "isSystem": true,
+            "inputParams": [
+                {
+                    "key": "response",
+                    "label": "最终回复",
+                    "type": "string",
+                    "required": true,
+                    "description": "返回给用户的最终回复内容"
+                }
+            ],
+            "outputParams": []
+        },
+        {
+            "type": "LLM_CHAT",
+            "label": "LLM 对话",
+            "icon": "mdi:robot",
+            "color": "#3b82f6",
+            "category": "ai",
+            "description": "调用大语言模型进行对话",
+            "isSystem": false,
+            "inputParams": [
+                {
+                    "key": "userInput",
+                    "label": "用户输入",
+                    "type": "string",
+                    "required": true,
+                    "description": "传递给 LLM 的用户输入"
+                },
+                {
+                    "key": "systemPrompt",
+                    "label": "系统提示词",
+                    "type": "string",
+                    "required": false,
+                    "description": "可选的系统提示词,用于覆盖节点配置"
+                }
+            ],
+            "outputParams": [
+                {
+                    "key": "response",
+                    "label": "AI 回复",
+                    "type": "string",
+                    "required": true,
+                    "description": "LLM 生成的回复内容"
+                }
+            ]
+        },
+        {
+            "type": "INTENT_CLASSIFIER",
+            "label": "意图分类",
+            "icon": "mdi:sitemap",
+            "color": "#8b5cf6",
+            "category": "ai",
+            "description": "识别用户输入的意图并分类",
+            "isSystem": false,
+            "inputParams": [
+                {
+                    "key": "userInput",
+                    "label": "用户输入",
+                    "type": "string",
+                    "required": true,
+                    "description": "需要分类的用户输入"
+                }
+            ],
+            "outputParams": [
+                {
+                    "key": "matchedIntent",
+                    "label": "匹配的意图",
+                    "type": "string",
+                    "required": true,
+                    "description": "识别出的意图名称"
+                },
+                {
+                    "key": "confidence",
+                    "label": "置信度",
+                    "type": "number",
+                    "required": true,
+                    "description": "意图识别的置信度(0-1)"
+                }
+            ]
+        },
+        {
+            "type": "CONDITION",
+            "label": "条件判断",
+            "icon": "mdi:source-branch",
+            "color": "#f59e0b",
+            "category": "logic",
+            "description": "根据条件表达式进行分支判断",
+            "isSystem": false,
+            "inputParams": [
+                {
+                    "key": "matchedBranch",
+                    "label": "匹配的分支",
+                    "type": "string",
+                    "required": false,
+                    "description": "用于条件判断的值"
+                }
+            ],
+            "outputParams": [
+                {
+                    "key": "matchedBranch",
+                    "label": "匹配的分支",
+                    "type": "string",
+                    "required": true,
+                    "description": "满足条件的分支名称"
+                }
+            ]
+        },
+        {
+            "type": "FIXED_RESPONSE",
+            "label": "固定回复",
+            "icon": "mdi:message-text",
+            "color": "#6b7280",
+            "category": "action",
+            "description": "返回预设的固定文本内容",
+            "isSystem": false,
+            "inputParams": [],
+            "outputParams": [
+                {
+                    "key": "response",
+                    "label": "回复内容",
+                    "type": "string",
+                    "required": true,
+                    "description": "固定的回复文本"
+                }
+            ]
+        }
+    ]
+}
