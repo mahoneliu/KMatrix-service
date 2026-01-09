@@ -65,8 +65,9 @@ public class KmAppController extends BaseController {
     @SaCheckPermission("ai:app:add")
     @Log(title = "AI应用", businessType = BusinessType.INSERT)
     @PostMapping
-    public R<Void> add(@Validated @RequestBody KmAppBo bo) {
-        return toAjax(appService.insertByBo(bo));
+    public R<String> add(@Validated @RequestBody KmAppBo bo) {
+        String appId = appService.insertByBo(bo);
+        return R.ok("操作成功", appId);
     }
 
     /**

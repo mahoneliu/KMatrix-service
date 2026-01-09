@@ -34,7 +34,7 @@ public interface IKmAppService {
     /**
      * 新增AI应用
      */
-    Boolean insertByBo(KmAppBo bo);
+    String insertByBo(KmAppBo bo);
 
     /**
      * 修改AI应用
