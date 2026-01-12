@@ -143,4 +143,62 @@ public class WorkflowConfig {
                 .count();
         return agentCount >= 2;
     }
+
+    /**
+     * 校验工作流配置
+     * 
+     * @throws IllegalArgumentException 如果配置不合法
+     */
+    public void validate() {
+        // 1. 检查 END 节点存在性和唯一性
+        List<NodeConfig> endNodes = nodes.stream()
+                .filter(node -> "END".equals(node.getType()))
+                .collect(java.util.stream.Collectors.toList());
+
+        if (endNodes.isEmpty()) {
+            throw new IllegalArgumentException("工作流必须包含一个 END 节点");
+        }
+
+        if (endNodes.size() > 1) {
+            throw new IllegalArgumentException("工作流只能有一个 END 节点");
+        }
+
+        // 2. 检查 END 节点必须是终端节点(没有出边)
+        String endNodeId = endNodes.get(0).getId();
+        boolean hasOutgoingEdge = edges.stream()
+                .anyMatch(edge -> edge.getFrom().equals(endNodeId));
+
+        if (hasOutgoingEdge) {
+            throw new IllegalArgumentException("END 节点不能有出边");
+        }
+
+        // 3. 检查所有终端节点(没有出边的节点)
+        // 收集所有有出边的节点
+        java.util.Set<String> nodesWithOutgoingEdges = edges.stream()
+                .map(EdgeConfig::getFrom)
+                .collect(java.util.stream.Collectors.toSet());
+
+        // 找出所有终端节点(没有出边的节点)
+        List<NodeConfig> terminalNodes = nodes.stream()
+                .filter(node -> !nodesWithOutgoingEdges.contains(node.getId()))
+                .collect(java.util.stream.Collectors.toList());
+
+        // 终端节点只能有一个,且必须是 END 类型
+        if (terminalNodes.size() > 1) {
+            String terminalNodeIds = terminalNodes.stream()
+                    .map(NodeConfig::getId)
+                    .collect(java.util.stream.Collectors.joining(", "));
+            throw new IllegalArgumentException(
+                    "工作流只能有一个终端节点(没有出边的节点),当前有多个: " + terminalNodeIds);
+        }
+
+        if (terminalNodes.size() == 1) {
+            NodeConfig terminalNode = terminalNodes.get(0);
+            if (!"END".equals(terminalNode.getType())) {
+                throw new IllegalArgumentException(
+                        "终端节点必须是 END 类型,当前终端节点 " + terminalNode.getId() +
+                                " 的类型是: " + terminalNode.getType());
+            }
+        }
+    }
 }

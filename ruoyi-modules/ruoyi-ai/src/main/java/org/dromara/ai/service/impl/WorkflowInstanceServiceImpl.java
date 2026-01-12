@@ -91,11 +91,14 @@ public class WorkflowInstanceServiceImpl implements IWorkflowInstanceService {
     }
 
     @Override
-    public void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams) {
+    public void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams,
+            String nodeName, Long durationMs) {
         KmNodeExecution execution = new KmNodeExecution();
         execution.setExecutionId(executionId);
         execution.setStatus(status);
         execution.setOutputParams(outputParams);
+        execution.setNodeName(nodeName);
+        execution.setDurationMs(durationMs);
         execution.setEndTime(new Date());
 
         executionMapper.updateById(execution);

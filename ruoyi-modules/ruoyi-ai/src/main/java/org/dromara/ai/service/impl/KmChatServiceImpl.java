@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -16,6 +17,7 @@ import org.dromara.ai.domain.KmChatMessage;
 import org.dromara.ai.domain.KmChatSession;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
@@ -26,9 +28,11 @@ import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmChatSessionMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
+import org.dromara.ai.mapper.KmNodeExecutionMapper;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.ai.util.ModelBuilder;
+import org.dromara.ai.workflow.WorkflowExecutor;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
@@ -38,8 +42,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -61,8 +65,8 @@ public class KmChatServiceImpl implements IKmChatService {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final IKmAppService appService;
-    private final org.dromara.ai.mapper.KmNodeExecutionMapper executionMapper;
-    private final org.dromara.ai.workflow.WorkflowExecutor workflowExecutor;
+    private final KmNodeExecutionMapper executionMapper;
+    private final WorkflowExecutor workflowExecutor;
     private final ModelBuilder modelBuilder;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
@@ -82,10 +86,10 @@ public class KmChatServiceImpl implements IKmChatService {
         // 填充节点执行记录
         for (KmChatMessageVo vo : vos) {
             if (vo.getInstanceId() != null) {
-                List<org.dromara.ai.domain.KmNodeExecution> executions = executionMapper.selectList(
-                        new LambdaQueryWrapper<org.dromara.ai.domain.KmNodeExecution>()
-                                .eq(org.dromara.ai.domain.KmNodeExecution::getInstanceId, vo.getInstanceId())
-                                .orderByAsc(org.dromara.ai.domain.KmNodeExecution::getStartTime));
+                List<KmNodeExecution> executions = executionMapper.selectList(
+                        new LambdaQueryWrapper<KmNodeExecution>()
+                                .eq(KmNodeExecution::getInstanceId, vo.getInstanceId())
+                                .orderByAsc(KmNodeExecution::getStartTime));
 
                 if (!executions.isEmpty()) {
                     List<KmNodeExecutionVo> executionVos = MapstructUtils.convert(executions, KmNodeExecutionVo.class);
@@ -185,7 +189,7 @@ public class KmChatServiceImpl implements IKmChatService {
 
                 // 使用Token级流式处理
                 streamingModel.generate(messages,
-                        new dev.langchain4j.model.StreamingResponseHandler<AiMessage>() {
+                        new StreamingResponseHandler<AiMessage>() {
                             @Override
                             public void onNext(String token) {
                                 try {
@@ -447,7 +451,7 @@ public class KmChatServiceImpl implements IKmChatService {
                         .last("LIMIT 20"));
 
         // 反转为时间正序
-        java.util.Collections.reverse(historyMessages);
+        Collections.reverse(historyMessages);
 
         // 转换为LangChain4j消息
         for (KmChatMessage msg : historyMessages) {

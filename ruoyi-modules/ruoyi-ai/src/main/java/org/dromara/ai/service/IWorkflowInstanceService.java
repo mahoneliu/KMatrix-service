@@ -66,8 +66,11 @@ public interface IWorkflowInstanceService {
      * @param executionId  执行ID
      * @param status       状态
      * @param outputParams 输出参数
+     * @param nodeName     节点名称
+     * @param durationMs   执行耗时(毫秒)
      */
-    void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams);
+    void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams,
+            String nodeName, Long durationMs);
 
     /**
      * 标记实例完成

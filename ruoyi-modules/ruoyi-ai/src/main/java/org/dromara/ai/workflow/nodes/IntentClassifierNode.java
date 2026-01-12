@@ -45,10 +45,10 @@ public class IntentClassifierNode implements WorkflowNode {
         Long modelId = context.getConfigAsLong("modelId");
 
         // 从输入获取动态参数
-        String text = (String) context.getInput("text");
-        if (text == null) {
-            text = (String) context.getGlobalValue("userInput");
-        }
+        String text = (String) context.getInput("instruction");
+        // if (text == null) {
+        // text = (String) context.getGlobalValue("userInput");
+        // }
 
         // 获取意图配置并提取意图名称
         List<String> intentNames = extractIntentNames(context.getConfig("intents"));
@@ -75,13 +75,13 @@ public class IntentClassifierNode implements WorkflowNode {
         }
 
         // 保存输出
-        output.addOutput("intent", intent);
-        output.addOutput("confidence", 0.9); // 简化实现,固定置信度
+        output.addOutput("matchedIntent", intent);
+        // output.addOutput("confidence", 0.9); // 简化实现,固定置信度
 
         // 同时保存到全局状态,方便下游节点直接访问
-        context.setGlobalValue("intent", intent);
+        // context.setGlobalValue("intent", intent);
 
-        log.info("INTENT_CLASSIFIER节点执行完成, intent={}", intent);
+        log.info("INTENT_CLASSIFIER节点执行完成, matchedIntent={}", intent);
         return output;
     }
 

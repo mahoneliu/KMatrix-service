@@ -133,7 +133,7 @@ public class LlmChatNode implements WorkflowNode {
         }
 
         // 添加用户消息
-        String userInput = (String) context.getGlobalValue("userInput");
+        String userInput = (String) context.getInput("userInput");
         if (userInput != null) {
             messages.add(new UserMessage(userInput));
         }

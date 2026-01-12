@@ -29,6 +29,11 @@ public enum SseEventType {
     NODE_ERROR("node_error", "节点执行错误"),
 
     /**
+     * 节点执行详情
+     */
+    NODE_EXECUTION_DETAIL("node_execution_detail", "节点执行详情"),
+
+    /**
      * 消息内容
      */
     MESSAGE("message", "消息内容"),

@@ -52,6 +52,21 @@ public class NodeContext {
     private Long userId;
 
     /**
+     * 节点名称
+     */
+    private String nodeName;
+
+    /**
+     * 开始时间(毫秒)
+     */
+    private Long startTime;
+
+    /**
+     * Token使用统计
+     */
+    private Map<String, Object> tokenUsage = new HashMap<>();
+
+    /**
      * 获取全局状态值
      */
     public Object getGlobalValue(String key) {

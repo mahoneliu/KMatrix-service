@@ -20,9 +20,7 @@ import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 import org.bsc.langgraph4j.action.AsyncEdgeAction;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.List;
 import java.util.ArrayList;
@@ -152,28 +150,15 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         graph.addEdge(START, config.getEntryPoint());
 
         // 找出所有终端节点（没有出边的节点）并连接到 END
-        // 算法：集合A（所有节点）- 集合B（所有边的源节点）= 终端节点
-        // 1. 集合A：收集所有节点 ID
-        Set<String> allNodes = new HashSet<>();
-        for (WorkflowConfig.NodeConfig nodeConfig : config.getNodes()) {
-            allNodes.add(nodeConfig.getId());
-        }
+        // 注意: 工作流配置已经在保存时通过 validate() 方法校验过,确保有且仅有一个 END 节点
+        WorkflowConfig.NodeConfig endNode = config.getNodes().stream()
+                .filter(node -> "END".equals(node.getType()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("工作流必须包含 END 节点"));
 
-        // 2. 集合B：收集所有边的源节点（from）
-        Set<String> nodesWithOutgoingEdges = new HashSet<>();
-        for (WorkflowConfig.EdgeConfig edgeConfig : config.getEdges()) {
-            nodesWithOutgoingEdges.add(edgeConfig.getFrom());
-        }
-
-        // 3. 计算终端节点：A - B
-        Set<String> terminalNodes = new HashSet<>(allNodes);
-        terminalNodes.removeAll(nodesWithOutgoingEdges);
-
-        // 4. 将所有终端节点连接到 END
-        for (String terminalNode : terminalNodes) {
-            log.info("检测到终端节点: {}, 自动连接到 END", terminalNode);
-            graph.addEdge(terminalNode, END);
-        }
+        // 将 END 节点连接到 LangGraph 的 END
+        log.info("将 END 节点 {} 连接到 LangGraph END", endNode.getId());
+        graph.addEdge(endNode.getId(), END);
 
         return graph;
     }
@@ -209,9 +194,11 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             context.setNodeConfig(nodeConfig.getConfig() != null ? nodeConfig.getConfig() : new HashMap<>());
             context.setNodeInputs(inputs);
 
-            // 发送节点开始事件
+            // 记录开始时间和节点名称
             String nodeName = nodeConfig.getName() != null ? nodeConfig.getName() : node.getNodeName();
-            sendSseEvent(context.getSseEmitter(), SseEventType.NODE_START, Map.of("nodeName", nodeName));
+            long startTime = System.currentTimeMillis();
+            context.setNodeName(nodeName);
+            context.setStartTime(startTime);
 
             // 创建节点执行记录
             Long executionId = instanceService.createNodeExecution(
@@ -220,19 +207,29 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 执行节点
             NodeOutput output = node.execute(context);
 
+            // 计算执行耗时
+            long duration = System.currentTimeMillis() - startTime;
+
             // 保存输出到本地变量（不直接修改 state，通过返回 Map 更新）
             Map<String, Object> nodeOutputs = new HashMap<>(state.getNodeOutputs());
             nodeOutputs.put(nodeConfig.getId(), output.getOutputs());
             Map<String, Object> globalState = context.getGlobalState();
 
             // 更新节点执行记录
-            instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs());
+            instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
+                    nodeName, duration);
 
             // 更新全局状态到实例
             instanceService.updateGlobalState(state.getInstanceId(), globalState);
 
-            // 发送节点完成事件
-            sendSseEvent(context.getSseEmitter(), SseEventType.NODE_COMPLETE, Map.of("nodeName", nodeName));
+            // 发送节点执行详情事件
+            Map<String, Object> executionDetail = new HashMap<>();
+            executionDetail.put("nodeName", nodeName);
+            executionDetail.put("nodeType", nodeConfig.getType());
+            executionDetail.put("inputs", inputs);
+            executionDetail.put("outputs", output.getOutputs());
+            executionDetail.put("durationMs", duration);
+            sendSseEvent(context.getSseEmitter(), SseEventType.NODE_EXECUTION_DETAIL, executionDetail);
 
             // 检查是否结束（准备状态更新）
             boolean finished = output.isFinished();

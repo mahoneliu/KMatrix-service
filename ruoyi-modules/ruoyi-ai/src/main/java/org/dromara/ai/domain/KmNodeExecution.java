@@ -81,4 +81,29 @@ public class KmNodeExecution implements Serializable {
      * 重试次数
      */
     private Integer retryCount;
+
+    /**
+     * 节点名称
+     */
+    private String nodeName;
+
+    /**
+     * 输入token数
+     */
+    private Integer inputTokens;
+
+    /**
+     * 输出token数
+     */
+    private Integer outputTokens;
+
+    /**
+     * 总token数
+     */
+    private Integer totalTokens;
+
+    /**
+     * 执行耗时(毫秒)
+     */
+    private Long durationMs;
 }

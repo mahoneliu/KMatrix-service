@@ -66,4 +66,34 @@ public class KmNodeExecutionVo implements Serializable {
      * 错误信息
      */
     private String errorMessage;
+
+    /**
+     * 输入参数
+     */
+    private java.util.Map<String, Object> inputParams;
+
+    /**
+     * 输出参数
+     */
+    private java.util.Map<String, Object> outputParams;
+
+    /**
+     * 输入token数
+     */
+    private Integer inputTokens;
+
+    /**
+     * 输出token数
+     */
+    private Integer outputTokens;
+
+    /**
+     * 总token数
+     */
+    private Integer totalTokens;
+
+    /**
+     * 执行耗时(毫秒)
+     */
+    private Long durationMs;
 }
