@@ -67,6 +67,16 @@ public class KmNodeDefinitionBo extends BaseEntity {
     private String isEnabled;
 
     /**
+     * 是否允许自定义输入参数 (0否/1是)
+     */
+    private String allowCustomInputParams;
+
+    /**
+     * 是否允许自定义输出参数 (0否/1是)
+     */
+    private String allowCustomOutputParams;
+
+    /**
      * 输入参数定义列表
      */
     private List<NodeParamDefinitionVo> inputParams;

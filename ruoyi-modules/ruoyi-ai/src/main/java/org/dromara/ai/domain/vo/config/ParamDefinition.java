@@ -1,22 +1,17 @@
-package org.dromara.ai.domain.vo;
+package org.dromara.ai.domain.vo.config;
 
 import lombok.Data;
-
-import java.io.Serial;
 import java.io.Serializable;
 
-import io.github.linpeilie.annotations.AutoMapper;
-
 /**
- * 节点参数定义 VO
+ * 参数定义
  *
  * @author Mahone
- * @date 2026-01-07
+ * @date 2026-01-14
  */
 @Data
-public class NodeParamDefinitionVo implements Serializable {
+public class ParamDefinition implements Serializable {
 
-    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
@@ -25,12 +20,12 @@ public class NodeParamDefinitionVo implements Serializable {
     private String key;
 
     /**
-     * 参数显示名称
+     * 参数名称
      */
     private String label;
 
     /**
-     * 参数数据类型 (string, number, boolean, object, array)
+     * 数据类型(string/number/boolean/object/array)
      */
     private String type;
 
@@ -42,7 +37,7 @@ public class NodeParamDefinitionVo implements Serializable {
     /**
      * 默认值
      */
-    private Object defaultValue;
+    private String defaultValue;
 
     /**
      * 参数描述

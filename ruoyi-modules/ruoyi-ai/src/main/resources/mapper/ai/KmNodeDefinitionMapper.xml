@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.mapper.KmNodeDefinitionMapper">
+
+    <resultMap id="KmNodeDefinitionVoResult" type="org.dromara.ai.domain.vo.KmNodeDefinitionVo">
+        <id property="nodeDefId" column="node_def_id"/>
+        <result property="nodeType" column="node_type"/>
+        <result property="nodeLabel" column="node_label"/>
+        <result property="nodeIcon" column="node_icon"/>
+        <result property="nodeColor" column="node_color"/>
+        <result property="category" column="category"/>
+        <result property="description" column="description"/>
+        <result property="isSystem" column="is_system"/>
+        <result property="isEnabled" column="is_enabled"/>
+        <result property="allowCustomInputParams" column="allow_custom_input_params"/>
+        <result property="allowCustomOutputParams" column="allow_custom_output_params"/>
+        <result property="inputParams" column="input_params" typeHandler="org.dromara.ai.mapper.handler.NodeParamListTypeHandler"/>
+        <result property="outputParams" column="output_params" typeHandler="org.dromara.ai.mapper.handler.NodeParamListTypeHandler"/>
+    </resultMap>
+
+    <sql id="selectNodeDefinitionVo">
+        select node_def_id, node_type, node_label, node_icon, node_color, category, description,
+               is_system, is_enabled, allow_custom_input_params, allow_custom_output_params,
+               input_params, output_params
+        from km_node_definition
+    </sql>
+
+    <select id="selectPageNodeDefinitionList" resultMap="KmNodeDefinitionVoResult">
+        <include refid="selectNodeDefinitionVo"/>
+        ${ew.customSqlSegment}
+    </select>
+
+    <select id="selectNodeDefinitionList" resultMap="KmNodeDefinitionVoResult">
+        <include refid="selectNodeDefinitionVo"/>
+        ${ew.customSqlSegment}
+    </select>
+
+    <select id="selectNodeDefinitionById" resultMap="KmNodeDefinitionVoResult">
+        <include refid="selectNodeDefinitionVo"/>
+        where node_def_id = #{nodeDefId}
+    </select>
+
+</mapper>

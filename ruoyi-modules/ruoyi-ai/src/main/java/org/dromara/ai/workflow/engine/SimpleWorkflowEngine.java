@@ -99,6 +99,8 @@ public class SimpleWorkflowEngine implements WorkflowEngine {
             // 发送节点开始事件（仅发送节点名称）
             String nodeName = nodeConfig.getName() != null ? nodeConfig.getName() : node.getNodeName();
             sendSseEvent(emitter, SseEventType.NODE_START, Map.of("nodeName", nodeName));
+            long startTime = System.currentTimeMillis();
+            long duration = 0;
 
             try {
                 // 执行节点
@@ -107,8 +109,12 @@ public class SimpleWorkflowEngine implements WorkflowEngine {
                 // 保存输出
                 nodeOutputs.put(currentNodeId, output);
 
+                // 计算执行耗时
+                duration = System.currentTimeMillis() - startTime;
+
                 // 更新节点执行记录
-                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs());
+                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
+                        nodeName, duration);
 
                 // 更新全局状态
                 instanceService.updateGlobalState(instanceId, context.getGlobalState());
@@ -128,7 +134,10 @@ public class SimpleWorkflowEngine implements WorkflowEngine {
             } catch (Exception e) {
                 // 更新节点执行记录为失败
                 Map<String, Object> errorOutput = Map.of("error", e.getMessage());
-                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, errorOutput);
+                // 计算执行耗时
+                duration = System.currentTimeMillis() - startTime;
+                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, errorOutput, nodeName,
+                        duration);
 
                 throw e;
             }

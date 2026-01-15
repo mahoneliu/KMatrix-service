@@ -5,6 +5,7 @@ import lombok.Data;
 import org.dromara.ai.domain.KmApp;
 import org.dromara.ai.domain.vo.config.AppKnowledgeConfig;
 import org.dromara.ai.domain.vo.config.AppModelConfig;
+import org.dromara.ai.domain.vo.config.AppParametersConfig;
 import org.dromara.ai.domain.vo.config.AppWorkflowConfig;
 import org.dromara.common.translation.annotation.Translation;
 import org.dromara.common.translation.constant.TransConstant;
@@ -82,6 +83,11 @@ public class KmAppVo implements Serializable {
      * 后端执行DSL(JSON)
      */
     private String dslData;
+
+    /**
+     * 应用参数配置(全局/接口/会话)
+     */
+    private AppParametersConfig parameters;
 
     /**
      * 关联LLM模型ID

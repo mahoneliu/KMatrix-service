@@ -15,6 +15,9 @@ import org.dromara.ai.workflow.factory.NodeFactory;
 import org.dromara.ai.workflow.state.ChatWorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import ch.qos.logback.core.util.StringUtil;
+
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
@@ -179,6 +182,14 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         // 设置 SseEmitter 到 context（emitter 通过参数传递，支持并行节点）
         context.setSseEmitter(emitter);
 
+        Long executionId = null;
+        long duration = 0;
+        // 记录开始时间和节点名称
+        String nodeName = nodeConfig.getName() != null ? nodeConfig.getName() : "";
+        long startTime = System.currentTimeMillis();
+        context.setNodeName(nodeName);
+        context.setStartTime(startTime);
+
         try {
             // 记录当前节点（不再直接修改 state，而是稍后通过返回 Map 更新）
             String currentNodeId = nodeConfig.getId();
@@ -186,6 +197,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
             // 创建节点实例
             WorkflowNode node = nodeFactory.createNode(nodeConfig.getType());
+            nodeName = StringUtil.isNullOrEmpty(nodeName) ? node.getNodeName() : nodeName;
 
             // 准备输入参数
             Map<String, Object> inputs = resolveInputs(nodeConfig.getInputs(), state);
@@ -194,21 +206,15 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             context.setNodeConfig(nodeConfig.getConfig() != null ? nodeConfig.getConfig() : new HashMap<>());
             context.setNodeInputs(inputs);
 
-            // 记录开始时间和节点名称
-            String nodeName = nodeConfig.getName() != null ? nodeConfig.getName() : node.getNodeName();
-            long startTime = System.currentTimeMillis();
-            context.setNodeName(nodeName);
-            context.setStartTime(startTime);
-
             // 创建节点执行记录
-            Long executionId = instanceService.createNodeExecution(
+            executionId = instanceService.createNodeExecution(
                     state.getInstanceId(), nodeConfig.getId(), nodeConfig.getType(), inputs);
 
             // 执行节点
             NodeOutput output = node.execute(context);
 
             // 计算执行耗时
-            long duration = System.currentTimeMillis() - startTime;
+            duration = System.currentTimeMillis() - startTime;
 
             // 保存输出到本地变量（不直接修改 state，通过返回 Map 更新）
             Map<String, Object> nodeOutputs = new HashMap<>(state.getNodeOutputs());
@@ -252,6 +258,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
         } catch (Exception e) {
             log.error("节点执行失败: {}", nodeConfig.getId(), e);
+            duration = System.currentTimeMillis() - startTime;
+            instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, null,
+                    nodeName, duration);
             sendSseEvent(context.getSseEmitter(), SseEventType.NODE_ERROR,
                     Map.of("error", e.getMessage(), "nodeId", nodeConfig.getId()));
 

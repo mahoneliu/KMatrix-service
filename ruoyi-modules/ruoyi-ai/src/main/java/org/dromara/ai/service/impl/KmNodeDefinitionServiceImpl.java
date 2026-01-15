@@ -2,20 +2,24 @@ package org.dromara.ai.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmNodeDefinition;
 import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
-import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
 import org.dromara.ai.mapper.KmNodeDefinitionMapper;
 import org.dromara.ai.service.IKmNodeDefinitionService;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MessageUtils;
+import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.springframework.cache.annotation.CacheEvict;
@@ -23,7 +27,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
  * 工作流节点定义服务实现
@@ -54,12 +58,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
                     .orderByAsc(KmNodeDefinition::getCategory)
                     .orderByAsc(KmNodeDefinition::getNodeType);
 
-            List<KmNodeDefinition> entities = nodeDefinitionMapper.selectList(queryWrapper);
-
-            // 转换为VO
-            List<KmNodeDefinitionVo> result = entities.stream()
-                    .map(this::convertToVo)
-                    .collect(Collectors.toList());
+            List<KmNodeDefinitionVo> result = nodeDefinitionMapper.selectNodeDefinitionList(queryWrapper);
 
             log.info("从数据库成功加载 {} 个节点类型定义", result.size());
             return result;
@@ -67,34 +66,6 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
             log.error("加载节点定义配置失败", e);
             throw new ServiceException("加载节点定义配置失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 将Entity转换为VO
-     */
-    private KmNodeDefinitionVo convertToVo(KmNodeDefinition entity) {
-        KmNodeDefinitionVo vo = new KmNodeDefinitionVo();
-        vo.setNodeDefId(entity.getNodeDefId());
-        vo.setNodeType(entity.getNodeType());
-        vo.setNodeLabel(entity.getNodeLabel());
-        vo.setNodeIcon(entity.getNodeIcon());
-        vo.setNodeColor(entity.getNodeColor());
-        vo.setCategory(entity.getCategory());
-        vo.setDescription(entity.getDescription());
-        vo.setIsSystem(entity.getIsSystem());
-        vo.setIsEnabled(entity.getIsEnabled());
-
-        // 解析JSON参数定义
-        if (StrUtil.isNotBlank(entity.getInputParams())) {
-            vo.setInputParams(
-                    JSONUtil.toList(entity.getInputParams(), NodeParamDefinitionVo.class));
-        }
-        if (StrUtil.isNotBlank(entity.getOutputParams())) {
-            vo.setOutputParams(
-                    JSONUtil.toList(entity.getOutputParams(), NodeParamDefinitionVo.class));
-        }
-
-        return vo;
     }
 
     // ========== 节点定义管理方法实现 ==========
@@ -106,6 +77,15 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
     public TableDataInfo<KmNodeDefinitionVo> queryPageList(
             KmNodeDefinitionBo bo,
             PageQuery pageQuery) {
+        // 分页查询
+        Page<KmNodeDefinitionVo> page = nodeDefinitionMapper
+                .selectPageNodeDefinitionList(pageQuery.build(), this.buildQueryWrapper(bo));
+
+        return TableDataInfo.build(page);
+    }
+
+    private Wrapper<KmNodeDefinition> buildQueryWrapper(KmNodeDefinitionBo bo) {
+        Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<KmNodeDefinition> wrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
@@ -121,20 +101,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
                         KmNodeDefinition::getIsEnabled, bo.getIsEnabled())
                 .orderByAsc(KmNodeDefinition::getCategory)
                 .orderByAsc(KmNodeDefinition::getNodeType);
-
-        // 分页查询
-        Page<KmNodeDefinition> page = nodeDefinitionMapper
-                .selectPage(pageQuery.build(), wrapper);
-
-        // 转换为VO Page
-        Page<KmNodeDefinitionVo> voPage = new Page<>(
-                page.getCurrent(), page.getSize(), page.getTotal());
-        List<KmNodeDefinitionVo> voList = page.getRecords().stream()
-                .map(this::convertToVo)
-                .collect(Collectors.toList());
-        voPage.setRecords(voList);
-
-        return TableDataInfo.build(voPage);
+        return wrapper;
     }
 
     /**
@@ -142,11 +109,11 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      */
     @Override
     public KmNodeDefinitionVo getNodeDefinitionById(Long nodeDefId) {
-        KmNodeDefinition entity = nodeDefinitionMapper.selectById(nodeDefId);
-        if (entity == null) {
+        KmNodeDefinitionVo vo = nodeDefinitionMapper.selectNodeDefinitionById(nodeDefId);
+        if (vo == null) {
             throw new ServiceException("节点定义不存在");
         }
-        return convertToVo(entity);
+        return vo;
     }
 
     /**
