@@ -49,8 +49,9 @@ public interface IKmAppService {
     /**
      * 发布应用
      * 
-     * @param appId 应用ID
+     * @param appId  应用ID
+     * @param remark 发布备注
      * @return 是否成功
      */
-    Boolean publishApp(Long appId);
+    Boolean publishApp(Long appId, String remark);
 }

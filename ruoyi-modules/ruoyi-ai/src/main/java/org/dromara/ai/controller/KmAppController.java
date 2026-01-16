@@ -96,7 +96,9 @@ public class KmAppController extends BaseController {
     @SaCheckPermission("ai:app:edit")
     @Log(title = "AI应用发布", businessType = BusinessType.UPDATE)
     @PostMapping("/publish/{appId}")
-    public R<Void> publish(@PathVariable Long appId) {
-        return toAjax(appService.publishApp(appId));
+    public R<Void> publish(@PathVariable Long appId,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remark = body != null ? body.get("remark") : null;
+        return toAjax(appService.publishApp(appId, remark));
     }
 }
