@@ -3,16 +3,17 @@ package org.dromara.ai.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import io.github.linpeilie.Converter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmModelBo;
+import org.dromara.ai.domain.vo.KmModelVo;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmModelService;
 import org.dromara.ai.util.ModelConnectionTester;
+import org.dromara.common.core.utils.MapstructUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,16 +31,15 @@ public class KmModelServiceImpl implements IKmModelService {
 
     private final KmModelMapper baseMapper;
     private final KmModelProviderMapper providerMapper;
-    private final Converter converter;
 
     @Override
-    public List<KmModel> queryList(KmModelBo bo) {
+    public List<KmModelVo> queryList(KmModelBo bo) {
         LambdaQueryWrapper<KmModel> lqw = Wrappers.lambdaQuery();
         lqw.eq(bo.getProviderId() != null, KmModel::getProviderId, bo.getProviderId());
         lqw.like(StrUtil.isNotBlank(bo.getModelName()), KmModel::getModelName, bo.getModelName());
         lqw.eq(StrUtil.isNotBlank(bo.getModelType()), KmModel::getModelType, bo.getModelType());
         lqw.eq(StrUtil.isNotBlank(bo.getModelSource()), KmModel::getModelSource, bo.getModelSource());
-        List<KmModel> list = baseMapper.selectList(lqw);
+        List<KmModelVo> list = baseMapper.selectVoList(lqw);
 
         // 填充供应商图标
         if (!list.isEmpty()) {
@@ -54,19 +54,19 @@ public class KmModelServiceImpl implements IKmModelService {
     }
 
     @Override
-    public KmModel queryById(Long modelId) {
-        return baseMapper.selectById(modelId);
+    public KmModelVo queryById(Long modelId) {
+        return baseMapper.selectVoById(modelId);
     }
 
     @Override
     public Boolean insertByBo(KmModelBo bo) {
-        KmModel add = converter.convert(bo, KmModel.class);
+        KmModel add = MapstructUtils.convert(bo, KmModel.class);
         return baseMapper.insert(add) > 0;
     }
 
     @Override
     public Boolean updateByBo(KmModelBo bo) {
-        KmModel update = converter.convert(bo, KmModel.class);
+        KmModel update = MapstructUtils.convert(bo, KmModel.class);
         return baseMapper.updateById(update) > 0;
     }
 

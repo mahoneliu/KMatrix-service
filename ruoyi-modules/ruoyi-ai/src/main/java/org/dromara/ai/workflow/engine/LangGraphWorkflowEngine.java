@@ -182,6 +182,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         // 设置 SseEmitter 到 context（emitter 通过参数传递，支持并行节点）
         context.setSseEmitter(emitter);
 
+        // 检查是否为调试模式
+        boolean isDebug = Boolean.TRUE.equals(context.getGlobalState().get("debug"));
+
         Long executionId = null;
         long duration = 0;
         // 记录开始时间和节点名称
@@ -193,7 +196,11 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         try {
             // 记录当前节点（不再直接修改 state，而是稍后通过返回 Map 更新）
             String currentNodeId = nodeConfig.getId();
-            instanceService.updateCurrentNode(state.getInstanceId(), currentNodeId);
+
+            // 调试模式：不更新数据库
+            if (!isDebug) {
+                instanceService.updateCurrentNode(state.getInstanceId(), currentNodeId);
+            }
 
             // 创建节点实例
             WorkflowNode node = nodeFactory.createNode(nodeConfig.getType());
@@ -206,9 +213,11 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             context.setNodeConfig(nodeConfig.getConfig() != null ? nodeConfig.getConfig() : new HashMap<>());
             context.setNodeInputs(inputs);
 
-            // 创建节点执行记录
-            executionId = instanceService.createNodeExecution(
-                    state.getInstanceId(), nodeConfig.getId(), nodeConfig.getType(), inputs);
+            // 创建节点执行记录（调试模式：不写数据库）
+            if (!isDebug) {
+                executionId = instanceService.createNodeExecution(
+                        state.getInstanceId(), nodeConfig.getId(), nodeConfig.getType(), inputs);
+            }
 
             // 执行节点
             NodeOutput output = node.execute(context);
@@ -221,12 +230,13 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             nodeOutputs.put(nodeConfig.getId(), output.getOutputs());
             Map<String, Object> globalState = context.getGlobalState();
 
-            // 更新节点执行记录
-            instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
-                    nodeName, duration);
-
-            // 更新全局状态到实例
-            instanceService.updateGlobalState(state.getInstanceId(), globalState);
+            // 更新节点执行记录（调试模式：不写数据库）
+            if (!isDebug) {
+                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
+                        nodeName, duration);
+                // 更新全局状态到实例
+                instanceService.updateGlobalState(state.getInstanceId(), globalState);
+            }
 
             // 发送节点执行详情事件
             Map<String, Object> executionDetail = new HashMap<>();
@@ -259,8 +269,13 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         } catch (Exception e) {
             log.error("节点执行失败: {}", nodeConfig.getId(), e);
             duration = System.currentTimeMillis() - startTime;
-            instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, null,
-                    nodeName, duration);
+
+            // 更新失败记录（调试模式：不写数据库）
+            if (!isDebug) {
+                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, null,
+                        nodeName, duration);
+            }
+
             sendSseEvent(context.getSseEmitter(), SseEventType.NODE_ERROR,
                     Map.of("error", e.getMessage(), "nodeId", nodeConfig.getId()));
 

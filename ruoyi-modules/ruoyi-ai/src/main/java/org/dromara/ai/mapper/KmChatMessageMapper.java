@@ -1,6 +1,7 @@
 package org.dromara.ai.mapper;
 
 import org.dromara.ai.domain.KmChatMessage;
+import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 /**
@@ -9,6 +10,6 @@ import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
  * @author Mahone
  * @date 2025-12-31
  */
-public interface KmChatMessageMapper extends BaseMapperPlus<KmChatMessage, KmChatMessage> {
+public interface KmChatMessageMapper extends BaseMapperPlus<KmChatMessage, KmChatMessageVo> {
 
 }

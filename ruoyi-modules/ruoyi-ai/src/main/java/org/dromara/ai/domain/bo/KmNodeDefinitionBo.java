@@ -3,8 +3,15 @@ package org.dromara.ai.domain.bo;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.dromara.ai.domain.KmNodeDefinition;
 import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
+
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+
+import io.github.linpeilie.annotations.AutoMapper;
+import io.github.linpeilie.annotations.AutoMapping;
 
 import java.util.List;
 
@@ -16,6 +23,7 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@AutoMapper(target = KmNodeDefinition.class, reverseConvertGenerate = false)
 public class KmNodeDefinitionBo extends BaseEntity {
 
     /**
@@ -79,11 +87,15 @@ public class KmNodeDefinitionBo extends BaseEntity {
     /**
      * 输入参数定义列表
      */
+    @AutoMapping(ignore = true)
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<NodeParamDefinitionVo> inputParams;
 
     /**
      * 输出参数定义列表
      */
+    @AutoMapping(ignore = true)
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<NodeParamDefinitionVo> outputParams;
 
     /**

@@ -13,17 +13,21 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmApp;
 import org.dromara.ai.domain.KmChatMessage;
 import org.dromara.ai.domain.KmChatSession;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.bo.KmChatSendBo;
+import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.dromara.ai.domain.vo.KmNodeExecutionVo;
 import org.dromara.ai.domain.vo.config.AppModelConfig;
+import org.dromara.ai.domain.vo.config.AppSnapshot;
+import org.dromara.ai.mapper.KmAppMapper;
 import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmChatSessionMapper;
 import org.dromara.ai.mapper.KmModelMapper;
@@ -31,8 +35,8 @@ import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.mapper.KmNodeExecutionMapper;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.service.IKmChatService;
-import org.dromara.ai.util.ModelBuilder;
 import org.dromara.ai.workflow.WorkflowExecutor;
+import org.dromara.ai.util.ModelBuilder;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
@@ -44,6 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -68,6 +73,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final KmNodeExecutionMapper executionMapper;
     private final WorkflowExecutor workflowExecutor;
     private final ModelBuilder modelBuilder;
+    private final KmAppMapper appMapper;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -123,19 +129,25 @@ public class KmChatServiceImpl implements IKmChatService {
         CompletableFuture.runAsync(() -> {
             StringBuilder fullResponse = new StringBuilder();
             try {
-                // 1. 加载应用和模型配置
+                // 1. 调试模式处理
+                if (Boolean.TRUE.equals(bo.getDebug())) {
+                    handleDebugChat(bo, emitter, userId);
+                    return;
+                }
+
+                // 2. 加载应用和模型配置
                 KmAppVo app = loadApp(bo.getAppId());
 
-                // 2. 获取或创建会话
+                // 3. 获取或创建会话
                 Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId);
 
                 // 判断是否为新会话（首次对话）
                 boolean isNewSession = (bo.getSessionId() == null);
 
-                // 3. 保存用户消息
+                // 4. 保存用户消息
                 saveMessage(sessionId, "user", bo.getMessage(), userId);
 
-                // 4. 检查应用类型
+                // 5. 检查应用类型
                 if ("2".equals(app.getAppType())) {
                     // 工作流类型应用
                     log.info("使用工作流处理对话, appId={}, isNewSession={}", app.getAppId(), isNewSession);
@@ -166,7 +178,7 @@ public class KmChatServiceImpl implements IKmChatService {
                             });
                         }
 
-                        // SSE完成信号由WorkflowExecutor发送
+                        // 工作流完成（executeWorkflow内部已发送done事件）
                         emitter.complete();
 
                     } catch (Exception e) {
@@ -404,6 +416,26 @@ public class KmChatServiceImpl implements IKmChatService {
         if (app == null) {
             throw new ServiceException("应用不存在");
         }
+
+        // 如果是工作流类型应用,从最新发布版本加载 DSL
+        if ("2".equals(app.getAppType())) {
+            // 检查应用发布状态
+            if (!"1".equals(app.getStatus())) {
+                throw new ServiceException("该应用尚未发布,请先在工作流编辑器中发布后再使用");
+            }
+
+            AppSnapshot publishedSnapshot = appService.getLatestPublishedSnapshot(appId);
+            if (publishedSnapshot != null && publishedSnapshot.getDslData() != null) {
+                // 使用发布版本的 DSL
+                app.setDslData(publishedSnapshot.getDslData());
+                app.setGraphData(publishedSnapshot.getGraphData());
+                log.info("对话加载工作流: appId={}, 使用最新发布版本", appId);
+            } else {
+                // 没有发布版本
+                throw new ServiceException("该应用尚未发布,请先在工作流编辑器中发布后再使用");
+            }
+        }
+
         return app;
     }
 
@@ -589,5 +621,86 @@ public class KmChatServiceImpl implements IKmChatService {
         session.setUpdateTime(new Date());
         session.setUpdateBy(userId);
         return sessionMapper.updateById(session) > 0;
+    }
+
+    /**
+     * 获取会话的执行详情
+     */
+    @Override
+    public List<KmNodeExecutionVo> getExecutionDetails(Long sessionId) {
+        // 1. 查询会话的所有消息
+        List<KmChatMessage> messages = messageMapper.selectList(
+                new LambdaQueryWrapper<KmChatMessage>()
+                        .eq(KmChatMessage::getSessionId, sessionId)
+                        .isNotNull(KmChatMessage::getInstanceId));
+
+        if (messages.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. 提取instanceId列表
+        List<Long> instanceIds = messages.stream()
+                .map(KmChatMessage::getInstanceId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 3. 查询执行记录
+        List<KmNodeExecution> executions = executionMapper.selectList(
+                new LambdaQueryWrapper<KmNodeExecution>()
+                        .in(KmNodeExecution::getInstanceId, instanceIds)
+                        .orderByAsc(KmNodeExecution::getStartTime));
+
+        return MapstructUtils.convert(executions, KmNodeExecutionVo.class);
+    }
+
+    /**
+     * 处理调试模式对话
+     * 完全不写数据库：不创建session、不保存message、不创建instance、不保存execution
+     * 每次对话都实时获取最新的草稿DSL，支持调试过程中动态修改工作流
+     */
+    private void handleDebugChat(KmChatSendBo bo, SseEmitter emitter, Long userId) {
+        try {
+            // 1. 直接查询数据库获取最新草稿（重要：不使用queryById，因为它返回发布版本）
+            // 直接从数据库获取应用记录，使用dslData和graphData字段（草稿）
+            KmApp appEntity = appMapper.selectById(bo.getAppId());
+            if (appEntity == null) {
+                throw new ServiceException("应用不存在");
+            }
+
+            // 2. 校验草稿DSL是否存在
+            if (StrUtil.isBlank(appEntity.getDslData())) {
+                throw new ServiceException("工作流草稿为空，请先在编辑器中配置工作流");
+            }
+
+            log.info("调试模式: appId={}, 使用草稿数据(dslData字段)", bo.getAppId());
+
+            // 3. 转换为Vo（Mapstruct会自动复制所有字段包括dslData和graphData）
+            KmAppVo debugApp = MapstructUtils.convert(appEntity, KmAppVo.class);
+
+            // 4. 使用虚拟会话ID（不写库，完全内存处理）
+            Long debugSessionId = -1L; // 负数表示调试会话，不会创建session记录
+
+            // 执行调试工作流（使用草稿数据，不保存任何记录）
+            Map<String, Object> debugResult = workflowExecutor.executeWorkflowDebug(
+                    debugApp, debugSessionId, bo.getMessage(), emitter, userId); // 提取结果
+            String finalResponse = (String) debugResult.get("finalResponse");
+            Integer totalTokens = (Integer) debugResult.getOrDefault("totalTokens", 0);
+            Long durationMs = (Long) debugResult.getOrDefault("durationMs", 0L);
+            Long debugInstanceId = (Long) debugResult.get("instanceId");
+
+            // 工作流完成（executeWorkflowDebug内部已发送done事件，与streamChat行为一致）
+            emitter.complete();
+
+        } catch (Exception e) {
+            log.error("调试对话失败", e);
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("error")
+                        .data(Map.of("error", e.getMessage())));
+                emitter.completeWithError(e);
+            } catch (Exception ex) {
+                log.error("发送调试错误事件失败", ex);
+            }
+        }
     }
 }

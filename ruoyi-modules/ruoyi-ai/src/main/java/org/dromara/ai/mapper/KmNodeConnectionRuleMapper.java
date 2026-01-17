@@ -1,6 +1,7 @@
 package org.dromara.ai.mapper;
 
 import org.dromara.ai.domain.KmNodeConnectionRule;
+import org.dromara.ai.domain.vo.KmNodeConnectionRuleVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 /**
@@ -9,6 +10,6 @@ import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
  * @author Mahone
  * @date 2026-01-07
  */
-public interface KmNodeConnectionRuleMapper extends BaseMapperPlus<KmNodeConnectionRule, KmNodeConnectionRule> {
+public interface KmNodeConnectionRuleMapper extends BaseMapperPlus<KmNodeConnectionRule, KmNodeConnectionRuleVo> {
 
 }

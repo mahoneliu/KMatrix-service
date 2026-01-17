@@ -75,13 +75,13 @@ public class IntentClassifierNode implements WorkflowNode {
         }
 
         // 保存输出
-        output.addOutput("matchedIntent", intent);
+        output.addOutput("intent", intent);
         // output.addOutput("confidence", 0.9); // 简化实现,固定置信度
 
         // 同时保存到全局状态,方便下游节点直接访问
         // context.setGlobalValue("intent", intent);
 
-        log.info("INTENT_CLASSIFIER节点执行完成, matchedIntent={}", intent);
+        log.info("INTENT_CLASSIFIER节点执行完成, intent={}", intent);
         return output;
     }
 

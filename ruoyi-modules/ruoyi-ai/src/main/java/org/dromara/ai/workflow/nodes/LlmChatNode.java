@@ -4,6 +4,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +18,11 @@ import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
-
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * LLM对话节点
@@ -62,28 +66,31 @@ public class LlmChatNode implements WorkflowNode {
             throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
         }
 
+        String inputMessage = (String) context.getInput("inputMessage");
+        if (inputMessage == null) {
+            throw new RuntimeException("inputMessage不能为空");
+        }
         // 构建消息列表
-        List<ChatMessage> messages = buildMessages(context, systemPrompt);
+        List<ChatMessage> messages = buildMessages(inputMessage, systemPrompt);
 
         // 使用流式模型
-        dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
+        StreamingChatLanguageModel streamingModel = modelBuilder
                 .buildStreamingChatModel(model, provider.getProviderKey());
 
         StringBuilder fullResponse = new StringBuilder();
-        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = context.getSseEmitter();
+        SseEmitter emitter = context.getSseEmitter();
 
         // 使用 CountDownLatch 等待流式完成
-        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-        java.util.concurrent.atomic.AtomicReference<Exception> errorRef = new java.util.concurrent.atomic.AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Exception> errorRef = new AtomicReference<>();
 
-        streamingModel.generate(messages, new dev.langchain4j.model.StreamingResponseHandler<AiMessage>() {
+        streamingModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
             @Override
             public void onNext(String token) {
                 fullResponse.append(token);
                 if (emitter != null) {
                     try {
-                        emitter.send(
-                                org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().data(token));
+                        emitter.send(SseEmitter.event().data(token));
                     } catch (java.io.IOException e) {
                         log.error("发送SSE消息失败", e);
                     }
@@ -124,7 +131,7 @@ public class LlmChatNode implements WorkflowNode {
         return output;
     }
 
-    private List<ChatMessage> buildMessages(NodeContext context, String systemPrompt) {
+    private List<ChatMessage> buildMessages(String inputMessage, String systemPrompt) {
         List<ChatMessage> messages = new ArrayList<>();
 
         // 添加系统提示
@@ -133,9 +140,8 @@ public class LlmChatNode implements WorkflowNode {
         }
 
         // 添加用户消息
-        String userInput = (String) context.getInput("userInput");
-        if (userInput != null) {
-            messages.add(new UserMessage(userInput));
+        if (inputMessage != null) {
+            messages.add(new UserMessage(inputMessage));
         }
 
         return messages;

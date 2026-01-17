@@ -382,15 +382,11 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <annotationProcessorPaths>
-                        <path>
-                            <groupId>com.github.therapi</groupId>
-                            <artifactId>therapi-runtime-javadoc-scribe</artifactId>
-                            <version>${therapi-javadoc.version}</version>
-                        </path>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
@@ -411,6 +407,11 @@
                             <artifactId>lombok-mapstruct-binding</artifactId>
                             <version>${mapstruct-plus.lombok.version}</version>
                         </path>
+                        <path>
+                            <groupId>com.github.therapi</groupId>
+                            <artifactId>therapi-runtime-javadoc-scribe</artifactId>
+                            <version>${therapi-javadoc.version}</version>
+                        </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
                         <arg>-parameters</arg>
@@ -428,6 +429,19 @@
                     <groups>${profiles.active}</groups>
                     <!-- 排除标签 -->
                     <excludedGroups>exclude</excludedGroups>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven-jar-plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>${maven-war-plugin.version}</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
             <!-- 统一版本号管理 -->

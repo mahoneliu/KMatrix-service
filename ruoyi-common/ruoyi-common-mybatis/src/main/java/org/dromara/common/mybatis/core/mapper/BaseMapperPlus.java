@@ -61,6 +61,16 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
+     * 判断是否存在
+     *
+     * @param wrapper 查询条件
+     * @return 是否存在
+     */
+    default boolean exists(Wrapper<T> wrapper) {
+        return ObjectUtil.isNotNull(this.selectCount(wrapper)) && this.selectCount(wrapper) > 0;
+    }
+
+    /**
      * 批量插入实体对象集合
      *
      * @param entityList 实体对象集合

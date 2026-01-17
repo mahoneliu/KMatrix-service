@@ -1,5 +1,7 @@
 package org.dromara.ai.workflow.core;
 
+import java.util.Map;
+
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 
@@ -36,4 +38,16 @@ public interface WorkflowNode {
     default String getNodeName() {
         return getNodeType();
     }
+
+    default String fillTextWithParamPattern(String text, NodeContext context) {
+
+        Map<String, Object> inputs = context.getNodeInputs();
+        if (inputs != null) {
+            for (Map.Entry<String, Object> entry : inputs.entrySet()) {
+                text = text.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+            }
+        }
+        return text;
+    }
+
 }

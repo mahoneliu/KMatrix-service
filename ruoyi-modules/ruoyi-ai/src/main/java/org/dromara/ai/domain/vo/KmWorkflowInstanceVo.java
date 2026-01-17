@@ -1,11 +1,8 @@
-package org.dromara.ai.domain;
+package org.dromara.ai.domain.vo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
+import org.dromara.ai.domain.KmWorkflowInstance;
 import org.dromara.ai.domain.enums.WorkflowInstanceStatus;
 
 import java.io.Serializable;
@@ -13,21 +10,20 @@ import java.util.Date;
 import java.util.Map;
 
 /**
- * 工作流实例对象 km_workflow_instance
+ * 工作流实例视图对象 km_workflow_instance
  *
  * @author Mahone
  * @date 2026-01-02
  */
 @Data
-@TableName(value = "km_workflow_instance")
-public class KmWorkflowInstance implements Serializable {
+@AutoMapper(target = KmWorkflowInstance.class)
+public class KmWorkflowInstanceVo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     /**
      * 实例ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
     private Long instanceId;
 
     /**
@@ -58,7 +54,6 @@ public class KmWorkflowInstance implements Serializable {
     /**
      * 全局状态数据
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> globalState;
 
     /**
@@ -75,4 +70,5 @@ public class KmWorkflowInstance implements Serializable {
      * 错误信息
      */
     private String errorMessage;
+
 }

@@ -1,6 +1,7 @@
 package org.dromara.ai.mapper;
 
 import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 /**
@@ -9,6 +10,6 @@ import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
  * @author Mahone
  * @date 2024-01-27
  */
-public interface KmModelProviderMapper extends BaseMapperPlus<KmModelProvider, KmModelProvider> {
+public interface KmModelProviderMapper extends BaseMapperPlus<KmModelProvider, KmModelProviderVo> {
 
 }

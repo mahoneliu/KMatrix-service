@@ -1,6 +1,7 @@
 package org.dromara.ai.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.stp.StpUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,12 +36,19 @@ public class KmChatController extends BaseController {
 
     /**
      * 流式对话 (SSE)
+     * 支持正常对话和调试模式
      */
     @SaCheckPermission("ai:chat:send")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo, HttpServletResponse response) {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
+
+        // 调试模式需要额外权限校验
+        if (Boolean.TRUE.equals(bo.getDebug())) {
+            StpUtil.checkPermission("ai:app:edit");
+        }
+
         return chatService.streamChat(bo);
     }
 
@@ -105,5 +113,20 @@ public class KmChatController extends BaseController {
             return R.fail("标题不能为空");
         }
         return toAjax(chatService.updateSessionTitle(sessionId, title));
+    }
+
+    /**
+     * 查询会话的执行详情
+     * 调试会话（sessionId < 0）不支持查询，因为调试数据不保存到数据库
+     */
+    @SaCheckPermission("ai:chat:history")
+    @GetMapping("/execution/session/{sessionId}")
+    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId) {
+        // 调试会话（sessionId < 0）不支持查询
+        if (sessionId < 0) {
+            return R.fail("调试会话不保存执行记录");
+        }
+
+        return R.ok(chatService.getExecutionDetails(sessionId));
     }
 }

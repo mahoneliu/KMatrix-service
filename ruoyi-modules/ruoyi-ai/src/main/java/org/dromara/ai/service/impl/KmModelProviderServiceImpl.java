@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmModelProviderBo;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmModelProviderService;
 import org.springframework.stereotype.Service;
@@ -26,15 +27,15 @@ public class KmModelProviderServiceImpl implements IKmModelProviderService {
     private final KmModelProviderMapper baseMapper;
 
     @Override
-    public List<KmModelProvider> queryList(KmModelProviderBo bo) {
+    public List<KmModelProviderVo> queryList(KmModelProviderBo bo) {
         LambdaQueryWrapper<KmModelProvider> lqw = Wrappers.lambdaQuery();
         // 按排序字段升序排列
         lqw.orderByAsc(KmModelProvider::getSort);
-        return baseMapper.selectList(lqw);
+        return baseMapper.selectVoList(lqw);
     }
 
     @Override
-    public KmModelProvider queryById(Long providerId) {
-        return baseMapper.selectById(providerId);
+    public KmModelProviderVo queryById(Long providerId) {
+        return baseMapper.selectVoById(providerId);
     }
 }

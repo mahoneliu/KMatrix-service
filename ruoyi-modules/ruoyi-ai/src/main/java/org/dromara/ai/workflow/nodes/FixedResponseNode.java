@@ -1,10 +1,14 @@
 package org.dromara.ai.workflow.nodes;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
+
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 固定回复节点
@@ -24,34 +28,32 @@ public class FixedResponseNode implements WorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 从配置获取固定回复内容
-        String content = (String) context.getConfig("content");
-        if (content == null) {
-            content = (String) context.getInput("content");
+        String response = (String) context.getConfig("content");
+        if (response == null) {
+            response = (String) context.getInput("content");
         }
 
-        if (content == null) {
-            content = "抱歉，未配置回复内容";
+        if (response == null) {
+            response = "抱歉，未配置回复内容";
+        } else {
+            response = fillTextWithParamPattern(response, context);
         }
 
         // 发送消息事件
-        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = context.getSseEmitter();
+        SseEmitter emitter = context.getSseEmitter();
         if (emitter != null) {
             try {
                 emitter.send(
-                        org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().data(content));
+                        SseEmitter.event().data(response));
             } catch (java.io.IOException e) {
                 log.error("发送SSE消息失败", e);
             }
         }
 
         // 保存输出
-        output.addOutput("response", content);
-        output.addOutput("finalResponse", content);
+        output.addOutput("response", response);
 
-        // 保存到全局状态，与LLM_CHAT节点保持一致
-        context.setGlobalValue("aiResponse", content);
-
-        log.info("FIXED_RESPONSE节点执行完成, response={}", content);
+        log.info("FIXED_RESPONSE节点执行完成, response={}", response);
         return output;
     }
 

@@ -1,6 +1,7 @@
 package org.dromara.ai.mapper;
 
 import org.dromara.ai.domain.KmAppAccessStat;
+import org.dromara.ai.domain.vo.KmAppAccessStatVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 /**
@@ -9,6 +10,6 @@ import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
  * @author Mahone
  * @date 2025-12-27
  */
-public interface KmAppAccessStatMapper extends BaseMapperPlus<KmAppAccessStat, KmAppAccessStat> {
+public interface KmAppAccessStatMapper extends BaseMapperPlus<KmAppAccessStat, KmAppAccessStatVo> {
 
 }

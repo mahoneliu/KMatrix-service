@@ -1,7 +1,7 @@
 package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmModelProviderBo;
-import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
 import java.util.List;
 
 /**
@@ -15,10 +15,10 @@ public interface IKmModelProviderService {
     /**
      * 查询所有供应商
      */
-    List<KmModelProvider> queryList(KmModelProviderBo bo);
+    List<KmModelProviderVo> queryList(KmModelProviderBo bo);
 
     /**
      * 根据ID查询
      */
-    KmModelProvider queryById(Long providerId);
+    KmModelProviderVo queryById(Long providerId);
 }

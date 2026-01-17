@@ -4,6 +4,9 @@ import lombok.Data;
 import java.io.Serializable;
 import java.util.List;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+
 /**
  * 应用参数配置
  *
@@ -18,15 +21,18 @@ public class AppParametersConfig implements Serializable {
     /**
      * 全局参数
      */
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<ParamDefinition> globalParams;
 
     /**
      * 接口参数
      */
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<ParamDefinition> interfaceParams;
 
     /**
      * 会话参数
      */
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<ParamDefinition> sessionParams;
 }

@@ -74,13 +74,10 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 分页查询节点定义列表
      */
     @Override
-    public TableDataInfo<KmNodeDefinitionVo> queryPageList(
-            KmNodeDefinitionBo bo,
-            PageQuery pageQuery) {
+    public TableDataInfo<KmNodeDefinitionVo> queryPageList(KmNodeDefinitionBo bo, PageQuery pageQuery) {
         // 分页查询
-        Page<KmNodeDefinitionVo> page = nodeDefinitionMapper
-                .selectPageNodeDefinitionList(pageQuery.build(), this.buildQueryWrapper(bo));
-
+        Page<KmNodeDefinitionVo> page = nodeDefinitionMapper.selectPageNodeDefinitionList(pageQuery.build(),
+                this.buildQueryWrapper(bo));
         return TableDataInfo.build(page);
     }
 

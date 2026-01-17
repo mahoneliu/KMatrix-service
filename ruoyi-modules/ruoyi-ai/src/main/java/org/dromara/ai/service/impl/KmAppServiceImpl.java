@@ -197,6 +197,28 @@ public class KmAppServiceImpl implements IKmAppService {
             config.validate();
         }
 
+        // 查询最新发布版本,对比 DSL 是否有变更
+        KmAppVersion latestVersion = versionMapper.selectOne(
+                new LambdaQueryWrapper<KmAppVersion>()
+                        .eq(KmAppVersion::getAppId, appId)
+                        .orderByDesc(KmAppVersion::getVersion)
+                        .last("LIMIT 1"));
+
+        if (latestVersion != null && latestVersion.getAppSnapshot() != null) {
+            String lastDslData = latestVersion.getAppSnapshot().getDslData();
+            String currentDslData = app.getDslData();
+
+            // 对比 DSL 数据(忽略空白字符差异)
+            if (StringUtils.isNotBlank(lastDslData) && StringUtils.isNotBlank(currentDslData)) {
+                String normalizedLast = lastDslData.replaceAll("\\s+", "");
+                String normalizedCurrent = currentDslData.replaceAll("\\s+", "");
+
+                if (normalizedLast.equals(normalizedCurrent)) {
+                    throw new RuntimeException("工作流配置无变更,无需发布");
+                }
+            }
+        }
+
         // 更新应用状态为发布
         app.setStatus("1");
         baseMapper.updateById(app);
@@ -230,5 +252,19 @@ public class KmAppServiceImpl implements IKmAppService {
         version.setRemark(StringUtils.isBlank(remark) ? "发布版本 " + version.getVersion() : remark);
 
         return versionMapper.insert(version) > 0;
+    }
+
+    /**
+     * 获取应用的最新发布版本快照
+     */
+    @Override
+    public AppSnapshot getLatestPublishedSnapshot(Long appId) {
+        KmAppVersion latestVersion = versionMapper.selectOne(
+                new LambdaQueryWrapper<KmAppVersion>()
+                        .eq(KmAppVersion::getAppId, appId)
+                        .orderByDesc(KmAppVersion::getVersion)
+                        .last("LIMIT 1"));
+
+        return latestVersion != null ? latestVersion.getAppSnapshot() : null;
     }
 }

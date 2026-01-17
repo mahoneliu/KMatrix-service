@@ -1,8 +1,8 @@
 package org.dromara.ai.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmModelProviderBo;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
 import org.dromara.ai.service.IKmModelProviderService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.web.core.BaseController;
@@ -31,7 +31,7 @@ public class KmModelProviderController extends BaseController {
      * 查询供应商列表
      */
     @GetMapping("/list")
-    public R<List<KmModelProvider>> list(KmModelProviderBo bo) {
+    public R<List<KmModelProviderVo>> list(KmModelProviderBo bo) {
         return R.ok(providerService.queryList(bo));
     }
 }

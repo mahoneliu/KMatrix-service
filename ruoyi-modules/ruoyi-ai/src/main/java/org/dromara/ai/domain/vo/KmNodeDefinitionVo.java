@@ -4,8 +4,14 @@ import lombok.Data;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
+import org.dromara.ai.domain.KmNodeDefinition;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import io.github.linpeilie.annotations.AutoMapper;
+import io.github.linpeilie.annotations.AutoMapping;
 
 @Data
+@AutoMapper(target = KmNodeDefinition.class, reverseConvertGenerate = false)
 public class KmNodeDefinitionVo implements Serializable {
 
     @Serial
@@ -69,10 +75,14 @@ public class KmNodeDefinitionVo implements Serializable {
     /**
      * 输入参数定义
      */
+    @AutoMapping(ignore = true)
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<NodeParamDefinitionVo> inputParams;
 
     /**
      * 输出参数定义
      */
+    @AutoMapping(ignore = true)
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<NodeParamDefinitionVo> outputParams;
 }

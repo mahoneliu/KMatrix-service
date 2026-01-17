@@ -32,10 +32,28 @@ public class WorkflowExecutor {
     private final ObjectMapper objectMapper;
 
     /**
-     * 执行工作流（统一入口）
+     * 执行工作流（统一入口，支持调试和正式模式）
      */
     public Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, String userInput,
             SseEmitter emitter, Long userId) throws Exception {
+        return executeWorkflow(app, sessionId, userInput, emitter, userId, false);
+    }
+
+    /**
+     * 调试模式执行工作流（不创建instance，不写数据库）
+     */
+    public Map<String, Object> executeWorkflowDebug(KmAppVo app, Long debugSessionId, String userInput,
+            SseEmitter emitter, Long userId) throws Exception {
+        return executeWorkflow(app, debugSessionId, userInput, emitter, userId, true);
+    }
+
+    /**
+     * 执行工作流（内部统一实现）
+     * 
+     * @param debug true=调试模式（不入库），false=正式模式（入库）
+     */
+    private Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, String userInput,
+            SseEmitter emitter, Long userId, boolean debug) throws Exception {
 
         // 1. 解析工作流配置
         WorkflowConfig config = objectMapper.readValue(app.getDslData(), WorkflowConfig.class);
@@ -43,46 +61,79 @@ public class WorkflowExecutor {
             throw new RuntimeException("工作流配置无效");
         }
 
-        log.info("使用 LangGraph 工作流引擎");
+        log.info("执行工作流: appId={}, debug={}", app.getAppId(), debug);
 
-        // 2. 创建工作流实例
-        Long instanceId = instanceService.createInstance(app.getAppId(), sessionId, app.getDslData());
+        // 2. 创建或使用虚拟实例ID
+        Long instanceId;
+        if (debug) {
+            instanceId = -1L; // 调试模式：虚拟ID
+        } else {
+            instanceId = instanceService.createInstance(app.getAppId(), sessionId, app.getDslData());
+        }
 
         // 3. 初始化状态
-        // 构建 globalState map，存储基础信息（适配 LangGraph4j 的 AsyncNodeAction）
         Map<String, Object> globalState = new HashMap<>();
         globalState.put("userInput", userInput);
         globalState.put("sessionId", sessionId);
         globalState.put("instanceId", instanceId);
         globalState.put("userId", userId);
+        if (debug) {
+            globalState.put("debug", true); // 标记调试模式
+        }
 
-        // 创建初始状态，并设置 globalState
         Map<String, Object> initData = new HashMap<>();
         initData.put("globalState", globalState);
 
         ChatWorkflowState chatWorkflowState = new ChatWorkflowState(initData);
 
         String finalResponse = null;
+        long startTime = System.currentTimeMillis();
 
         try {
-            // 4. 执行工作流（传递 emitter 给引擎）
+            // 4. 执行工作流
             finalResponse = langGraphEngine.execute(config, chatWorkflowState, emitter);
 
-            // 5. 标记实例完成
-            instanceService.completeInstance(instanceId);
+            // 5. 标记实例完成（调试模式：跳过）
+            if (!debug) {
+                instanceService.completeInstance(instanceId);
+            }
 
-            // 6. 发送 done 事件
-            sendSseEvent(emitter, SseEventType.DONE, Map.of("sessionId", sessionId.toString()));
+            // 6. 发送 done 事件（调试模式：包含统计信息）
+            Map<String, Object> doneData = new HashMap<>();
+            doneData.put("sessionId", sessionId.toString());
+
+            if (debug) {
+                long durationMs = System.currentTimeMillis() - startTime;
+                Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
+                doneData.put("totalTokens", totalTokens != null ? totalTokens : 0);
+                doneData.put("durationMs", durationMs);
+            }
+
+            sendSseEvent(emitter, SseEventType.DONE, doneData);
+
+            // 7. 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("instanceId", instanceId);
+            result.put("finalResponse", finalResponse != null ? finalResponse : "");
+
+            // 调试模式：返回额外的统计信息
+            if (debug) {
+                long durationMs = System.currentTimeMillis() - startTime;
+                Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
+                result.put("totalTokens", totalTokens != null ? totalTokens : 0);
+                result.put("durationMs", durationMs);
+            }
+
+            return result;
 
         } catch (Exception e) {
-            instanceService.failInstance(instanceId, e.getMessage());
+            // 标记实例失败（调试模式：跳过）
+            if (!debug) {
+                instanceService.failInstance(instanceId, e.getMessage());
+            }
             sendSseEvent(emitter, SseEventType.NODE_ERROR, Map.of("error", e.getMessage()));
             throw e;
         }
-
-        return Map.of(
-                "instanceId", instanceId,
-                "finalResponse", finalResponse != null ? finalResponse : "");
     }
 
     private void sendSseEvent(SseEmitter emitter, SseEventType eventType, Map<String, Object> data) {

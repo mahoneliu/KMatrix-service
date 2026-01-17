@@ -37,4 +37,11 @@ public class KmChatSendBo {
      * 是否流式返回
      */
     private Boolean stream = true;
+
+    /**
+     * 是否为调试模式
+     * 调试模式下，后端会实时从数据库获取最新的草稿DSL进行测试
+     * 调试数据不会保存到数据库
+     */
+    private Boolean debug = false;
 }

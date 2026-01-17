@@ -79,4 +79,12 @@ public interface IKmChatService {
      * @return 是否成功
      */
     Boolean updateSessionTitle(Long sessionId, String title);
+
+    /**
+     * 获取会话的执行详情
+     *
+     * @param sessionId 会话ID
+     * @return 执行详情列表
+     */
+    List<org.dromara.ai.domain.vo.KmNodeExecutionVo> getExecutionDetails(Long sessionId);
 }

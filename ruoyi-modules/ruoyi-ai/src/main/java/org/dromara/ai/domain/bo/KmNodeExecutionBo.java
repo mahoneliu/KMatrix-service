@@ -1,26 +1,23 @@
-package org.dromara.ai.domain.vo;
+package org.dromara.ai.domain.bo;
 
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.util.Date;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.Map;
 
 /**
- * 节点执行记录视图对象
+ * 节点执行记录业务对象 km_node_execution
  *
  * @author Mahone
- * @date 2026-01-03
+ * @date 2026-01-02
  */
 @Data
 @AutoMapper(target = KmNodeExecution.class, reverseConvertGenerate = false)
-public class KmNodeExecutionVo implements Serializable {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class KmNodeExecutionBo {
 
     /**
      * 执行ID
@@ -30,21 +27,19 @@ public class KmNodeExecutionVo implements Serializable {
     /**
      * 实例ID
      */
+    @NotNull(message = "实例ID不能为空")
     private Long instanceId;
 
     /**
      * 节点ID
      */
+    @NotBlank(message = "节点ID不能为空")
     private String nodeId;
-
-    /**
-     * 节点名称 (由业务逻辑填充)
-     */
-    private String nodeName;
 
     /**
      * 节点类型
      */
+    @NotBlank(message = "节点类型不能为空")
     private String nodeType;
 
     /**
@@ -53,14 +48,14 @@ public class KmNodeExecutionVo implements Serializable {
     private NodeExecutionStatus status;
 
     /**
-     * 开始时间
+     * 输入参数
      */
-    private Date startTime;
+    private Map<String, Object> inputParams;
 
     /**
-     * 结束时间
+     * 输出参数
      */
-    private Date endTime;
+    private Map<String, Object> outputParams;
 
     /**
      * 错误信息
@@ -68,14 +63,14 @@ public class KmNodeExecutionVo implements Serializable {
     private String errorMessage;
 
     /**
-     * 输入参数
+     * 重试次数
      */
-    private java.util.Map<String, Object> inputParams;
+    private Integer retryCount;
 
     /**
-     * 输出参数
+     * 节点名称
      */
-    private java.util.Map<String, Object> outputParams;
+    private String nodeName;
 
     /**
      * 输入token数

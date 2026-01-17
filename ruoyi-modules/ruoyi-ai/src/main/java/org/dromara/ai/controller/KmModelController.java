@@ -2,8 +2,8 @@ package org.dromara.ai.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
-import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.bo.KmModelBo;
+import org.dromara.ai.domain.vo.KmModelVo;
 import org.dromara.ai.service.IKmModelService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.validate.AddGroup;
@@ -42,7 +42,7 @@ public class KmModelController extends BaseController {
      */
     @SaCheckPermission("ai:model:list")
     @GetMapping("/list")
-    public R<List<KmModel>> list(KmModelBo bo) {
+    public R<List<KmModelVo>> list(KmModelBo bo) {
         return R.ok(modelService.queryList(bo));
     }
 
@@ -51,7 +51,7 @@ public class KmModelController extends BaseController {
      */
     @SaCheckPermission("ai:model:query")
     @GetMapping("/{modelId}")
-    public R<KmModel> getInfo(@PathVariable Long modelId) {
+    public R<KmModelVo> getInfo(@PathVariable Long modelId) {
         return R.ok(modelService.queryById(modelId));
     }
 

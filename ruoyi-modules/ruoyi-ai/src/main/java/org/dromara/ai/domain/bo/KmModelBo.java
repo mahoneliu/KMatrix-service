@@ -14,7 +14,7 @@ import org.dromara.common.mybatis.core.domain.BaseEntity;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = KmModel.class, reverseConvertGenerate = true)
+@AutoMapper(target = KmModel.class, reverseConvertGenerate = false)
 public class KmModelBo extends BaseEntity {
 
     /**

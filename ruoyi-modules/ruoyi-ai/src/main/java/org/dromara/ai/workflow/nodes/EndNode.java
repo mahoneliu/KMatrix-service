@@ -24,16 +24,27 @@ public class EndNode implements WorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 获取最终响应
-        Object finalResponse = context.getInput("finalResponse");
+        String finalResponse = (String) context.getInput("finalResponse");
         if (finalResponse == null) {
-            finalResponse = context.getGlobalValue("aiResponse");
+            finalResponse = (String) context.getGlobalValue("finalResponse");
         }
 
-        // 保存到输出
+        // 从配置获取额外回复内容
+        String extraResponse = (String) context.getConfig("extraResponse");
+        if (extraResponse != null) {
+            extraResponse = fillTextWithParamPattern(extraResponse, context);
+        }
+        // 合并最终响应
+        if (extraResponse != null) {
+            finalResponse += "\n" + extraResponse;
+        }
+
+        // 仅保存到输出（不发送SSE事件）
         if (finalResponse != null) {
             output.addOutput("finalResponse", finalResponse);
             log.info("END节点执行完成, finalResponse={}", finalResponse);
         }
+
         // 标记为结束
         output.setFinished(true);
 
