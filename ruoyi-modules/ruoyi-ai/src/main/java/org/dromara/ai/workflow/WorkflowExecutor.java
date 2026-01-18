@@ -8,10 +8,9 @@ import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IWorkflowInstanceService;
 import org.dromara.ai.workflow.config.WorkflowConfig;
 import org.dromara.ai.workflow.engine.LangGraphWorkflowEngine;
-import org.dromara.ai.workflow.state.ChatWorkflowState;
+import org.dromara.ai.workflow.state.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -68,23 +67,28 @@ public class WorkflowExecutor {
         if (debug) {
             instanceId = -1L; // 调试模式：虚拟ID
         } else {
-            instanceId = instanceService.createInstance(app.getAppId(), sessionId, app.getDslData());
+            instanceId = instanceService.createInstance(app.getAppId(), sessionId,
+                    app.getDslData());
         }
 
-        // 3. 初始化状态
+        // // 3. 初始化状态
         Map<String, Object> globalState = new HashMap<>();
-        globalState.put("userInput", userInput);
-        globalState.put("sessionId", sessionId);
-        globalState.put("instanceId", instanceId);
-        globalState.put("userId", userId);
+        globalState.put(WorkflowState.KEY_INSTANCE_ID, instanceId);
+        globalState.put(WorkflowState.KEY_USER_INPUT, userInput);
+        globalState.put(WorkflowState.KEY_SESSION_ID, sessionId);
+        globalState.put(WorkflowState.KEY_USER_ID, userId);
+
+        // 初始化app参数
+        // globalState.put(ChatWorkflowState.KEY_APP, app);
+
         if (debug) {
-            globalState.put("debug", true); // 标记调试模式
+            globalState.put(WorkflowState.KEY_DEBUG, true); // 标记调试模式
         }
 
         Map<String, Object> initData = new HashMap<>();
         initData.put("globalState", globalState);
 
-        ChatWorkflowState chatWorkflowState = new ChatWorkflowState(initData);
+        WorkflowState chatWorkflowState = new WorkflowState(initData);
 
         String finalResponse = null;
         long startTime = System.currentTimeMillis();

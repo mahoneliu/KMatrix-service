@@ -1,9 +1,16 @@
 package org.dromara.ai.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.List;
+
+import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 /**
@@ -14,7 +21,7 @@ import org.dromara.common.mybatis.core.domain.BaseEntity;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("km_node_definition")
+@TableName(value = "km_node_definition", autoResultMap = true)
 public class KmNodeDefinition extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
@@ -78,12 +85,14 @@ public class KmNodeDefinition extends BaseEntity {
     /**
      * 输入参数定义 (JSON Array)
      */
-    private String inputParams;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    List<NodeParamDefinitionVo> inputParams;
 
     /**
      * 输出参数定义 (JSON Array)
      */
-    private String outputParams;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    List<NodeParamDefinitionVo> outputParams;
 
     /**
      * 版本号

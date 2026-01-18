@@ -18,28 +18,36 @@ import java.util.Map;
  */
 @Data
 @lombok.EqualsAndHashCode(callSuper = false)
-public class ChatWorkflowState extends AgentState implements Serializable {
+public class WorkflowState extends AgentState implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     // ========== 基础信息常量 ==========
     // 基础信息统一存储在 globalState map 中，以适配 LangGraph4j 的 AsyncNodeAction
-    private static final String KEY_USER_INPUT = "userInput";
-    private static final String KEY_SESSION_ID = "sessionId";
-    private static final String KEY_INSTANCE_ID = "instanceId";
-    private static final String KEY_USER_ID = "userId";
+    public static final String KEY_INSTANCE_ID = "instanceId";
+    public static final String KEY_USER_INPUT = "userInput";
+    public static final String KEY_SESSION_ID = "sessionId";
+    public static final String KEY_USER_ID = "userId";
+    public static final String KEY_USER_NAME = "userName";
+    public static final String KEY_CURRENT_TIME = "currentTime";
+    public static final String KEY_HISTORY_CONTEXT = "historyContext";
+    public static final String KEY_DEBUG = "debug";
 
-    /**
-     * 无参构造函数
-     */
-    public ChatWorkflowState() {
+    public static final String KEY_NODE_OUTPUTS = "nodeOutputs";
+    public static final String KEY_ERROR = "error";
+    public static final String KEY_FINAL_RESPONSE = "finalResponse";
+    public static final String KEY_CURRENT_NODE_ID = "currentNodeId";
+    public static final String KEY_FINISHED = "finished";
+    public static final String KEY_GLOBAL_STATE = "globalState";
+
+    public WorkflowState() {
         super(new HashMap<>());
     }
 
     /**
      * Map 构造函数
      */
-    public ChatWorkflowState(Map<String, Object> initData) {
+    public WorkflowState(Map<String, Object> initData) {
         super(initData);
     }
 
@@ -47,35 +55,35 @@ public class ChatWorkflowState extends AgentState implements Serializable {
     // nodeOutputs, globalState, error, finalResponse 均使用 last-value 语义(最新值覆盖)
     // 初始值通过 factory 提供，确保类型正确
     public static final Map<String, Channel<?>> SCHEMA = Map.of(
-            "nodeOutputs", Channels.<Map<String, Object>>base(() -> new HashMap<>()),
-            "error", Channels.<String>base(() -> null),
-            "finalResponse", Channels.<String>base(() -> null),
-            "currentNodeId", Channels.<String>base(() -> ""),
-            "globalState", Channels.<Map<String, Object>>base(() -> new HashMap<>()),
-            "finished", Channels.<Boolean>base(() -> false));
+            KEY_NODE_OUTPUTS, Channels.<Map<String, Object>>base(() -> new HashMap<>()),
+            KEY_ERROR, Channels.<String>base(() -> null),
+            KEY_FINAL_RESPONSE, Channels.<String>base(() -> null),
+            KEY_CURRENT_NODE_ID, Channels.<String>base(() -> ""),
+            KEY_GLOBAL_STATE, Channels.<Map<String, Object>>base(() -> new HashMap<>()),
+            KEY_FINISHED, Channels.<Boolean>base(() -> false));
 
     // ========== 执行状态 ==========
 
     public String getCurrentNodeId() {
-        return this.value("currentNodeId").map(Object::toString).orElse("");
+        return this.value(KEY_CURRENT_NODE_ID).map(Object::toString).orElse("");
     }
 
     public Map<String, Object> getGlobalState() {
-        return this.<Map<String, Object>>value("globalState").orElseGet(HashMap::new);
+        return this.<Map<String, Object>>value(KEY_GLOBAL_STATE).orElseGet(HashMap::new);
     }
 
     public Map<String, Object> getNodeOutputs() {
-        return this.<Map<String, Object>>value("nodeOutputs").orElseGet(HashMap::new);
+        return this.<Map<String, Object>>value(KEY_NODE_OUTPUTS).orElseGet(HashMap::new);
     }
 
     // ========== 结果与状态 ==========
 
     public String getFinalResponse() {
-        return this.value("finalResponse").map(Object::toString).orElse(null);
+        return this.value(KEY_FINAL_RESPONSE).map(Object::toString).orElse(null);
     }
 
     public boolean isFinished() {
-        return this.<Boolean>value("finished").orElse(false);
+        return this.<Boolean>value(KEY_FINISHED).orElse(false);
     }
 
     // ========== 辅助方法 ==========
@@ -94,15 +102,12 @@ public class ChatWorkflowState extends AgentState implements Serializable {
      */
     public NodeContext toNodeContext() {
         NodeContext context = new NodeContext();
-        context.setSessionId(getSessionId());
-        context.setInstanceId(getInstanceId());
-        context.setUserId(getUserId());
         context.setGlobalState(getGlobalState());
         return context;
     }
 
     public String getError() {
-        return this.value("error").map(Object::toString).orElse(null);
+        return this.value(KEY_ERROR).map(Object::toString).orElse(null);
     }
 
     // ========== 基础信息访问方法 ==========
@@ -126,5 +131,25 @@ public class ChatWorkflowState extends AgentState implements Serializable {
     public Long getUserId() {
         Object value = getGlobalState().get(KEY_USER_ID);
         return value != null ? ((Number) value).longValue() : null;
+    }
+
+    public String getUserName() {
+        Object value = getGlobalState().get(KEY_USER_NAME);
+        return value != null ? value.toString() : null;
+    }
+
+    public String getCurrentTime() {
+        Object value = getGlobalState().get(KEY_CURRENT_TIME);
+        return value != null ? value.toString() : null;
+    }
+
+    public String getHistoryContext() {
+        Object value = getGlobalState().get(KEY_HISTORY_CONTEXT);
+        return value != null ? value.toString() : null;
+    }
+
+    public Boolean getDebug() {
+        Object value = getGlobalState().get(KEY_DEBUG);
+        return value != null ? (Boolean) value : null;
     }
 }

@@ -1,7 +1,7 @@
 package org.dromara.ai.workflow.engine;
 
 import org.dromara.ai.workflow.config.WorkflowConfig;
-import org.dromara.ai.workflow.state.ChatWorkflowState;
+import org.dromara.ai.workflow.state.WorkflowState;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
@@ -21,7 +21,7 @@ public interface WorkflowEngine {
      * @param emitter           SSE推送器（用于实时事件推送）
      * @return 最终响应
      */
-    String execute(WorkflowConfig config, ChatWorkflowState chatWorkflowState, SseEmitter emitter) throws Exception;
+    String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter) throws Exception;
 
     /**
      * 获取引擎类型

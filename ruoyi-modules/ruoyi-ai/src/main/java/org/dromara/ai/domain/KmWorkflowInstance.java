@@ -19,7 +19,7 @@ import java.util.Map;
  * @date 2026-01-02
  */
 @Data
-@TableName(value = "km_workflow_instance")
+@TableName(value = "km_workflow_instance", autoResultMap = true)
 public class KmWorkflowInstance implements Serializable {
 
     private static final long serialVersionUID = 1L;

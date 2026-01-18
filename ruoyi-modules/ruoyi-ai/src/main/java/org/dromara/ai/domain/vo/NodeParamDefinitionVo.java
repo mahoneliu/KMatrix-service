@@ -1,11 +1,8 @@
 package org.dromara.ai.domain.vo;
 
 import lombok.Data;
-
 import java.io.Serial;
 import java.io.Serializable;
-
-import io.github.linpeilie.annotations.AutoMapper;
 
 /**
  * 节点参数定义 VO

@@ -1,14 +1,9 @@
 package org.dromara.ai.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
-
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +14,6 @@ import org.dromara.ai.mapper.KmNodeDefinitionMapper;
 import org.dromara.ai.service.IKmNodeDefinitionService;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MessageUtils;
-import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,7 +21,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 工作流节点定义服务实现
@@ -58,7 +51,9 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
                     .orderByAsc(KmNodeDefinition::getCategory)
                     .orderByAsc(KmNodeDefinition::getNodeType);
 
-            List<KmNodeDefinitionVo> result = nodeDefinitionMapper.selectNodeDefinitionList(queryWrapper);
+            // List<KmNodeDefinitionVo> result =
+            // nodeDefinitionMapper.selectNodeDefinitionList(queryWrapper);
+            List<KmNodeDefinitionVo> result = nodeDefinitionMapper.selectVoList(queryWrapper);
 
             log.info("从数据库成功加载 {} 个节点类型定义", result.size());
             return result;
@@ -76,13 +71,12 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
     @Override
     public TableDataInfo<KmNodeDefinitionVo> queryPageList(KmNodeDefinitionBo bo, PageQuery pageQuery) {
         // 分页查询
-        Page<KmNodeDefinitionVo> page = nodeDefinitionMapper.selectPageNodeDefinitionList(pageQuery.build(),
+        Page<KmNodeDefinitionVo> page = nodeDefinitionMapper.selectVoPage(pageQuery.build(),
                 this.buildQueryWrapper(bo));
         return TableDataInfo.build(page);
     }
 
     private Wrapper<KmNodeDefinition> buildQueryWrapper(KmNodeDefinitionBo bo) {
-        Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<KmNodeDefinition> wrapper = new LambdaQueryWrapper<>();
 
         // 构建查询条件
@@ -106,7 +100,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      */
     @Override
     public KmNodeDefinitionVo getNodeDefinitionById(Long nodeDefId) {
-        KmNodeDefinitionVo vo = nodeDefinitionMapper.selectNodeDefinitionById(nodeDefId);
+        KmNodeDefinitionVo vo = nodeDefinitionMapper.selectVoById(nodeDefId);
         if (vo == null) {
             throw new ServiceException("节点定义不存在");
         }
@@ -132,17 +126,9 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         entity.setVersion(1);
         entity.setIsSystem("0"); // 用户创建的节点非系统节点
 
-        // 3. 序列化参数为JSON
-        if (CollUtil.isNotEmpty(bo.getInputParams())) {
-            entity.setInputParams(JSONUtil.toJsonStr(bo.getInputParams()));
-        } else {
-            entity.setInputParams("[]");
-        }
-        if (CollUtil.isNotEmpty(bo.getOutputParams())) {
-            entity.setOutputParams(JSONUtil.toJsonStr(bo.getOutputParams()));
-        } else {
-            entity.setOutputParams("[]");
-        }
+        // 3. 直接设置参数列表
+        entity.setInputParams(bo.getInputParams());
+        entity.setOutputParams(bo.getOutputParams());
 
         nodeDefinitionMapper.insert(entity);
         log.info("新增节点定义成功: nodeType={}, nodeDefId={}", bo.getNodeType(), entity.getNodeDefId());
@@ -196,25 +182,17 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         }
 
         // 2. 系统节点禁止修改核心字段
-        if ("1".equals(entity.getIsSystem())) {
-            throw new ServiceException("系统节点不允许修改");
-        }
+        // if ("1".equals(entity.getIsSystem())) {
+        // throw new ServiceException("系统节点不允许修改");
+        // }
 
         // 3. 更新字段
         BeanUtil.copyProperties(bo, entity, "nodeDefId", "version", "isSystem", "createTime",
                 "createBy");
 
-        // 4. 序列化参数
-        if (CollUtil.isNotEmpty(bo.getInputParams())) {
-            entity.setInputParams(JSONUtil.toJsonStr(bo.getInputParams()));
-        } else {
-            entity.setInputParams("[]");
-        }
-        if (CollUtil.isNotEmpty(bo.getOutputParams())) {
-            entity.setOutputParams(JSONUtil.toJsonStr(bo.getOutputParams()));
-        } else {
-            entity.setOutputParams("[]");
-        }
+        // 4. 直接设置参数
+        entity.setInputParams(bo.getInputParams());
+        entity.setOutputParams(bo.getOutputParams());
 
         nodeDefinitionMapper.updateById(entity);
         log.info("更新节点定义成功: nodeDefId={}, nodeType={}", entity.getNodeDefId(), entity.getNodeType());

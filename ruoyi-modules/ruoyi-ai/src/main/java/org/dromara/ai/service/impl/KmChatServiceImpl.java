@@ -20,7 +20,6 @@ import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.bo.KmChatSendBo;
-import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
@@ -43,12 +42,10 @@ import org.dromara.common.satoken.utils.LoginHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -82,12 +79,13 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     public List<KmChatMessageVo> getHistory(Long sessionId) {
-        List<KmChatMessage> messages = messageMapper.selectList(
+        List<KmChatMessageVo> vos = messageMapper.selectVoList(
                 new LambdaQueryWrapper<KmChatMessage>()
                         .eq(KmChatMessage::getSessionId, sessionId)
                         .orderByAsc(KmChatMessage::getCreateTime));
 
-        List<KmChatMessageVo> vos = MapstructUtils.convert(messages, KmChatMessageVo.class);
+        // List<KmChatMessageVo> vos = MapstructUtils.convert(messages,
+        // KmChatMessageVo.class);
 
         // 填充节点执行记录
         for (KmChatMessageVo vo : vos) {

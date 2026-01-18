@@ -10,7 +10,7 @@ import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.factory.NodeFactory;
-import org.dromara.ai.workflow.state.ChatWorkflowState;
+import org.dromara.ai.workflow.state.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -36,7 +36,7 @@ public class SimpleWorkflowEngine implements WorkflowEngine {
 
     @Deprecated
     @Override
-    public String execute(WorkflowConfig config, ChatWorkflowState chatWorkflowState, SseEmitter emitter)
+    public String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter)
             throws Exception {
         Long instanceId = chatWorkflowState.getInstanceId();
 
@@ -61,7 +61,7 @@ public class SimpleWorkflowEngine implements WorkflowEngine {
     /**
      * 执行所有节点
      */
-    private String executeNodes(WorkflowConfig config, ChatWorkflowState chatWorkflowState,
+    private String executeNodes(WorkflowConfig config, WorkflowState chatWorkflowState,
             Long instanceId, SseEmitter emitter) throws Exception {
 
         NodeContext context = chatWorkflowState.toNodeContext();

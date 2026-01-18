@@ -16,7 +16,7 @@ import java.util.Date;
  * @date 2026-01-03
  */
 @Data
-@AutoMapper(target = KmNodeExecution.class, reverseConvertGenerate = false)
+@AutoMapper(target = KmNodeExecution.class)
 public class KmNodeExecutionVo implements Serializable {
 
     @Serial

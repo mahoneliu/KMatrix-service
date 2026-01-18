@@ -1,7 +1,6 @@
 package org.dromara.ai.workflow.core;
 
 import lombok.Data;
-import org.dromara.ai.domain.vo.KmAppVo;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.HashMap;
@@ -36,20 +35,20 @@ public class NodeContext {
      */
     private SseEmitter sseEmitter;
 
-    /**
-     * 会话ID
-     */
-    private Long sessionId;
+    // /**
+    // * 会话ID
+    // */
+    // private Long sessionId;
 
-    /**
-     * 工作流实例ID
-     */
-    private Long instanceId;
+    // /**
+    // * 工作流实例ID
+    // */
+    // private Long instanceId;
 
-    /**
-     * 用户ID
-     */
-    private Long userId;
+    // /**
+    // * 用户ID
+    // */
+    // private Long userId;
 
     /**
      * 节点名称

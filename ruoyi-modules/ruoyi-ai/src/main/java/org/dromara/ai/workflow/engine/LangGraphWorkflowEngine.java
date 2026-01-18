@@ -12,7 +12,7 @@ import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.factory.NodeFactory;
-import org.dromara.ai.workflow.state.ChatWorkflowState;
+import org.dromara.ai.workflow.state.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -42,22 +42,22 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
     private final IWorkflowInstanceService instanceService;
     private final NodeFactory nodeFactory;
-    private final ObjectStreamStateSerializer<ChatWorkflowState> stateSerializer = new ObjectStreamStateSerializer<>(
-            ChatWorkflowState::new);
+    private final ObjectStreamStateSerializer<WorkflowState> stateSerializer = new ObjectStreamStateSerializer<>(
+            WorkflowState::new);
 
     @Override
-    public String execute(WorkflowConfig config, ChatWorkflowState chatWorkflowState, SseEmitter emitter)
+    public String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter)
             throws Exception {
         log.info("使用 LangGraph 引擎执行工作流");
 
         try {
             // 1. 构建 StateGraph，将 emitter 通过闭包传递给节点
-            StateGraph<ChatWorkflowState> graph = buildGraph(config, emitter);
+            StateGraph<WorkflowState> graph = buildGraph(config, emitter);
 
             // 3. 编译并执行
             var compiled = graph.compile();
             // LangGraph4j 的 invoke 方法接受 Map 参数，返回 Optional<State>
-            ChatWorkflowState finalState = compiled.invoke(chatWorkflowState.data())
+            WorkflowState finalState = compiled.invoke(chatWorkflowState.data())
                     .orElseThrow(() -> new RuntimeException("工作流执行失败：未返回结果"));
 
             // 4. 检查错误 - 安全处理各种类型的 error
@@ -90,9 +90,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
      * 
      * @param emitter SSE推送器，通过闭包传递给节点执行
      */
-    private StateGraph<ChatWorkflowState> buildGraph(WorkflowConfig config, SseEmitter emitter) throws Exception {
+    private StateGraph<WorkflowState> buildGraph(WorkflowConfig config, SseEmitter emitter) throws Exception {
         // 使用 ObjectStreamStateSerializer 初始化 StateGraph
-        StateGraph<ChatWorkflowState> graph = new StateGraph<>(stateSerializer);
+        StateGraph<WorkflowState> graph = new StateGraph<>(stateSerializer);
 
         // 添加所有节点
         // 注意：emitter 通过闭包捕获，即使节点并行执行在不同线程，也能正确获取
@@ -130,9 +130,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             graph.addConditionalEdges(
                     fromNode,
                     // edge_async(state -> state.data().get("next").toString()),
-                    new AsyncEdgeAction<ChatWorkflowState>() {
+                    new AsyncEdgeAction<WorkflowState>() {
                         @Override
-                        public CompletableFuture<String> apply(ChatWorkflowState state) {
+                        public CompletableFuture<String> apply(WorkflowState state) {
                             // 按顺序评估条件
                             for (WorkflowConfig.EdgeConfig edge : edges) {
                                 String result = evaluateCondition(edge.getCondition(), state);
@@ -173,7 +173,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
      */
     private Map<String, Object> executeNode(
             WorkflowConfig.NodeConfig nodeConfig,
-            ChatWorkflowState state,
+            WorkflowState state,
             SseEmitter emitter) {
 
         // 从 state 构造 NodeContext（提升作用域以便catch块访问）
@@ -183,7 +183,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         context.setSseEmitter(emitter);
 
         // 检查是否为调试模式
-        boolean isDebug = Boolean.TRUE.equals(context.getGlobalState().get("debug"));
+        boolean isDebug = state.getDebug();
 
         Long executionId = null;
         long duration = 0;
@@ -289,7 +289,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     /**
      * 解析输入参数
      */
-    private Map<String, Object> resolveInputs(Map<String, Object> inputDefs, ChatWorkflowState state) {
+    private Map<String, Object> resolveInputs(Map<String, Object> inputDefs, WorkflowState state) {
         Map<String, Object> inputs = new HashMap<>();
 
         if (inputDefs == null) {
@@ -317,7 +317,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     /**
      * 解析表达式
      */
-    private Object resolveExpression(String expression, ChatWorkflowState state) {
+    private Object resolveExpression(String expression, WorkflowState state) {
         String expr = expression.substring(2, expression.length() - 1);
 
         // 解析 nodeId.outputKey
@@ -355,7 +355,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     /**
      * 计算条件表达式
      */
-    private String evaluateCondition(String condition, ChatWorkflowState state) {
+    private String evaluateCondition(String condition, WorkflowState state) {
         // 支持的格式: ${intent} == 'greeting'
         try {
             String[] parts = condition.trim().split("\\s+");

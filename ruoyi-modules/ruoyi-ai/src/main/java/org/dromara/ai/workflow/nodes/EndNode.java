@@ -29,8 +29,8 @@ public class EndNode implements WorkflowNode {
             finalResponse = (String) context.getGlobalValue("finalResponse");
         }
 
-        // 从配置获取额外回复内容
-        String extraResponse = (String) context.getConfig("extraResponse");
+        // 从配置获取指定回复内容
+        String extraResponse = (String) context.getConfig("customResponse");
         if (extraResponse != null) {
             extraResponse = fillTextWithParamPattern(extraResponse, context);
         }

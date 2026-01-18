@@ -19,7 +19,7 @@ import java.util.Map;
  * @date 2026-01-02
  */
 @Data
-@TableName(value = "km_node_execution")
+@TableName(value = "km_node_execution", autoResultMap = true)
 public class KmNodeExecution implements Serializable {
 
     private static final long serialVersionUID = 1L;
