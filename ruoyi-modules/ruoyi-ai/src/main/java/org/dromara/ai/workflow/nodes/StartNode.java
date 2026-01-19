@@ -31,8 +31,8 @@ public class StartNode implements WorkflowNode {
 
         NodeOutput output = new NodeOutput();
 
-        // 获取用户输入
-        String userInput = (String) context.getInput(KEY_USER_INPUT);
+        // 获取用户输入 - 从 LangGraph 的 state 中获取
+        String userInput = (String) context.getGlobalValue(KEY_USER_INPUT);
 
         // 1. 保存用户输入到全局状态
         List<String> historyContext = new ArrayList<>();

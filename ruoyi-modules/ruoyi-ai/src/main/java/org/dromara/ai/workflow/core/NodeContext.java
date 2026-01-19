@@ -128,4 +128,32 @@ public class NodeContext {
         Object value = getConfig(key);
         return value != null ? value.toString() : null;
     }
+
+    // ========== 条件评估辅助方法 ==========
+
+    /**
+     * 所有节点的输出（用于条件评估）
+     */
+    private Map<String, Map<String, Object>> allNodeOutputs = new HashMap<>();
+
+    /**
+     * 获取所有节点输出
+     */
+    public Map<String, Map<String, Object>> getAllNodeOutputs() {
+        return allNodeOutputs;
+    }
+
+    /**
+     * 设置所有节点输出
+     */
+    public void setAllNodeOutputs(Map<String, Map<String, Object>> outputs) {
+        this.allNodeOutputs = outputs != null ? outputs : new HashMap<>();
+    }
+
+    /**
+     * 设置全局变量（别名方法，与 setGlobalValue 功能相同）
+     */
+    public void setGlobalVariable(String key, Object value) {
+        setGlobalValue(key, value);
+    }
 }

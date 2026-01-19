@@ -103,17 +103,91 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
         // 分组处理条件边：按源节点分组
         Map<String, List<WorkflowConfig.EdgeConfig>> conditionalEdgesMap = new HashMap<>();
-        // 处理普通边
+        Map<String, List<WorkflowConfig.EdgeConfig>> conditionNodeEdgesMap = new HashMap<>();
+
+        // 处理边
         for (WorkflowConfig.EdgeConfig edgeConfig : config.getEdges()) {
-            if (edgeConfig.getCondition() != null) {
-                conditionalEdgesMap.computeIfAbsent(edgeConfig.getFrom(), k -> new ArrayList<>())
+            String fromNodeId = edgeConfig.getFrom();
+
+            // 检查源节点是否为条件节点
+            WorkflowConfig.NodeConfig fromNode = config.getNodes().stream()
+                    .filter(n -> n.getId().equals(fromNodeId))
+                    .findFirst()
+                    .orElse(null);
+
+            boolean isConditionNode = fromNode != null && "CONDITION".equals(fromNode.getType());
+
+            if (isConditionNode) {
+                // 条件节点的所有出边都作为条件边处理
+                conditionNodeEdgesMap.computeIfAbsent(fromNodeId, k -> new ArrayList<>())
+                        .add(edgeConfig);
+            } else if (edgeConfig.getCondition() != null) {
+                // 其他节点的条件边（旧逻辑）
+                conditionalEdgesMap.computeIfAbsent(fromNodeId, k -> new ArrayList<>())
                         .add(edgeConfig);
             } else {
-                graph.addEdge(edgeConfig.getFrom(), edgeConfig.getTo());
+                // 普通边
+                graph.addEdge(fromNodeId, edgeConfig.getTo());
             }
         }
 
-        // 处理条件边
+        // 处理条件节点的条件边
+        for (Map.Entry<String, List<WorkflowConfig.EdgeConfig>> entry : conditionNodeEdgesMap.entrySet()) {
+            String fromNode = entry.getKey();
+            List<WorkflowConfig.EdgeConfig> edges = entry.getValue();
+
+            // 构建路由映射表：handleId -> 目标节点ID
+            // 从边的 condition 字段中提取 handleId（前端编码格式：__HANDLE__:condition-0）
+            Map<String, String> routeMap = new HashMap<>();
+
+            for (WorkflowConfig.EdgeConfig edge : edges) {
+                String handleId = extractHandleId(edge.getCondition());
+                if (handleId != null) {
+                    routeMap.put(handleId, edge.getTo());
+                    log.debug("条件节点 {} 路由映射: {} -> {}", fromNode, handleId, edge.getTo());
+                } else {
+                    log.warn("条件节点 {} 的边 {} 没有 handleId 信息", fromNode, edge.getTo());
+                }
+            }
+
+            // 添加默认路由：如果没有 default 边，则路由到 END
+            if (!routeMap.containsKey("default")) {
+                routeMap.put("default", END);
+                log.debug("条件节点 {} 没有 default 边，默认路由到 END", fromNode);
+            }
+
+            // 添加条件边，路由函数读取节点输出的 routeKey 字段
+            graph.addConditionalEdges(
+                    fromNode,
+                    new AsyncEdgeAction<WorkflowState>() {
+                        @Override
+                        public CompletableFuture<String> apply(WorkflowState state) {
+                            // 从节点输出中获取路由键（handleId）
+                            Map<String, Object> nodeOutput = state.getNodeOutput(fromNode);
+                            if (nodeOutput != null) {
+                                Object routeKeyObj = nodeOutput.get("routeKey");
+                                if (routeKeyObj != null) {
+                                    String routeKey = routeKeyObj.toString();
+                                    log.info("条件节点 {} 路由键: {}, 目标: {}", fromNode, routeKey, routeMap.get(routeKey));
+
+                                    // 检查路由键是否存在于映射表中
+                                    if (routeMap.containsKey(routeKey)) {
+                                        return CompletableFuture.completedFuture(routeKey);
+                                    } else {
+                                        log.warn("条件节点 {} 路由键 {} 不存在于映射表中，使用默认路由", fromNode, routeKey);
+                                    }
+                                }
+                            }
+
+                            // 默认路由
+                            log.warn("条件节点 {} 未找到路由键，使用默认路由", fromNode);
+                            return CompletableFuture.completedFuture("default");
+                        }
+                    },
+                    routeMap);
+        }
+
+        // 处理其他节点的条件边（旧逻辑）
         for (Map.Entry<String, List<WorkflowConfig.EdgeConfig>> entry : conditionalEdgesMap.entrySet()) {
             String fromNode = entry.getKey();
             List<WorkflowConfig.EdgeConfig> edges = entry.getValue();
@@ -164,6 +238,20 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         graph.addEdge(endNode.getId(), END);
 
         return graph;
+    }
+
+    /**
+     * 从边的 condition 字段中提取 handleId
+     * 前端编码格式：__HANDLE__:condition-0 或 __HANDLE__:default
+     * 
+     * @param condition 边的条件字段
+     * @return handleId，如果没有则返回 null
+     */
+    private String extractHandleId(String condition) {
+        if (condition != null && condition.startsWith("__HANDLE__:")) {
+            return condition.substring("__HANDLE__:".length());
+        }
+        return null;
     }
 
     /**
@@ -245,6 +333,13 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             executionDetail.put("inputs", inputs);
             executionDetail.put("outputs", output.getOutputs());
             executionDetail.put("durationMs", duration);
+
+            // 添加 token 使用统计(如果有)
+            Map<String, Object> tokenUsage = context.getTokenUsage();
+            if (tokenUsage != null && !tokenUsage.isEmpty()) {
+                executionDetail.put("tokenUsage", tokenUsage);
+            }
+
             sendSseEvent(context.getSseEmitter(), SseEventType.NODE_EXECUTION_DETAIL, executionDetail);
 
             // 检查是否结束（准备状态更新）

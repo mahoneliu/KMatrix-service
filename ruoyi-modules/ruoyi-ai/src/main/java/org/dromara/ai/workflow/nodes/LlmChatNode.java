@@ -20,7 +20,9 @@ import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -80,8 +82,9 @@ public class LlmChatNode implements WorkflowNode {
         StringBuilder fullResponse = new StringBuilder();
         SseEmitter emitter = context.getSseEmitter();
 
-        // 使用 CountDownLatch 等待流式完成
+        // 使用 AtomicReference 保存 Response 对象以便在流式完成后访问
         CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
         AtomicReference<Exception> errorRef = new AtomicReference<>();
 
         streamingModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
@@ -99,6 +102,7 @@ public class LlmChatNode implements WorkflowNode {
 
             @Override
             public void onComplete(Response<AiMessage> response) {
+                responseRef.set(response);
                 latch.countDown();
             }
 
@@ -122,6 +126,27 @@ public class LlmChatNode implements WorkflowNode {
         }
 
         String aiResponse = fullResponse.toString();
+
+        // 获取并记录 token 使用情况
+        Response<AiMessage> response = responseRef.get();
+        if (response != null && response.tokenUsage() != null) {
+            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+
+            // 保存到 NodeContext
+            Map<String, Object> tokenUsageMap = new HashMap<>();
+            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
+            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
+            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
+            context.setTokenUsage(tokenUsageMap);
+
+            // 添加到节点输出
+            output.addOutput("tokenUsage", tokenUsageMap);
+
+            log.info("LLM_CHAT节点 Token使用: input={}, output={}, total={}",
+                    tokenUsage.inputTokenCount(),
+                    tokenUsage.outputTokenCount(),
+                    tokenUsage.totalTokenCount());
+        }
 
         // 保存输出
         output.addOutput("response", aiResponse);

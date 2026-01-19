@@ -100,9 +100,23 @@ public class WorkflowState extends AgentState implements Serializable {
      * 从状态构造节点执行上下文
      * 注意：SseEmitter 通过闭包传递，不再在此处设置
      */
+    @SuppressWarnings("unchecked")
     public NodeContext toNodeContext() {
         NodeContext context = new NodeContext();
         context.setGlobalState(getGlobalState());
+
+        // 传递所有节点的输出数据
+        Map<String, Object> nodeOutputsMap = getNodeOutputs();
+        if (nodeOutputsMap != null && !nodeOutputsMap.isEmpty()) {
+            Map<String, Map<String, Object>> allNodeOutputs = new HashMap<>();
+            for (Map.Entry<String, Object> entry : nodeOutputsMap.entrySet()) {
+                if (entry.getValue() instanceof Map) {
+                    allNodeOutputs.put(entry.getKey(), (Map<String, Object>) entry.getValue());
+                }
+            }
+            context.setAllNodeOutputs(allNodeOutputs);
+        }
+
         return context;
     }
 

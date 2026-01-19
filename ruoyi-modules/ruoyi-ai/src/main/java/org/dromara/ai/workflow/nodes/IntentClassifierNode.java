@@ -62,12 +62,34 @@ public class IntentClassifierNode implements WorkflowNode {
 
         // 调用LLM识别意图
         ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
-        String response = chatModel.generate(
+        dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> response = chatModel.generate(
                 new SystemMessage(systemPrompt),
-                new UserMessage(text)).content().text();
+                new UserMessage(text));
+
+        String responseText = response.content().text();
+
+        // 获取并记录 token 使用情况
+        if (response.tokenUsage() != null) {
+            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+
+            // 保存到 NodeContext
+            java.util.Map<String, Object> tokenUsageMap = new java.util.HashMap<>();
+            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
+            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
+            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
+            context.setTokenUsage(tokenUsageMap);
+
+            // 添加到节点输出
+            output.addOutput("tokenUsage", tokenUsageMap);
+
+            log.info("INTENT_CLASSIFIER节点 Token使用: input={}, output={}, total={}",
+                    tokenUsage.inputTokenCount(),
+                    tokenUsage.outputTokenCount(),
+                    tokenUsage.totalTokenCount());
+        }
 
         // 提取意图(简单实现,假设LLM直接返回意图名称)
-        String intent = response.trim().toLowerCase();
+        String intent = responseText.trim().toLowerCase();
 
         // 验证意图是否在列表中
         if (intentNames != null && !intentNames.contains(intent)) {
