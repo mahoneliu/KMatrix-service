@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
+import org.dromara.ai.service.IKmNodeConnectionRuleService;
 import org.dromara.ai.service.IKmNodeDefinitionService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
@@ -29,6 +30,7 @@ import java.util.List;
 public class KmNodeDefinitionController extends BaseController {
 
     private final IKmNodeDefinitionService workflowNodeService;
+    private final IKmNodeConnectionRuleService connectionRuleService;
 
     /**
      * 获取所有节点类型定义
@@ -39,6 +41,16 @@ public class KmNodeDefinitionController extends BaseController {
     public R<List<KmNodeDefinitionVo>> getNodeDefinitions() {
         List<KmNodeDefinitionVo> definitions = workflowNodeService.getNodeDefinitions();
         return R.ok(definitions);
+    }
+
+    /**
+     * 获取所有节点连接规则
+     *
+     * @return 规则映射表 (源节点类型 -> 允许的目标节点类型列表)
+     */
+    @GetMapping("/connection/rules")
+    public R<java.util.Map<String, List<String>>> getConnectionRules() {
+        return R.ok(connectionRuleService.getConnectionRulesMap());
     }
 
     // ========== 节点定义管理 CRUD API ==========
