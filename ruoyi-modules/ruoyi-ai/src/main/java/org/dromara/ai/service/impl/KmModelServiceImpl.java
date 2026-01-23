@@ -106,6 +106,7 @@ public class KmModelServiceImpl implements IKmModelService {
                 case "ollama" -> ModelConnectionTester.testOllama(apiBase, modelKey);
                 case "qwen" -> ModelConnectionTester.testQwen(apiKey, modelKey);
                 case "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
+                case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
                 default -> "暂不支持该供应商的连接测试: " + providerKey;
             };
         } catch (Exception e) {

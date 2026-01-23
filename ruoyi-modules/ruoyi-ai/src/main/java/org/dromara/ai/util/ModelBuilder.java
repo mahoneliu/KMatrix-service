@@ -7,6 +7,11 @@ import dev.langchain4j.model.dashscope.QwenChatModel;
 import dev.langchain4j.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import dev.langchain4j.model.googleai.GeminiHarmCategory;
+import dev.langchain4j.model.googleai.GeminiHarmBlockThreshold;
+import dev.langchain4j.model.googleai.GeminiSafetySetting;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +22,7 @@ import org.dromara.common.core.exception.ServiceException;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Collections;
 
 /**
  * AI模型构建器工具类
@@ -51,6 +57,7 @@ public class ModelBuilder {
             case "openai", "deepseek", "moonshot" -> buildOpenAiModel(model);
             case "ollama", "vllm" -> buildOllamaModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model);
+            case "gemini" -> buildGeminiModel(model);
             default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
         };
     }
@@ -73,6 +80,7 @@ public class ModelBuilder {
             case "openai", "deepseek", "moonshot" -> buildOpenAiStreamingModel(model);
             case "ollama", "vllm" -> buildOllamaStreamingModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model);
+            case "gemini" -> buildGeminiStreamingModel(model);
             default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
         };
     }
@@ -164,6 +172,35 @@ public class ModelBuilder {
         return QwenStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
+                .build();
+    }
+
+    /**
+     * 构建Gemini类型模型
+     */
+    private ChatLanguageModel buildGeminiModel(KmModel model) {
+        return GoogleAiGeminiChatModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .safetySettings(Collections.singletonMap(
+                        GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH, GeminiHarmBlockThreshold.BLOCK_NONE))
+                .logRequestsAndResponses(aiProperties.isLogChat())
+                .timeout(DEFAULT_TIMEOUT)
+                .build();
+    }
+
+    /**
+     * 构建Gemini类型流式模型
+     */
+    private StreamingChatLanguageModel buildGeminiStreamingModel(KmModel model) {
+        return GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .safetySettings(Collections.singletonList(
+                        new GeminiSafetySetting(GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                                GeminiHarmBlockThreshold.BLOCK_NONE)))
+                .logRequestsAndResponses(aiProperties.isLogChat())
+                .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
 }
