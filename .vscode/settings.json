@@ -1,0 +1,5 @@
+{
+    "java.autobuild.enabled": true,
+    "java.project.outputPath": "out",
+    "java.compile.nullAnalysis.mode": "disabled"
+}

@@ -8,9 +8,9 @@
     <artifactId>ruoyi-vue-plus</artifactId>
     <version>${revision}</version>
 
-    <name>RuoYi-Vue-Plus</name>
-    <url>https://gitee.com/dromara/RuoYi-Vue-Plus</url>
-    <description>Dromara RuoYi-Vue-Plus管理系统</description>
+    <name>KMatrix(Parent)</name>
+    <url>https://gitee.com/kykms/kmatrix-service</url>
+    <description>KMatrix管理系统</description>
 
     <properties>
         <revision>5.5.1</revision>

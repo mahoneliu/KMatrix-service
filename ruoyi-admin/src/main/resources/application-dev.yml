@@ -11,6 +11,12 @@ spring.boot.admin.client:
   username: @monitor.username@
   password: @monitor.password@
 
+logging:
+  level:
+    dev.langchain4j: DEBUG
+    org.dromara.ai: DEBUG
+
+
 --- # AI配置
 ai:
   log-chat: true
@@ -123,7 +129,7 @@ redisson:
   # 单节点配置
   singleServerConfig:
     # 客户端名称 不能用中文
-    clientName: RuoYi-Vue-Plus
+    clientName: KMatrix
     # 最小空闲连接数
     connectionMinimumIdleSize: 8
     # 连接池大小

@@ -139,10 +139,13 @@ public class KmDatabaseMetaServiceImpl implements IKmDatabaseMetaService {
             }
 
             DatabaseMetaData metaData = conn.getMetaData();
+            String catalog = conn.getCatalog();
+            String schema = conn.getSchema();
+
             List<KmDatabaseMetaVo> result = new ArrayList<>();
 
             // 获取表列表
-            ResultSet tables = metaData.getTables(null, null, "%", new String[] { "TABLE" });
+            ResultSet tables = metaData.getTables(catalog, schema, "%", new String[] { "TABLE" });
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
 
@@ -155,19 +158,20 @@ public class KmDatabaseMetaServiceImpl implements IKmDatabaseMetaService {
 
                 // 获取列信息
                 List<KmDatabaseMeta.ColumnMeta> columns = new ArrayList<>();
-                ResultSet cols = metaData.getColumns(null, null, tableName, "%");
+                ResultSet cols = metaData.getColumns(catalog, schema, tableName, "%");
                 while (cols.next()) {
                     KmDatabaseMeta.ColumnMeta col = new KmDatabaseMeta.ColumnMeta();
                     col.setColumnName(cols.getString("COLUMN_NAME"));
                     col.setColumnType(cols.getString("TYPE_NAME"));
-                    col.setColumnComment(cols.getString("REMARKS"));
+                    String remarks = cols.getString("REMARKS");
+                    col.setColumnComment(remarks != null ? remarks.replaceAll("\\r|\\n", "") : null);
                     col.setIsNullable("YES".equals(cols.getString("IS_NULLABLE")));
                     columns.add(col);
                 }
                 cols.close();
 
                 // 获取主键信息
-                ResultSet pks = metaData.getPrimaryKeys(null, null, tableName);
+                ResultSet pks = metaData.getPrimaryKeys(catalog, schema, tableName);
                 List<String> pkColumns = new ArrayList<>();
                 while (pks.next()) {
                     pkColumns.add(pks.getString("COLUMN_NAME"));
@@ -184,7 +188,7 @@ public class KmDatabaseMetaServiceImpl implements IKmDatabaseMetaService {
                 meta.setDataSourceId(dataSourceId);
                 meta.setMetaSourceType("JDBC");
                 meta.setTableName(tableName);
-                meta.setTableComment(tableComment);
+                meta.setTableComment(tableComment != null ? tableComment.replaceAll("\\r|\\n", "") : null);
                 meta.setColumns(columns);
 
                 // 检查是否已存在

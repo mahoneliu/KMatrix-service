@@ -1,8 +1,14 @@
 Application Version: ${revision}
 Spring Boot Version: ${spring-boot.version}
-__________            _____.___.__         ____   ____                     __________.__
-\______   \__ __  ____\__  |   |__|        \   \ /   /_ __   ____          \______   \  |  __ __  ______
- |       _/  |  \/  _ \/   |   |  |  ______ \   Y   /  |  \_/ __ \   ______ |     ___/  | |  |  \/  ___/
- |    |   \  |  (  <_> )____   |  | /_____/  \     /|  |  /\  ___/  /_____/ |    |   |  |_|  |  /\___ \
- |____|_  /____/ \____// ______|__|           \___/ |____/  \___  >         |____|   |____/____//____  >
-        \/             \/                                       \/                                   \/
+${AnsiColor.BRIGHT_GREEN}
+  / \──        ──/ \    ${AnsiColor.BRIGHT_BLUE}_______________________________________________
+${AnsiColor.BRIGHT_GREEN} (   |  ██  ██   |  )  ${AnsiColor.BRIGHT_BLUE}|                                               |
+${AnsiColor.BRIGHT_GREEN}  |  |  ██ ██    | |   ${AnsiColor.BRIGHT_BLUE}|   __  __   _   _____  ____   ___  __  __      |
+${AnsiColor.BRIGHT_GREEN}  |  |  ████     | |   ${AnsiColor.BRIGHT_BLUE}|  |  \/  | / \ |_   _||  _ \ |_ _| \ \/ /      |
+${AnsiColor.BRIGHT_GREEN}  |  |  ██ ██    | |   ${AnsiColor.BRIGHT_BLUE}|  | |\/| |/ _ \  | |  | |_) | | |   \  /       |
+${AnsiColor.BRIGHT_GREEN}  |  |  ██  ██   | |   ${AnsiColor.BRIGHT_BLUE}|  | |  | / ___ \ | |  |  _ <  | |   /  \       |
+${AnsiColor.BRIGHT_GREEN}  |  |  ██   ██  | |   ${AnsiColor.BRIGHT_BLUE}|  |_|  |/_/   \_\|_|  |_| \_\|___| /_/\_\      |
+${AnsiColor.BRIGHT_GREEN} (   |  ██    ██ |  )  ${AnsiColor.BRIGHT_BLUE}|_______________________________________________|
+${AnsiColor.BRIGHT_GREEN}  \ /──        ──\ /
+${AnsiColor.BRIGHT_CYAN}
+ :: K-Matrix ::             ${AnsiStyle.ITALIC}(v${spring-boot.version})${AnsiStyle.NORMAL}

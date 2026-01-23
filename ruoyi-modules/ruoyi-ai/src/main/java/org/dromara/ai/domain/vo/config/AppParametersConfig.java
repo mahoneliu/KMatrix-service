@@ -19,10 +19,10 @@ public class AppParametersConfig implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 全局参数
+     * 应用参数
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<ParamDefinition> globalParams;
+    private List<ParamDefinition> appParams;
 
     /**
      * 接口参数

@@ -68,7 +68,6 @@ public class AuthController {
     private final ISysClientService clientService;
     private final ScheduledExecutorService scheduledExecutorService;
 
-
     /**
      * 登录方法
      *
@@ -97,7 +96,7 @@ public class AuthController {
         Long userId = LoginHelper.getUserId();
         scheduledExecutorService.schedule(() -> {
             SseMessageDto dto = new SseMessageDto();
-            dto.setMessage("欢迎登录RuoYi-Vue-Plus后台管理系统");
+            dto.setMessage("欢迎登录KMatrix后台管理系统");
             dto.setUserIds(List.of(userId));
             SseMessageUtils.publishMessage(dto);
         }, 5, TimeUnit.SECONDS);
@@ -136,8 +135,8 @@ public class AuthController {
         StpUtil.checkLogin();
         // 获取第三方登录信息
         AuthResponse<AuthUser> response = SocialUtils.loginAuth(
-            loginBody.getSource(), loginBody.getSocialCode(),
-            loginBody.getSocialState(), socialProperties);
+                loginBody.getSource(), loginBody.getSocialCode(),
+                loginBody.getSocialState(), socialProperties);
         AuthUser authUserData = response.getData();
         // 判断授权响应是否成功
         if (!response.ok()) {
@@ -146,7 +145,6 @@ public class AuthController {
         loginService.socialRegister(authUserData);
         return R.ok();
     }
-
 
     /**
      * 取消授权(需要token)
@@ -160,7 +158,6 @@ public class AuthController {
         Boolean rows = socialUserService.deleteWithValidById(socialId);
         return rows ? R.ok() : R.fail("取消授权失败");
     }
-
 
     /**
      * 退出登录
@@ -198,14 +195,14 @@ public class AuthController {
      *
      * @param tenantEnabled 租户开关
      */
-    public record TenantListVo(boolean tenantEnabled){
+    public record TenantListVo(boolean tenantEnabled) {
 
         /**
          * 禁用租户，租户开关响应false（即关闭），让前端关闭租户功能
          */
         public static final TenantListVo DISABLED_TENANT = TenantListVo.of(false);
 
-        public static TenantListVo of(boolean tenantEnabled){
+        public static TenantListVo of(boolean tenantEnabled) {
             return new TenantListVo(tenantEnabled);
         }
     }

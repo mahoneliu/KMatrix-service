@@ -129,6 +129,23 @@ public class NodeContext {
         return value != null ? value.toString() : null;
     }
 
+    /**
+     * 获取配置参数(Integer类型)
+     */
+    public Integer getConfigAsInteger(String key, Integer defaultValue) {
+        Object value = getConfig(key);
+        if (value == null)
+            return defaultValue;
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
     // ========== 条件评估辅助方法 ==========
 
     /**

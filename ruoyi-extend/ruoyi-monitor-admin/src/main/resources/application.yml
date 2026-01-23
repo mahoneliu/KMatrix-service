@@ -18,7 +18,7 @@ spring:
   boot:
     admin:
       ui:
-        title: RuoYi-Vue-Plus服务监控中心
+        title: KMatrix服务监控中心
       context-path: /admin
   # 忽略无用警告
   thymeleaf:

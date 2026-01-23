@@ -21,43 +21,40 @@ import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.util.SchemaBuilder;
-import org.dromara.ai.workflow.util.SqlExecutor;
 import org.dromara.ai.workflow.util.SqlGenerator;
 import org.dromara.ai.workflow.util.SqlValidator;
-import org.dromara.common.json.utils.JsonUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.*;
 
 /**
- * 数据库查询节点
- * 结合LLM分析用户问题，生成SQL，执行查询，并用自然语言回答
+ * SQL生成节点
+ * 使用LLM分析用户问题并生成SQL语句
  *
  * @author Mahone
- * @date 2026-01-20
+ * @date 2026-01-24
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("DB_QUERY")
-public class DbQueryNode implements WorkflowNode {
+@Component("SQL_GENERATE")
+public class SqlGenerateNode implements WorkflowNode {
 
     private final KmDataSourceMapper dataSourceMapper;
     private final KmDatabaseMetaMapper databaseMetaMapper;
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final ModelBuilder modelBuilder;
-    private final SqlExecutor sqlExecutor;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
-        log.info("执行DB_QUERY节点");
+        log.info("执行SQL_GENERATE节点");
 
         NodeOutput output = new NodeOutput();
 
         // 1. 获取配置参数
         Long dataSourceId = context.getConfigAsLong("dataSourceId");
         Long modelId = context.getConfigAsLong("modelId");
-        Integer maxRows = context.getConfigAsInteger("maxRows", 100);
         String tableWhitelist = context.getConfigAsString("tableWhitelist");
         String tableBlacklist = context.getConfigAsString("tableBlacklist");
 
@@ -97,67 +94,23 @@ public class DbQueryNode implements WorkflowNode {
         // 6. 生成 SQL（使用工具类）
         String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery);
         log.info("生成的SQL: {}", generatedSql);
-        output.addOutput("generatedSql", generatedSql);
 
         // 7. 校验 SQL（使用工具类）
         SqlValidator.validate(generatedSql);
 
-        // 8. 执行 SQL（使用工具类）
-        List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, generatedSql, maxRows);
-        output.addOutput("queryResult", queryResult);
-        log.info("查询结果行数: {}", queryResult.size());
+        output.addOutput("generatedSql", generatedSql);
 
-        // 9. 生成自然语言回答
-        String response = generateAnswer(chatModel, userQuery, generatedSql, queryResult);
-        output.addOutput("response", response);
-
-        log.info("DB_QUERY节点执行完成");
+        log.info("SQL_GENERATE节点执行完成");
         return output;
-    }
-
-    /**
-     * 调用 LLM 生成自然语言回答
-     */
-    private String generateAnswer(ChatLanguageModel chatModel, String userQuery, String sql,
-            List<Map<String, Object>> result) {
-        String systemPrompt = """
-                你是一个数据分析助手。根据用户的问题和SQL查询结果，用简洁清晰的自然语言回答用户的问题。
-
-                要求：
-                1. 直接回答用户的问题，不要解释SQL
-                2. 如果结果为空，说明没有找到相关数据
-                3. 数字结果要准确
-                """;
-
-        String resultStr = JsonUtils.toJsonString(result);
-        if (resultStr.length() > 2000) {
-            resultStr = resultStr.substring(0, 2000) + "...(结果过长已截断)";
-        }
-
-        String userPrompt = String.format("""
-                用户问题: %s
-
-                执行的SQL: %s
-
-                查询结果: %s
-
-                请根据查询结果回答用户的问题。
-                """, userQuery, sql, resultStr);
-
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemPrompt));
-        messages.add(new UserMessage(userPrompt));
-
-        return chatModel.generate(messages).content().text();
     }
 
     @Override
     public String getNodeType() {
-        return "DB_QUERY";
+        return "SQL_GENERATE";
     }
 
     @Override
     public String getNodeName() {
-        return "数据库查询";
+        return "SQL生成";
     }
 }
