@@ -11,6 +11,7 @@ import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.util.SqlExecutor;
 import org.dromara.ai.workflow.util.SqlValidator;
+import org.dromara.common.json.utils.JsonUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -58,6 +59,7 @@ public class SqlExecuteNode implements WorkflowNode {
         // 5. 执行 SQL（使用工具类）
         List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, sql, maxRows);
         output.addOutput("queryResult", queryResult);
+        output.addOutput("strResult", JsonUtils.toJsonString(queryResult));
         output.addOutput("rowCount", queryResult.size());
         log.info("查询结果行数: {}", queryResult.size());
 

@@ -77,10 +77,10 @@ public class SqlGenerateNode implements WorkflowNode {
             throw new RuntimeException("数据源没有配置元数据，请先添加表结构信息");
         }
 
-        // 4. 构建 Schema Prompt（使用工具类）
-        String schemaDescription = SchemaBuilder.build(metas, tableWhitelist, tableBlacklist);
+        // 4. 选择相关表
+        String tableListPrompt = SchemaBuilder.buildTableList(metas, tableWhitelist, tableBlacklist);
 
-        // 5. 加载 LLM 模型
+        // 加载 LLM 模型 (提前加载，因为选择表也需要)
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
             throw new RuntimeException("模型不存在: " + modelId);
@@ -90,6 +90,40 @@ public class SqlGenerateNode implements WorkflowNode {
             throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
         }
         ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+
+        List<String> relevantTables = SqlGenerator.selectRelevantTables(chatModel, tableListPrompt, userQuery);
+        log.info("LLM选择的相关表: {}", relevantTables);
+
+        // 过滤元数据
+        List<KmDatabaseMeta> filteredMetas;
+        if (relevantTables.isEmpty()) {
+            // 如果没有选出表，为了避免错误，可以使用所有过滤后的表，或者抛出异常。
+            // 这里选择保留原逻辑，即如果不筛选则使用所有符合白/黑名单的表
+            // 但根据需求"减少提交给大模型的数据库元数据", 应该是只提交筛选后的。
+            // 如果LLM说没有相关表，那后续SQL生成大概率也是瞎编 or 无法生成。
+            // 暂定：如果为空，则使用空列表，让后续生成SQL步骤处理（可能会失败或生成通用回答）
+            log.warn("LLM未选择任何相关表");
+            filteredMetas = Collections.emptyList();
+        } else {
+            Map<String, KmDatabaseMeta> metaMap = new HashMap<>(); // 需要import HashMap, Map
+            for (KmDatabaseMeta m : metas) {
+                metaMap.put(m.getTableName().toLowerCase(), m);
+            }
+
+            filteredMetas = new ArrayList<>();
+            for (String t : relevantTables) {
+                KmDatabaseMeta m = metaMap.get(t.toLowerCase());
+                if (m != null) {
+                    filteredMetas.add(m);
+                }
+            }
+        }
+
+        // 5. 构建 Schema Prompt
+        String schemaDescription = SchemaBuilder.build(filteredMetas, null, null); // 已经过滤过了，这里不再传黑白名单
+
+        // LLM 模型已在前面加载
+        // 6. 生成 SQL（使用工具类）
 
         // 6. 生成 SQL（使用工具类）
         String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery);

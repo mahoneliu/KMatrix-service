@@ -80,10 +80,10 @@ public class DbQueryNode implements WorkflowNode {
             throw new RuntimeException("数据源没有配置元数据，请先添加表结构信息");
         }
 
-        // 4. 构建 Schema Prompt（使用工具类）
-        String schemaDescription = SchemaBuilder.build(metas, tableWhitelist, tableBlacklist);
+        // 4. 选择相关表
+        String tableListPrompt = SchemaBuilder.buildTableList(metas, tableWhitelist, tableBlacklist);
 
-        // 5. 加载 LLM 模型
+        // 加载 LLM 模型 (提前加载)
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
             throw new RuntimeException("模型不存在: " + modelId);
@@ -93,6 +93,35 @@ public class DbQueryNode implements WorkflowNode {
             throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
         }
         ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+
+        List<String> relevantTables = SqlGenerator.selectRelevantTables(chatModel, tableListPrompt, userQuery);
+        log.info("LLM选择的相关表: {}", relevantTables);
+
+        // 过滤元数据
+        List<KmDatabaseMeta> filteredMetas;
+        if (relevantTables.isEmpty()) {
+            log.warn("LLM未选择任何相关表");
+            filteredMetas = Collections.emptyList();
+        } else {
+            Map<String, KmDatabaseMeta> metaMap = new HashMap<>();
+            for (KmDatabaseMeta m : metas) {
+                metaMap.put(m.getTableName().toLowerCase(), m);
+            }
+
+            filteredMetas = new ArrayList<>();
+            for (String t : relevantTables) {
+                KmDatabaseMeta m = metaMap.get(t.toLowerCase());
+                if (m != null) {
+                    filteredMetas.add(m);
+                }
+            }
+        }
+
+        // 5. 构建 Schema Prompt
+        String schemaDescription = SchemaBuilder.build(filteredMetas, null, null);
+
+        // LLM 模型已加载
+        // 6. 生成 SQL（使用工具类）
 
         // 6. 生成 SQL（使用工具类）
         String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery);
@@ -105,6 +134,7 @@ public class DbQueryNode implements WorkflowNode {
         // 8. 执行 SQL（使用工具类）
         List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, generatedSql, maxRows);
         output.addOutput("queryResult", queryResult);
+        output.addOutput("strResult", JsonUtils.toJsonString(queryResult));
         log.info("查询结果行数: {}", queryResult.size());
 
         // 9. 生成自然语言回答
