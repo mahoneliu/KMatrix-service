@@ -113,4 +113,14 @@ public class KmAppController extends BaseController {
         String publicAccess = body.get("publicAccess");
         return toAjax(appService.updatePublicAccess(appId, publicAccess));
     }
+
+    /**
+     * 获取应用统计数据
+     */
+    @SaCheckPermission("ai:app:query")
+    @GetMapping("/{appId}/statistics")
+    public R<org.dromara.ai.domain.vo.KmAppStatisticsVo> getStatistics(@PathVariable Long appId,
+            @RequestParam(defaultValue = "7d") String period) {
+        return R.ok(appService.getAppStatistics(appId, period));
+    }
 }

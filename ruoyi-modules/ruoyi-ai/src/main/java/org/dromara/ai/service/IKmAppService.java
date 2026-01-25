@@ -71,4 +71,13 @@ public interface IKmAppService {
      * @return 是否成功
      */
     Boolean updatePublicAccess(Long appId, String publicAccess);
+
+    /**
+     * 获取应用统计数据
+     *
+     * @param appId  应用ID
+     * @param period 统计周期 (7d, 30d, 90d)
+     * @return 统计数据
+     */
+    org.dromara.ai.domain.vo.KmAppStatisticsVo getAppStatistics(Long appId, String period);
 }

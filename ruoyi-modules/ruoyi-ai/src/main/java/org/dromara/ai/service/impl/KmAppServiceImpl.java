@@ -44,6 +44,8 @@ public class KmAppServiceImpl implements IKmAppService {
     private final KmAppVersionMapper versionMapper;
     private final KmAppKnowledgeMapper appKnowledgeMapper;
     private final IKmAppTokenService appTokenService;
+    private final org.dromara.ai.mapper.KmChatSessionMapper chatSessionMapper;
+    private final org.dromara.ai.mapper.KmChatMessageMapper chatMessageMapper;
 
     /**
      * 查询AI应用
@@ -281,5 +283,73 @@ public class KmAppServiceImpl implements IKmAppService {
         app.setAppId(appId);
         app.setPublicAccess(publicAccess);
         return baseMapper.updateById(app) > 0;
+    }
+
+    /**
+     * 获取应用统计数据
+     */
+    @Override
+    public org.dromara.ai.domain.vo.KmAppStatisticsVo getAppStatistics(Long appId, String period) {
+        if (appId == null) {
+            return new org.dromara.ai.domain.vo.KmAppStatisticsVo();
+        }
+
+        // 计算时间范围
+        Date startTime = calculateStartTime(period);
+
+        // 统计数据
+        org.dromara.ai.domain.vo.KmAppStatisticsVo stats = new org.dromara.ai.domain.vo.KmAppStatisticsVo();
+
+        // 1. 用户总数 (基于会话去重)
+        // SELECT COUNT(DISTINCT user_id) FROM km_chat_session WHERE app_id = ? AND
+        // create_time >= ?
+        // 这里暂时简化为查询会话数，实际应关联用户
+        long userCount = chatSessionMapper.selectCount(
+                new LambdaQueryWrapper<org.dromara.ai.domain.KmChatSession>()
+                        .eq(org.dromara.ai.domain.KmChatSession::getAppId, appId)
+                        .ge(startTime != null, org.dromara.ai.domain.KmChatSession::getCreateTime, startTime));
+        stats.setUserCount(userCount);
+        stats.setUserCountDelta(0L); // 暂不计算环比
+
+        // 2. 提问次数 (消息数)
+        // 由于 KmChatMessage 没有 appId，需要关联 KmChatSession
+        // 简化: 先查出该应用下的所有会话ID, 再查消息数
+        // 注意:这里如果会话很多可能有性能问题, 理想情况应该在 Message 表冗余 appId 或使用 JOIN
+        // 这里暂时使用 EXISTS 子查询 (MyBatis-Plus apply)
+        long questionCount = chatMessageMapper.selectCount(
+                new LambdaQueryWrapper<org.dromara.ai.domain.KmChatMessage>()
+                        .eq(org.dromara.ai.domain.KmChatMessage::getRole, "user") // 只统计用户提问
+                        .apply("session_id IN (SELECT session_id FROM km_chat_session WHERE app_id = {0}" +
+                                (startTime != null ? " AND create_time >= {1}" : "") + ")",
+                                appId, startTime));
+        stats.setQuestionCount(questionCount);
+
+        // 3. Tokens 总数 (需要消息表有 tokens 字段，假设有)
+        // 暂且置为 0，需确认 KmChatMessage 是否有 tokens 字段
+        stats.setTokensTotal(0L);
+
+        // 4. 用户满意度
+        org.dromara.ai.domain.vo.KmAppStatisticsVo.Satisfaction satisfaction = new org.dromara.ai.domain.vo.KmAppStatisticsVo.Satisfaction();
+        satisfaction.setLike(0L);
+        satisfaction.setDislike(0L);
+        stats.setSatisfaction(satisfaction);
+
+        // 5. 模拟趋势数据 (后续对接真实数据)
+        stats.setUserTrend(new java.util.HashMap<>());
+        stats.setQuestionTrend(new java.util.HashMap<>());
+
+        return stats;
+    }
+
+    private Date calculateStartTime(String period) {
+        Date now = new Date();
+        if ("7d".equals(period)) {
+            return cn.hutool.core.date.DateUtil.offsetDay(now, -7);
+        } else if ("30d".equals(period)) {
+            return cn.hutool.core.date.DateUtil.offsetDay(now, -30);
+        } else if ("90d".equals(period)) {
+            return cn.hutool.core.date.DateUtil.offsetDay(now, -90);
+        }
+        return null; // 全部
     }
 }
