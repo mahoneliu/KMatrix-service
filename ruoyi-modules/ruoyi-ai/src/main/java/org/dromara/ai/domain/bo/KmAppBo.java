@@ -104,6 +104,16 @@ public class KmAppBo extends BaseEntity {
     private String knowledgeIds;
 
     /**
+     * 是否启用执行详情（0禁用 1启用）
+     */
+    private String enableExecutionDetail;
+
+    /**
+     * 公开访问（0关闭 1开启）
+     */
+    private String publicAccess;
+
+    /**
      * 备注
      */
     private String remark;

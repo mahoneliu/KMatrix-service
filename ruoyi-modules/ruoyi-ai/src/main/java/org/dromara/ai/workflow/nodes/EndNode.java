@@ -1,10 +1,13 @@
 package org.dromara.ai.workflow.nodes;
 
 import lombok.extern.slf4j.Slf4j;
+
+import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 结束节点
@@ -42,6 +45,7 @@ public class EndNode implements WorkflowNode {
         // 仅保存到输出（不发送SSE事件）
         if (finalResponse != null) {
             output.addOutput("finalResponse", finalResponse);
+            sendComplete(context.getSseEmitter(), finalResponse);
             log.info("END节点执行完成, finalResponse={}", finalResponse);
         }
 
@@ -49,6 +53,21 @@ public class EndNode implements WorkflowNode {
         output.setFinished(true);
 
         return output;
+    }
+
+    /**
+     * 发送complete事件
+     */
+    private void sendComplete(SseEmitter emitter, String message) {
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name(SseEventType.WORKFLOW_COMPLETE.getEventName())
+                        .data(message));
+            } catch (java.io.IOException e) {
+                log.error("发送complete事件失败", e);
+            }
+        }
     }
 
     @Override

@@ -32,14 +32,17 @@ public final class SqlGenerator {
     }
 
     /**
-     * 生成 SQL
-     * 
-     * @param chatModel ChatLanguageModel
-     * @param schema    数据库 Schema 描述
-     * @param userQuery 用户查询
+     * 生成 SQL (流式)
+     *
+     * @param streamingModel StreamingChatLanguageModel
+     * @param schema         数据库 Schema 描述
+     * @param userQuery      用户查询
+     * @param context        节点上下文 (用于发送SSE事件和保存token信息)
      * @return 生成的 SQL
      */
-    public static String generateSql(ChatLanguageModel chatModel, String schema, String userQuery) {
+    public static String generateSql(dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel,
+            String schema, String userQuery,
+            org.dromara.ai.workflow.core.NodeContext context) {
         String systemPrompt = """
                 你是一个专业的数据库助手。根据用户的问题和提供的数据库表结构，生成正确的SQL查询语句。
 
@@ -56,10 +59,74 @@ public final class SqlGenerator {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userQuery));
 
-        String response = chatModel.generate(messages).content().text();
+        StringBuilder fullResponse = new StringBuilder();
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = context != null
+                ? context.getSseEmitter()
+                : null;
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicReference<dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage>> responseRef = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> errorRef = new java.util.concurrent.atomic.AtomicReference<>();
+
+        streamingModel.generate(messages,
+                new dev.langchain4j.model.StreamingResponseHandler<dev.langchain4j.data.message.AiMessage>() {
+                    @Override
+                    public void onNext(String token) {
+                        fullResponse.append(token);
+                        if (emitter != null) {
+                            try {
+                                // 发送 THINKING 事件
+                                emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event()
+                                        .name(org.dromara.ai.domain.enums.SseEventType.THINKING.getEventName())
+                                        .data(token));
+                            } catch (Exception e) {
+                                // 忽略发送失败
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onComplete(
+                            dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> response) {
+                        responseRef.set(response);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        errorRef.set(error);
+                        latch.countDown();
+                    }
+                });
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("SQL生成被中断", e);
+        }
+
+        if (errorRef.get() != null) {
+            throw new RuntimeException("SQL生成失败", errorRef.get());
+        }
+
+        // 保存 token 使用信息
+        var response = responseRef.get();
+        if (context != null && response != null && response.tokenUsage() != null) {
+            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            java.util.Map<String, Object> tokenUsageMap = new java.util.HashMap<>();
+            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
+            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
+            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
+            context.setTokenUsage(tokenUsageMap);
+        }
+
+        String responseText = fullResponse.toString();
+        if (StrUtil.isBlank(responseText)) {
+            throw new RuntimeException("LLM未返回有效响应");
+        }
 
         // 提取 SQL
-        Matcher matcher = SQL_PATTERN.matcher(response);
+        Matcher matcher = SQL_PATTERN.matcher(responseText);
         if (matcher.find()) {
             String sql = matcher.group(1);
             if (sql == null)
@@ -69,7 +136,65 @@ public final class SqlGenerator {
             return sql.trim();
         }
 
-        throw new RuntimeException("无法从LLM响应中提取SQL语句: " + response);
+        throw new RuntimeException("无法从LLM响应中提取SQL语句: " + responseText);
+    }
+
+    /**
+     * 生成 SQL
+     *
+     * @param chatModel ChatLanguageModel
+     * @param schema    数据库 Schema 描述
+     * @param userQuery 用户查询
+     * @param context   节点上下文 (用于保存token信息，可为null)
+     * @return 生成的 SQL
+     */
+    public static String generateSql(ChatLanguageModel chatModel, String schema, String userQuery,
+            org.dromara.ai.workflow.core.NodeContext context) {
+        String systemPrompt = """
+                你是一个专业的数据库助手。根据用户的问题和提供的数据库表结构，生成正确的SQL查询语句。
+
+                要求：
+                1. 只生成 SELECT 语句，不允许任何修改数据的操作
+                2. SQL 语句用 ```sql ``` 包裹
+                3. 确保SQL语法正确
+                4. 如果用户问的问题无法通过给定的表结构查询，请说明原因
+
+                数据库表结构：
+                """ + schema;
+
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new SystemMessage(systemPrompt));
+        messages.add(new UserMessage(userQuery));
+
+        var response = chatModel.generate(messages);
+        if (response == null || response.content() == null || response.content().text() == null) {
+            throw new RuntimeException("LLM未返回有效响应（可能使用了思考模式但未生成文本）");
+        }
+
+        // 保存 token 使用信息
+        if (context != null && response.tokenUsage() != null) {
+            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            java.util.Map<String, Object> tokenUsageMap = new java.util.HashMap<>();
+            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
+            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
+            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
+            context.setTokenUsage(tokenUsageMap);
+        }
+
+        String responseText = response.content().text();
+
+        // 提取 SQL
+        Matcher matcher = SQL_PATTERN.matcher(responseText);
+        if (matcher.find()) {
+            String sql = matcher.group(1);
+            if (sql == null)
+                sql = matcher.group(2);
+            if (sql == null)
+                sql = matcher.group(0);
+            return sql.trim();
+        }
+
+        throw new RuntimeException("无法从LLM响应中提取SQL语句: " + responseText);
     }
 
     /**
@@ -97,7 +222,11 @@ public final class SqlGenerator {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userQuery));
 
-        String response = chatModel.generate(messages).content().text();
+        var aiMessage = chatModel.generate(messages);
+        if (aiMessage == null || aiMessage.content() == null || aiMessage.content().text() == null) {
+            return Collections.emptyList();
+        }
+        String response = aiMessage.content().text();
         if (StrUtil.isBlank(response)) {
             return Collections.emptyList();
         }

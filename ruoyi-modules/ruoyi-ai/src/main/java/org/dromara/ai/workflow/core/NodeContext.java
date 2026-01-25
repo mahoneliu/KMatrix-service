@@ -146,6 +146,36 @@ public class NodeContext {
         }
     }
 
+    /**
+     * 获取配置参数(Double类型)
+     */
+    public Double getConfigAsDouble(String key, Double defaultValue) {
+        Object value = getConfig(key);
+        if (value == null)
+            return defaultValue;
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * 获取配置参数(Boolean类型)
+     */
+    public Boolean getConfigAsBoolean(String key, Boolean defaultValue) {
+        Object value = getConfig(key);
+        if (value == null)
+            return defaultValue;
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        return Boolean.parseBoolean(value.toString());
+    }
+
     // ========== 条件评估辅助方法 ==========
 
     /**

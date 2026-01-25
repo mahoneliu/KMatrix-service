@@ -84,9 +84,6 @@ public class KmChatServiceImpl implements IKmChatService {
                         .eq(KmChatMessage::getSessionId, sessionId)
                         .orderByAsc(KmChatMessage::getCreateTime));
 
-        // List<KmChatMessageVo> vos = MapstructUtils.convert(messages,
-        // KmChatMessageVo.class);
-
         // 填充节点执行记录
         for (KmChatMessageVo vo : vos) {
             if (vo.getInstanceId() != null) {
@@ -136,8 +133,20 @@ public class KmChatServiceImpl implements IKmChatService {
                 // 2. 加载应用和模型配置
                 KmAppVo app = loadApp(bo.getAppId());
 
-                // 3. 获取或创建会话
-                Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId);
+                // 3. 处理用户 ID (免登录模式使用应用创建者)
+                Long tempUserId = userId;
+                if (tempUserId == null) {
+                    try {
+                        tempUserId = Long.valueOf(app.getCreateBy());
+                    } catch (Exception e) {
+                        log.warn("无法从 createBy 获取用户 ID, appId={}", bo.getAppId());
+                        throw new ServiceException("应用配置异常，无法识别所属用户");
+                    }
+                }
+                final Long effectiveUserId = tempUserId;
+
+                // 4. 获取或创建会话
+                Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId);
 
                 // 判断是否为新会话（首次对话）
                 boolean isNewSession = (bo.getSessionId() == null);
@@ -152,14 +161,14 @@ public class KmChatServiceImpl implements IKmChatService {
                     try {
                         // 执行工作流
                         Map<String, Object> result = workflowExecutor.executeWorkflow(
-                                app, sessionId, bo.getMessage(), emitter, userId);
+                                app, sessionId, bo, emitter, userId);
 
                         String aiResponse = (String) result.get("finalResponse");
                         Long instanceId = (Long) result.get("instanceId");
 
                         // 保存AI响应
                         if (aiResponse != null) {
-                            saveMessage(sessionId, "assistant", aiResponse, instanceId, userId);
+                            saveMessage(sessionId, "assistant", aiResponse, instanceId, effectiveUserId);
                         }
 
                         // 异步生成标题（仅在首次对话时）
@@ -216,7 +225,7 @@ public class KmChatServiceImpl implements IKmChatService {
                                     // 保存AI响应
                                     String aiResponse = fullResponse.toString();
                                     if (StrUtil.isNotBlank(aiResponse)) {
-                                        saveMessage(sessionId, "assistant", aiResponse, userId);
+                                        saveMessage(sessionId, "assistant", aiResponse, effectiveUserId);
                                     }
 
                                     // 记录token使用情况
@@ -679,12 +688,7 @@ public class KmChatServiceImpl implements IKmChatService {
             Long debugSessionId = -1L; // 负数表示调试会话，不会创建session记录
 
             // 执行调试工作流（使用草稿数据，不保存任何记录）
-            Map<String, Object> debugResult = workflowExecutor.executeWorkflowDebug(
-                    debugApp, debugSessionId, bo.getMessage(), emitter, userId); // 提取结果
-            String finalResponse = (String) debugResult.get("finalResponse");
-            Integer totalTokens = (Integer) debugResult.getOrDefault("totalTokens", 0);
-            Long durationMs = (Long) debugResult.getOrDefault("durationMs", 0L);
-            Long debugInstanceId = (Long) debugResult.get("instanceId");
+            workflowExecutor.executeWorkflowDebug(debugApp, debugSessionId, bo, emitter, userId);
 
             // 工作流完成（executeWorkflowDebug内部已发送done事件，与streamChat行为一致）
             emitter.complete();

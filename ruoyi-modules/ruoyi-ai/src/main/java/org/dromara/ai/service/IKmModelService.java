@@ -41,4 +41,12 @@ public interface IKmModelService {
      * 测试连接
      */
     String testConnection(KmModelBo bo);
+
+    /**
+     * 复制模型
+     *
+     * @param modelId 原模型ID
+     * @return 新模型ID
+     */
+    Long copyModel(Long modelId);
 }

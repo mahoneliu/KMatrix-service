@@ -23,6 +23,7 @@ import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.dromara.common.json.utils.JsonUtils;
+import org.dromara.ai.service.IKmAppTokenService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -42,6 +43,7 @@ public class KmAppServiceImpl implements IKmAppService {
     private final KmAppMapper baseMapper;
     private final KmAppVersionMapper versionMapper;
     private final KmAppKnowledgeMapper appKnowledgeMapper;
+    private final IKmAppTokenService appTokenService;
 
     /**
      * 查询AI应用
@@ -100,6 +102,8 @@ public class KmAppServiceImpl implements IKmAppService {
         if (flag) {
             bo.setAppId(add.getAppId());
             saveKnowledgeMapping(add.getAppId(), bo.getKnowledgeIds());
+            // 创建默认Token
+            appTokenService.createDefaultToken(add.getAppId(), add.getAppName());
             return add.getAppId().toString();
         }
         return null;
@@ -266,5 +270,16 @@ public class KmAppServiceImpl implements IKmAppService {
                         .last("LIMIT 1"));
 
         return latestVersion != null ? latestVersion.getAppSnapshot() : null;
+    }
+
+    /**
+     * 更新公开访问开关
+     */
+    @Override
+    public Boolean updatePublicAccess(Long appId, String publicAccess) {
+        KmApp app = new KmApp();
+        app.setAppId(appId);
+        app.setPublicAccess(publicAccess);
+        return baseMapper.updateById(app) > 0;
     }
 }

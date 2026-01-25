@@ -24,8 +24,10 @@ import org.dromara.ai.workflow.util.SchemaBuilder;
 import org.dromara.ai.workflow.util.SqlExecutor;
 import org.dromara.ai.workflow.util.SqlGenerator;
 import org.dromara.ai.workflow.util.SqlValidator;
+import org.dromara.ai.workflow.util.SseHelper;
 import org.dromara.common.json.utils.JsonUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
 
@@ -53,6 +55,8 @@ public class DbQueryNode implements WorkflowNode {
         log.info("执行DB_QUERY节点");
 
         NodeOutput output = new NodeOutput();
+        SseEmitter emitter = context.getSseEmitter();
+        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
 
         // 1. 获取配置参数
         Long dataSourceId = context.getConfigAsLong("dataSourceId");
@@ -94,15 +98,24 @@ public class DbQueryNode implements WorkflowNode {
         }
         ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
 
+        // 发送thinking事件：分析相关表
+        SseHelper.sendThinking(emitter, streamOutput, "📊 正在分析数据库结构，筛选相关表...\n");
+
         List<String> relevantTables = SqlGenerator.selectRelevantTables(chatModel, tableListPrompt, userQuery);
-        log.info("LLM选择的相关表: {}", relevantTables);
 
         // 过滤元数据
         List<KmDatabaseMeta> filteredMetas;
         if (relevantTables.isEmpty()) {
             log.warn("LLM未选择任何相关表");
-            filteredMetas = Collections.emptyList();
+            output.addOutput("response", "没有相关的表");
+            output.addOutput("generatedSql", "");
+            output.addOutput("queryResult", "");
+            output.addOutput("strResult", "");
+            log.info("DB_QUERY节点执行完成");
+            return output;
         } else {
+            log.info("LLM选择的相关表: {}", relevantTables);
+            SseHelper.sendThinking(emitter, streamOutput, "✅ 已选择相关表: " + String.join(", ", relevantTables) + "\n");
             Map<String, KmDatabaseMeta> metaMap = new HashMap<>();
             for (KmDatabaseMeta m : metas) {
                 metaMap.put(m.getTableName().toLowerCase(), m);
@@ -120,26 +133,51 @@ public class DbQueryNode implements WorkflowNode {
         // 5. 构建 Schema Prompt
         String schemaDescription = SchemaBuilder.build(filteredMetas, null, null);
 
-        // LLM 模型已加载
         // 6. 生成 SQL（使用工具类）
+        SseHelper.sendThinking(emitter, streamOutput, "📝 正在生成SQL查询语句...\n");
 
-        // 6. 生成 SQL（使用工具类）
-        String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery);
+        String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery, context);
+        if (StrUtil.isBlank(generatedSql) || generatedSql.toUpperCase().contains("SELECT") == false) {
+            log.warn("LLM未生成有效的SQL");
+            output.addOutput("response", "没有生成SQL");
+            output.addOutput("generatedSql", "");
+            output.addOutput("queryResult", "");
+            output.addOutput("strResult", "");
+            log.info("DB_QUERY节点执行完成");
+            return output;
+        }
         log.info("生成的SQL: {}", generatedSql);
         output.addOutput("generatedSql", generatedSql);
+
+        // 添加 SQL 生成阶段的 token 统计到输出
+        Map<String, Object> sqlGenTokenUsage = context.getTokenUsage();
+        if (sqlGenTokenUsage != null) {
+            output.addOutput("sqlGenTokenUsage", sqlGenTokenUsage);
+        }
+
+        SseHelper.sendThinking(emitter, streamOutput, "✅ SQL已生成: `" + generatedSql + "`");
 
         // 7. 校验 SQL（使用工具类）
         SqlValidator.validate(generatedSql);
 
         // 8. 执行 SQL（使用工具类）
+        SseHelper.sendThinking(emitter, streamOutput, "⚡ 正在执行SQL查询...\n");
         List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, generatedSql, maxRows);
         output.addOutput("queryResult", queryResult);
         output.addOutput("strResult", JsonUtils.toJsonString(queryResult));
         log.info("查询结果行数: {}", queryResult.size());
+        SseHelper.sendThinking(emitter, streamOutput, "✅ 查询完成，返回 " + queryResult.size() + " 条记录\n");
 
         // 9. 生成自然语言回答
-        String response = generateAnswer(chatModel, userQuery, generatedSql, queryResult);
+        SseHelper.sendThinking(emitter, streamOutput, "💬 正在生成回答...\n");
+        String response = generateAnswer(chatModel, userQuery, generatedSql, queryResult, context);
         output.addOutput("response", response);
+
+        // 添加答案生成阶段的 token 统计到输出
+        Map<String, Object> answerGenTokenUsage = context.getTokenUsage();
+        if (answerGenTokenUsage != null) {
+            output.addOutput("answerGenTokenUsage", answerGenTokenUsage);
+        }
 
         log.info("DB_QUERY节点执行完成");
         return output;
@@ -149,7 +187,7 @@ public class DbQueryNode implements WorkflowNode {
      * 调用 LLM 生成自然语言回答
      */
     private String generateAnswer(ChatLanguageModel chatModel, String userQuery, String sql,
-            List<Map<String, Object>> result) {
+            List<Map<String, Object>> result, NodeContext context) {
         String systemPrompt = """
                 你是一个数据分析助手。根据用户的问题和SQL查询结果，用简洁清晰的自然语言回答用户的问题。
 
@@ -178,7 +216,19 @@ public class DbQueryNode implements WorkflowNode {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userPrompt));
 
-        return chatModel.generate(messages).content().text();
+        var response = chatModel.generate(messages);
+
+        // 保存 token 使用信息
+        if (response != null && response.tokenUsage() != null) {
+            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            Map<String, Object> tokenUsageMap = new HashMap<>();
+            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
+            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
+            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
+            context.setTokenUsage(tokenUsageMap);
+        }
+
+        return response.content().text();
     }
 
     @Override

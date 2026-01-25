@@ -100,4 +100,14 @@ public class KmModelController extends BaseController {
         }
         return R.fail(result);
     }
+
+    /**
+     * 复制模型
+     */
+    @SaCheckPermission("ai:model:add")
+    @Log(title = "模型管理", businessType = BusinessType.INSERT)
+    @PostMapping("/copy/{modelId}")
+    public R<Long> copy(@PathVariable Long modelId) {
+        return R.ok(modelService.copyModel(modelId));
+    }
 }

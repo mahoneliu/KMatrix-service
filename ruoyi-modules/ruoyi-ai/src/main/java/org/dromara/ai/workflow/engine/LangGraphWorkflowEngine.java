@@ -115,7 +115,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                     .findFirst()
                     .orElse(null);
 
-            boolean isConditionNode = fromNode != null && "CONDITION".equals(fromNode.getType());
+            boolean isConditionNode = fromNode != null &&
+                    ("CONDITION".equals(fromNode.getType()) || "INTENT_CLASSIFIER".equals(fromNode.getType()));
 
             if (isConditionNode) {
                 // 条件节点的所有出边都作为条件边处理
@@ -271,7 +272,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         context.setSseEmitter(emitter);
 
         // 检查是否为调试模式
-        boolean isDebug = state.getDebug();
+        boolean isDebug = Boolean.TRUE.equals(state.getDebug());
+
+        boolean isShowExecutionInfo = isDebug || Boolean.TRUE.equals(state.getShowExecutionInfo());
 
         Long executionId = null;
         long duration = 0;
@@ -326,21 +329,23 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 instanceService.updateGlobalState(state.getInstanceId(), globalState);
             }
 
-            // 发送节点执行详情事件
-            Map<String, Object> executionDetail = new HashMap<>();
-            executionDetail.put("nodeName", nodeName);
-            executionDetail.put("nodeType", nodeConfig.getType());
-            executionDetail.put("inputs", inputs);
-            executionDetail.put("outputs", output.getOutputs());
-            executionDetail.put("durationMs", duration);
+            if (isShowExecutionInfo) {
+                // 发送节点执行详情事件
+                Map<String, Object> executionDetail = new HashMap<>();
+                executionDetail.put("nodeName", nodeName);
+                executionDetail.put("nodeType", nodeConfig.getType());
+                executionDetail.put("inputs", inputs);
+                executionDetail.put("outputs", output.getOutputs());
+                executionDetail.put("durationMs", duration);
 
-            // 添加 token 使用统计(如果有)
-            Map<String, Object> tokenUsage = context.getTokenUsage();
-            if (tokenUsage != null && !tokenUsage.isEmpty()) {
-                executionDetail.put("tokenUsage", tokenUsage);
+                // 添加 token 使用统计(如果有)
+                Map<String, Object> tokenUsage = context.getTokenUsage();
+                if (tokenUsage != null && !tokenUsage.isEmpty()) {
+                    executionDetail.put("tokenUsage", tokenUsage);
+                }
+
+                sendSseEvent(context.getSseEmitter(), SseEventType.NODE_EXECUTION_DETAIL, executionDetail);
             }
-
-            sendSseEvent(context.getSseEmitter(), SseEventType.NODE_EXECUTION_DETAIL, executionDetail);
 
             // 检查是否结束（准备状态更新）
             boolean finished = output.isFinished();

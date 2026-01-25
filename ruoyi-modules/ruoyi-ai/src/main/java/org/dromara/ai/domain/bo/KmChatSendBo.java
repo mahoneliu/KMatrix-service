@@ -44,4 +44,11 @@ public class KmChatSendBo {
      * 调试数据不会保存到数据库
      */
     private Boolean debug = false;
+
+    /**
+     * 是否显示执行信息（正式对话模式下可选）
+     * 即使在正式对话模式下，用户也可以打开此开关来查看执行详情
+     * 与debug不同的是，showExecutionInfo模式下执行详情仍然入库
+     */
+    private Boolean showExecutionInfo = false;
 }

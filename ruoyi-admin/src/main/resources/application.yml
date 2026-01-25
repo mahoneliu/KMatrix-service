@@ -119,6 +119,7 @@ security:
     - /*/api-docs/**
     - /warm-flow-ui/config
     - /ai/chat/stream
+    - /chat/**
 
 # MyBatisPlus配置
 # https://baomidou.com/config/

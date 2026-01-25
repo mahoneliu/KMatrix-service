@@ -70,17 +70,32 @@ public class ModelBuilder {
      * @return 流式聊天模型实例
      */
     public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey) {
+        return buildStreamingChatModel(model, providerKey, null, null);
+    }
+
+    /**
+     * 构建流式聊天模型（带参数）
+     *
+     * @param model       模型配置
+     * @param providerKey 供应商标识
+     * @param temperature 温度参数 (0.0-2.0)
+     * @param maxTokens   最大token数
+     * @return 流式聊天模型实例
+     */
+    public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey,
+            Double temperature, Integer maxTokens) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException("模型配置或供应商标识为空");
         }
 
-        log.info("构建流式聊天模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
+        log.info("构建流式聊天模型: providerKey={}, modelKey={}, temperature={}, maxTokens={}",
+                providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot" -> buildOpenAiStreamingModel(model);
-            case "ollama", "vllm" -> buildOllamaStreamingModel(model);
-            case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model);
-            case "gemini" -> buildGeminiStreamingModel(model);
+            case "openai", "deepseek", "moonshot" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
+            case "ollama", "vllm" -> buildOllamaStreamingModel(model, temperature, maxTokens);
+            case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model, temperature, maxTokens);
+            case "gemini" -> buildGeminiStreamingModel(model, temperature, maxTokens);
             default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
         };
     }
@@ -106,7 +121,7 @@ public class ModelBuilder {
     /**
      * 构建OpenAI类型流式模型
      */
-    private StreamingChatLanguageModel buildOpenAiStreamingModel(KmModel model) {
+    private StreamingChatLanguageModel buildOpenAiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = OpenAiStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -116,6 +131,12 @@ public class ModelBuilder {
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
             builder.baseUrl(model.getApiBase());
+        }
+        if (temperature != null) {
+            builder.temperature(temperature);
+        }
+        if (maxTokens != null) {
+            builder.maxTokens(maxTokens);
         }
 
         return builder.build();
@@ -141,18 +162,26 @@ public class ModelBuilder {
     /**
      * 构建Ollama类型流式模型
      */
-    private StreamingChatLanguageModel buildOllamaStreamingModel(KmModel model) {
+    private StreamingChatLanguageModel buildOllamaStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         String baseUrl = StrUtil.isNotBlank(model.getApiBase())
                 ? model.getApiBase()
                 : "http://localhost:11434";
 
-        return OllamaStreamingChatModel.builder()
+        var builder = OllamaStreamingChatModel.builder()
                 .baseUrl(baseUrl)
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
-                .timeout(DEFAULT_TIMEOUT)
-                .build();
+                .timeout(DEFAULT_TIMEOUT);
+
+        if (temperature != null) {
+            builder.temperature(temperature);
+        }
+        if (maxTokens != null) {
+            builder.numPredict(maxTokens);
+        }
+
+        return builder.build();
     }
 
     /**
@@ -168,11 +197,19 @@ public class ModelBuilder {
     /**
      * 构建通义千问类型流式模型
      */
-    private StreamingChatLanguageModel buildQwenStreamingModel(KmModel model) {
-        return QwenStreamingChatModel.builder()
+    private StreamingChatLanguageModel buildQwenStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+        var builder = QwenStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
-                .modelName(model.getModelKey())
-                .build();
+                .modelName(model.getModelKey());
+
+        if (temperature != null) {
+            builder.temperature(temperature.floatValue());
+        }
+        if (maxTokens != null) {
+            builder.maxTokens(maxTokens);
+        }
+
+        return builder.build();
     }
 
     /**
@@ -192,15 +229,23 @@ public class ModelBuilder {
     /**
      * 构建Gemini类型流式模型
      */
-    private StreamingChatLanguageModel buildGeminiStreamingModel(KmModel model) {
-        return GoogleAiGeminiStreamingChatModel.builder()
+    private StreamingChatLanguageModel buildGeminiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+        var builder = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
                 .safetySettings(Collections.singletonList(
                         new GeminiSafetySetting(GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH,
                                 GeminiHarmBlockThreshold.BLOCK_NONE)))
                 .logRequestsAndResponses(aiProperties.isLogChat())
-                .timeout(DEFAULT_TIMEOUT)
-                .build();
+                .timeout(DEFAULT_TIMEOUT);
+
+        if (temperature != null) {
+            builder.temperature(temperature);
+        }
+        if (maxTokens != null) {
+            builder.maxOutputTokens(maxTokens);
+        }
+
+        return builder.build();
     }
 }

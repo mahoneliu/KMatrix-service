@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
@@ -51,6 +52,11 @@ public class LlmChatNode implements WorkflowNode {
         // 从配置获取固定参数
         Long modelId = context.getConfigAsLong("modelId");
 
+        // 获取大模型参数配置（可选）
+        Double temperature = context.getConfigAsDouble("temperature", null);
+        Integer maxTokens = context.getConfigAsInteger("maxTokens", null);
+        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+
         // systemPrompt支持从inputs动态获取，也支持从config静态配置
         String systemPrompt = (String) context.getInput("systemPrompt");
         if (systemPrompt == null) {
@@ -75,9 +81,9 @@ public class LlmChatNode implements WorkflowNode {
         // 构建消息列表
         List<ChatMessage> messages = buildMessages(inputMessage, systemPrompt);
 
-        // 使用流式模型
+        // 使用流式模型（带参数）
         StreamingChatLanguageModel streamingModel = modelBuilder
-                .buildStreamingChatModel(model, provider.getProviderKey());
+                .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
 
         StringBuilder fullResponse = new StringBuilder();
         SseEmitter emitter = context.getSseEmitter();
@@ -93,7 +99,15 @@ public class LlmChatNode implements WorkflowNode {
                 fullResponse.append(token);
                 if (emitter != null) {
                     try {
-                        emitter.send(SseEmitter.event().data(token));
+                        // 如果开启流式输出，发送THINKING事件
+                        if (Boolean.TRUE.equals(streamOutput)) {
+                            emitter.send(SseEmitter.event()
+                                    .name(SseEventType.THINKING.getEventName())
+                                    .data(token));
+                        } else {
+                            // 默认行为：发送普通消息
+                            emitter.send(SseEmitter.event().data(token));
+                        }
                     } catch (java.io.IOException e) {
                         log.error("发送SSE消息失败", e);
                     }

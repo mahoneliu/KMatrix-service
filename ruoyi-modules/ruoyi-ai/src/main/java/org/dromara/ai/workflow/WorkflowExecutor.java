@@ -3,6 +3,8 @@ package org.dromara.ai.workflow;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IWorkflowInstanceService;
@@ -33,17 +35,17 @@ public class WorkflowExecutor {
     /**
      * 执行工作流（统一入口，支持调试和正式模式）
      */
-    public Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, String userInput,
+    public Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, KmChatSendBo bo,
             SseEmitter emitter, Long userId) throws Exception {
-        return executeWorkflow(app, sessionId, userInput, emitter, userId, false);
+        return executeWorkflow(app, sessionId, bo, emitter, userId, false);
     }
 
     /**
      * 调试模式执行工作流（不创建instance，不写数据库）
      */
-    public Map<String, Object> executeWorkflowDebug(KmAppVo app, Long debugSessionId, String userInput,
+    public Map<String, Object> executeWorkflowDebug(KmAppVo app, Long debugSessionId, KmChatSendBo bo,
             SseEmitter emitter, Long userId) throws Exception {
-        return executeWorkflow(app, debugSessionId, userInput, emitter, userId, true);
+        return executeWorkflow(app, debugSessionId, bo, emitter, userId, true);
     }
 
     /**
@@ -51,7 +53,7 @@ public class WorkflowExecutor {
      * 
      * @param debug true=调试模式（不入库），false=正式模式（入库）
      */
-    private Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, String userInput,
+    private Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, KmChatSendBo bo,
             SseEmitter emitter, Long userId, boolean debug) throws Exception {
 
         // 1. 解析工作流配置
@@ -71,12 +73,15 @@ public class WorkflowExecutor {
                     app.getDslData());
         }
 
+        Boolean showExecutionInfo = debug ? true
+                : ("1".equals(app.getEnableExecutionDetail()) && Boolean.TRUE.equals(bo.getShowExecutionInfo()));
         // // 3. 初始化状态
         Map<String, Object> globalState = new HashMap<>();
         globalState.put(WorkflowState.KEY_INSTANCE_ID, instanceId);
-        globalState.put(WorkflowState.KEY_USER_INPUT, userInput);
+        globalState.put(WorkflowState.KEY_USER_INPUT, bo.getMessage());
         globalState.put(WorkflowState.KEY_SESSION_ID, sessionId);
         globalState.put(WorkflowState.KEY_USER_ID, userId);
+        globalState.put(WorkflowState.KEY_SHOW_EXECUTION_INFO, showExecutionInfo);
 
         // 初始化app参数
         // globalState.put(ChatWorkflowState.KEY_APP, app);
@@ -106,7 +111,7 @@ public class WorkflowExecutor {
             Map<String, Object> doneData = new HashMap<>();
             doneData.put("sessionId", sessionId.toString());
 
-            if (debug) {
+            if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
                 Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
                 doneData.put("totalTokens", totalTokens != null ? totalTokens : 0);
@@ -121,7 +126,7 @@ public class WorkflowExecutor {
             result.put("finalResponse", finalResponse != null ? finalResponse : "");
 
             // 调试模式：返回额外的统计信息
-            if (debug) {
+            if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
                 Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
                 result.put("totalTokens", totalTokens != null ? totalTokens : 0);

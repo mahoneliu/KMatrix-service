@@ -62,4 +62,13 @@ public interface IKmAppService {
      * @return 最新发布版本的快照,如果没有发布版本则返回null
      */
     org.dromara.ai.domain.vo.config.AppSnapshot getLatestPublishedSnapshot(Long appId);
+
+    /**
+     * 更新公开访问开关
+     *
+     * @param appId        应用ID
+     * @param publicAccess 公开访问开关 (0关闭 1开启)
+     * @return 是否成功
+     */
+    Boolean updatePublicAccess(Long appId, String publicAccess);
 }

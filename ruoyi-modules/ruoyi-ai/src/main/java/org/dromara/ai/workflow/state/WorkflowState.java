@@ -32,6 +32,7 @@ public class WorkflowState extends AgentState implements Serializable {
     public static final String KEY_CURRENT_TIME = "currentTime";
     public static final String KEY_HISTORY_CONTEXT = "historyContext";
     public static final String KEY_DEBUG = "debug";
+    public static final String KEY_SHOW_EXECUTION_INFO = "showExecutionInfo";
 
     public static final String KEY_NODE_OUTPUTS = "nodeOutputs";
     public static final String KEY_ERROR = "error";
@@ -164,6 +165,11 @@ public class WorkflowState extends AgentState implements Serializable {
 
     public Boolean getDebug() {
         Object value = getGlobalState().get(KEY_DEBUG);
+        return value != null ? (Boolean) value : null;
+    }
+
+    public Boolean getShowExecutionInfo() {
+        Object value = getGlobalState().get(KEY_SHOW_EXECUTION_INFO);
         return value != null ? (Boolean) value : null;
     }
 }

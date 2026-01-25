@@ -44,6 +44,11 @@ public enum SseEventType {
     WORKFLOW_COMPLETE("workflow_complete", "工作流完成"),
 
     /**
+     * AI思考过程（流式输出）
+     */
+    THINKING("thinking", "AI思考过程"),
+
+    /**
      * 对话完成（发送给前端用于结束 streaming 状态）
      */
     DONE("done", "对话完成");

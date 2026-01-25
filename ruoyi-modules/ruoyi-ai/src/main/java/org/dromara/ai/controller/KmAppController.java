@@ -101,4 +101,16 @@ public class KmAppController extends BaseController {
         String remark = body != null ? body.get("remark") : null;
         return toAjax(appService.publishApp(appId, remark));
     }
+
+    /**
+     * 更新公开访问开关
+     */
+    @SaCheckPermission("ai:app:edit")
+    @Log(title = "更新公开访问", businessType = BusinessType.UPDATE)
+    @PatchMapping("/{appId}/public-access")
+    public R<Void> updatePublicAccess(@PathVariable Long appId,
+            @RequestBody java.util.Map<String, String> body) {
+        String publicAccess = body.get("publicAccess");
+        return toAjax(appService.updatePublicAccess(appId, publicAccess));
+    }
 }

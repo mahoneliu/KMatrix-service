@@ -33,20 +33,44 @@ import java.util.List;
 public class KmChatController extends BaseController {
 
     private final IKmChatService chatService;
+    private final org.dromara.ai.service.IKmAppTokenService appTokenService;
 
     /**
      * 流式对话 (SSE)
      * 支持正常对话和调试模式
      */
-    @SaCheckPermission("ai:chat:send")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo, HttpServletResponse response) {
+    public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo, HttpServletResponse response,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
 
-        // 调试模式需要额外权限校验
-        if (Boolean.TRUE.equals(bo.getDebug())) {
-            StpUtil.checkPermission("ai:app:edit");
+        // 如果没有常规登录，检查是否提供了 App Token
+        if (!StpUtil.isLogin()) {
+            String token = null;
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
+
+            if (token != null) {
+                // 验证 Token 并获取 AppId
+                Long appId = appTokenService.validateToken(token, null);
+                if (appId != null) {
+                    // Token 有效，强制设置 appId 并标记为 Token 认证模式
+                    bo.setAppId(appId);
+                    // 这里我们暂时借用 bo 的一个属性或者通过内部逻辑处理，
+                    // 核心是让 chatService 知道这是一个免登录请求
+                } else {
+                    throw new org.dromara.common.core.exception.ServiceException("无效的访问 Token");
+                }
+            } else {
+                throw new org.dromara.common.core.exception.ServiceException("未登录且未提供访问 Token");
+            }
+        } else {
+            // 调试模式需要额外权限校验
+            if (Boolean.TRUE.equals(bo.getDebug())) {
+                StpUtil.checkPermission("ai:app:edit");
+            }
         }
 
         return chatService.streamChat(bo);
@@ -63,22 +87,35 @@ public class KmChatController extends BaseController {
         return R.ok(chatService.chat(bo));
     }
 
-    /**
-     * 获取会话历史消息
-     */
-    @SaCheckPermission("ai:chat:history")
     @GetMapping("/history/{sessionId}")
-    public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId) {
+    public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (!StpUtil.isLogin()) {
+            validateAppToken(authHeader);
+        }
         return R.ok(chatService.getHistory(sessionId));
     }
 
-    /**
-     * 获取应用下的会话列表
-     */
-    @SaCheckPermission("ai:chat:history")
     @GetMapping("/sessions/{appId}")
-    public R<List<KmChatSessionVo>> getSessionList(@PathVariable Long appId) {
+    public R<List<KmChatSessionVo>> getSessionList(@PathVariable Long appId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (!StpUtil.isLogin()) {
+            validateAppToken(authHeader);
+        }
         return R.ok(chatService.getSessionList(appId));
+    }
+
+    /**
+     * 内部校验 Token
+     */
+    private void validateAppToken(String authHeader) {
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+        if (token == null || appTokenService.validateToken(token, null) == null) {
+            throw new org.dromara.common.core.exception.ServiceException("访问受限：请登录或提供有效的 Token");
+        }
     }
 
     /**

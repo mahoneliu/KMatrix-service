@@ -114,4 +114,28 @@ public class KmModelServiceImpl implements IKmModelService {
             return "连接测试失败: " + e.getMessage();
         }
     }
+
+    @Override
+    public Long copyModel(Long modelId) {
+        // 查询原模型
+        KmModel original = baseMapper.selectById(modelId);
+        if (original == null) {
+            throw new org.dromara.common.core.exception.ServiceException("原模型不存在");
+        }
+
+        // 创建新模型
+        KmModel copy = new KmModel();
+        copy.setModelName("副本-" + original.getModelName());
+        copy.setModelKey(original.getModelKey());
+        copy.setModelType(original.getModelType());
+        copy.setModelSource(original.getModelSource());
+        copy.setProviderId(original.getProviderId());
+        copy.setApiKey(original.getApiKey());
+        copy.setApiBase(original.getApiBase());
+        copy.setStatus(original.getStatus());
+        copy.setRemark(original.getRemark());
+
+        baseMapper.insert(copy);
+        return copy.getModelId();
+    }
 }

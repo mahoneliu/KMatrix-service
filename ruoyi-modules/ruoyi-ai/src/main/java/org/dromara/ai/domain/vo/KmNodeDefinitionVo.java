@@ -8,7 +8,7 @@ import org.dromara.ai.domain.KmNodeDefinition;
 import io.github.linpeilie.annotations.AutoMapper;
 
 @Data
-@AutoMapper(target = KmNodeDefinition.class, reverseConvertGenerate = true)
+@AutoMapper(target = KmNodeDefinition.class)
 public class KmNodeDefinitionVo implements Serializable {
 
     @Serial
