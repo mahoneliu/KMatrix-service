@@ -1,20 +1,21 @@
 package org.dromara.ai.controller;
 
+import cn.hutool.core.util.IdUtil;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.bo.AnonymousAuthBo;
+import org.dromara.ai.domain.vo.AnonymousAuthVo;
+import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppTokenService;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
+import org.dromara.common.core.domain.R;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 
 /**
  * 嵌入对话脚本Controller
- * 提供可嵌入第三方页面的 JavaScript 代码
+ * 提供可嵌入第三方页面的 JavaScript 代码和匿名认证
  *
  * @author Mahone
  * @date 2026-01-26
@@ -27,6 +28,45 @@ public class EmbedController {
 
     private final IKmAppTokenService appTokenService;
     private final org.dromara.ai.service.IKmAppService appService;
+    private final IChatSessionTokenService chatSessionTokenService;
+
+    /**
+     * Token 有效期（天），默认 30 天
+     */
+    @Value("${kmatrix.chat.anonymous-token-expire-days:30}")
+    private int tokenExpireDays;
+
+    /**
+     * 匿名用户认证
+     * 验证 appToken 后生成 Session Token
+     */
+    @PostMapping("/anonymous-auth")
+    public R<AnonymousAuthVo> anonymousAuthentication(@Valid @RequestBody AnonymousAuthBo bo) {
+        // 1. 验证 appToken
+        Long appId = appTokenService.validateToken(bo.getAppToken(), null);
+        if (appId == null) {
+            return R.fail("无效的应用 Token");
+        }
+
+        // 2. 生成 userId (雪花 ID)
+        Long userId = IdUtil.getSnowflakeNextId();
+
+        // 3. 生成 JWT Session Token
+        String sessionToken = chatSessionTokenService.generateToken(appId, bo.getAppToken(), userId);
+
+        // 4. 计算过期时间
+        long expireTime = System.currentTimeMillis() + (long) tokenExpireDays * 24 * 60 * 60 * 1000;
+
+        // 5. 返回结果
+        AnonymousAuthVo vo = new AnonymousAuthVo();
+        vo.setSessionToken(sessionToken);
+        vo.setUserId(userId);
+        vo.setAppId(appId);
+        vo.setExpireTime(expireTime);
+
+        log.info("匿名用户认证成功: appId={}, userId={}", appId, userId);
+        return R.ok(vo);
+    }
 
     /**
      * 获取应用信息 (免登录，通过 Token)
@@ -40,88 +80,4 @@ public class EmbedController {
         return org.dromara.common.core.domain.R.ok(appService.queryById(appId));
     }
 
-    /**
-     * 获取嵌入脚本
-     * 返回一段 JavaScript 代码，用于在第三方页面创建浮窗对话
-     *
-     * @param protocol 协议 (http/https)
-     * @param host     主机地址
-     * @param token    App Token
-     */
-    @GetMapping(value = "/embed", produces = "application/javascript; charset=utf-8")
-    public void getEmbedScript(
-            @RequestParam(defaultValue = "https") String protocol,
-            @RequestParam String host,
-            @RequestParam String token,
-            HttpServletResponse response) throws IOException {
-
-        response.setContentType("application/javascript; charset=utf-8");
-        response.setHeader("Cache-Control", "public, max-age=3600");
-
-        // 验证 Token
-        Long appId = appTokenService.validateToken(token, null);
-        if (appId == null) {
-            try (PrintWriter writer = response.getWriter()) {
-                writer.write("console.error('KMatrix Embed: Invalid or expired token');");
-            }
-            return;
-        }
-
-        String baseUrl = protocol + "://" + host;
-        String chatUrl = baseUrl + "/chat/" + token;
-
-        // 生成嵌入脚本
-        String script = generateEmbedScript(baseUrl, chatUrl, token);
-
-        try (PrintWriter writer = response.getWriter()) {
-            writer.write(script);
-        }
-    }
-
-    /**
-     * 重定向到前端对话页面
-     * 自动处理端口偏差（开发环境 9527, 生产环境与后端一致）
-     */
-    @GetMapping("/{token}")
-    public void getChatPage(@PathVariable String token,
-            @RequestParam(required = false) String mode,
-            HttpServletResponse response) throws IOException {
-        // 验证 Token 并获取 AppId
-        Long appId = appTokenService.validateToken(token, null);
-        if (appId == null) {
-            response.sendError(401, "Invalid token");
-            return;
-        }
-        // 重定向到 embed.html（独立入口，不触发主应用的认证流程）
-        String frontendUrl = "http://localhost:9527/embed.html?appToken=" + token + "&appId=" + appId;
-        if (mode != null) {
-            frontendUrl += "&mode=" + mode;
-        }
-        response.sendRedirect(frontendUrl);
-    }
-
-    /**
-     * 生成嵌入脚本内容
-     * 从模板文件读取并注入参数
-     */
-    private String generateEmbedScript(String baseUrl, String chatUrl, String token) {
-        try {
-            // 读取模板文件
-            Resource resource = new ClassPathResource("static/embed.template.js");
-            String template = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-
-            // 替换占位符
-            String script = template
-                    .replace("{{BASE_URL}}", baseUrl)
-                    .replace("{{CHAT_URL}}", chatUrl)
-                    .replace("{{TOKEN}}", token);
-
-            log.info("成功从模板生成嵌入脚本, baseUrl: {}, chatUrl: {}", baseUrl, chatUrl);
-            return script;
-        } catch (Exception e) {
-            log.error("Failed to load embed template", e);
-            // 降级：返回基本的错误脚本
-            return "console.error('[KMatrix Embed] Failed to load embed script template: " + e.getMessage() + "');";
-        }
-    }
 }

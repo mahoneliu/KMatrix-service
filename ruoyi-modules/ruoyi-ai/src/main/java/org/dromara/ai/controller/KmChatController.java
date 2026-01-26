@@ -6,8 +6,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
+import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
+import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
@@ -34,6 +36,7 @@ public class KmChatController extends BaseController {
 
     private final IKmChatService chatService;
     private final org.dromara.ai.service.IKmAppTokenService appTokenService;
+    private final IChatSessionTokenService chatSessionTokenService;
 
     /**
      * 流式对话 (SSE)
@@ -45,26 +48,26 @@ public class KmChatController extends BaseController {
         response.setHeader("X-Accel-Buffering", "no");
         response.setHeader("Cache-Control", "no-cache");
 
-        // 如果没有常规登录，检查是否提供了 App Token
+        // 如果没有常规登录，检查是否提供了 Session Token 或 App Token
         if (!StpUtil.isLogin()) {
-            String token = null;
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
-
-            if (token != null) {
-                // 验证 Token 并获取 AppId
-                Long appId = appTokenService.validateToken(token, null);
-                if (appId != null) {
-                    // Token 有效，强制设置 appId 并标记为 Token 认证模式
-                    bo.setAppId(appId);
-                    // 这里我们暂时借用 bo 的一个属性或者通过内部逻辑处理，
-                    // 核心是让 chatService 知道这是一个免登录请求
-                } else {
-                    throw new org.dromara.common.core.exception.ServiceException("无效的访问 Token");
-                }
+            ChatSessionTokenInfo tokenInfo = parseSessionToken(authHeader);
+            if (tokenInfo != null) {
+                // Session Token 有效，设置 appId 和 userId
+                bo.setAppId(tokenInfo.getAppId());
+                bo.setUserId(tokenInfo.getUserId());
             } else {
-                throw new org.dromara.common.core.exception.ServiceException("未登录且未提供访问 Token");
+                // 尝试验证 App Token (向后兼容)
+                String token = extractToken(authHeader);
+                if (token != null) {
+                    Long appId = appTokenService.validateToken(token, null);
+                    if (appId != null) {
+                        bo.setAppId(appId);
+                    } else {
+                        throw new org.dromara.common.core.exception.ServiceException("无效的访问 Token");
+                    }
+                } else {
+                    throw new org.dromara.common.core.exception.ServiceException("未登录且未提供访问 Token");
+                }
             }
         } else {
             // 调试模式需要额外权限校验
@@ -80,7 +83,6 @@ public class KmChatController extends BaseController {
      * 普通对话(非流式)
      */
     @SaCheckPermission("ai:chat:send")
-    @Log(title = "AI对话", businessType = BusinessType.OTHER)
     @PostMapping("/send")
     public R<String> send(@Valid @RequestBody KmChatSendBo bo) {
         bo.setStream(false);
@@ -90,80 +92,151 @@ public class KmChatController extends BaseController {
     @GetMapping("/history/{sessionId}")
     public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (!StpUtil.isLogin()) {
-            validateAppToken(authHeader);
+        Long userId;
+        if (StpUtil.isLogin()) {
+            userId = StpUtil.getLoginIdAsLong();
+        } else {
+            ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+            userId = info.getUserId();
         }
-        return R.ok(chatService.getHistory(sessionId));
+        return R.ok(chatService.getHistory(sessionId, userId));
     }
 
     @GetMapping("/sessions/{appId}")
     public R<List<KmChatSessionVo>> getSessionList(@PathVariable Long appId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (!StpUtil.isLogin()) {
-            validateAppToken(authHeader);
+        Long userId;
+        if (StpUtil.isLogin()) {
+            userId = StpUtil.getLoginIdAsLong();
+        } else {
+            // 尝试解析 Session Token 获取 userId
+            ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
+            userId = tokenInfo.getUserId();
+            if (userId == null) {
+                // 如果是 App Token，没有 userId，无法查询会话列表(除了免登录模式下的)
+                // 但这里我们简单处理：必须要有一个 userId
+                throw new org.dromara.common.core.exception.ServiceException("需要有效的 Session Token");
+            }
         }
-        return R.ok(chatService.getSessionList(appId));
+        return R.ok(chatService.getSessionList(appId, userId));
     }
 
     /**
-     * 内部校验 Token
+     * 从 Authorization 头提取 Token
      */
-    private void validateAppToken(String authHeader) {
-        String token = null;
+    private String extractToken(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
+            return authHeader.substring(7);
         }
-        if (token == null || appTokenService.validateToken(token, null) == null) {
-            throw new org.dromara.common.core.exception.ServiceException("访问受限：请登录或提供有效的 Token");
+        return null;
+    }
+
+    /**
+     * 解析 Session Token（不抛异常）
+     */
+    private ChatSessionTokenInfo parseSessionToken(String authHeader) {
+        String token = extractToken(authHeader);
+        if (token == null) {
+            return null;
         }
+        return chatSessionTokenService.validateToken(token);
+    }
+
+    /**
+     * 验证并解析 Token（失败抛异常）
+     */
+    private ChatSessionTokenInfo validateAndParseToken(String authHeader) {
+        String token = extractToken(authHeader);
+        if (token == null) {
+            throw new org.dromara.common.core.exception.ServiceException("未提供访问 Token");
+        }
+
+        // 优先尝试 Session Token
+        ChatSessionTokenInfo tokenInfo = chatSessionTokenService.validateToken(token);
+        if (tokenInfo != null) {
+            return tokenInfo;
+        }
+
+        // 降级尝试 App Token
+        Long appId = appTokenService.validateToken(token, null);
+        if (appId != null) {
+            ChatSessionTokenInfo info = new ChatSessionTokenInfo();
+            info.setAppId(appId);
+            return info;
+        }
+
+        throw new org.dromara.common.core.exception.ServiceException("访问受限：无效的 Token");
+    }
+
+    /**
+     * 内部校验 Token（向后兼容方法）
+     */
+    private void validateToken(String authHeader) {
+        validateAndParseToken(authHeader);
     }
 
     /**
      * 清除会话历史
      */
-    @SaCheckPermission("ai:chat:clear")
-    @Log(title = "清除对话历史", businessType = BusinessType.DELETE)
     @DeleteMapping("/clear/{sessionId}")
-    public R<Void> clearHistory(@PathVariable Long sessionId) {
-        return toAjax(chatService.clearHistory(sessionId));
+    public R<Void> clearHistory(@PathVariable Long sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long userId = getUserIdFromContext(authHeader);
+        // 如果是登录用户，为了兼容旧的前端逻辑，这里不校验 checkPermission，而是依赖 service 层的 ownership 校验
+        // 如果需要管理员强删功能，则需要另外的接口或者判断 role
+        return toAjax(chatService.clearHistory(sessionId, userId));
     }
 
     /**
      * 清除应用下所有会话
      */
-    @SaCheckPermission("ai:chat:clear")
-    @Log(title = "清除应用对话", businessType = BusinessType.DELETE)
     @DeleteMapping("/clear-app/{appId}")
-    public R<Void> clearAppHistory(@PathVariable Long appId) {
-        return toAjax(chatService.clearAppHistory(appId));
+    public R<Void> clearAppHistory(@PathVariable Long appId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long userId = getUserIdFromContext(authHeader);
+        return toAjax(chatService.clearAppHistory(appId, userId));
     }
 
     /**
      * 更新会话标题
      */
-    @SaCheckPermission("ai:chat:edit")
-    @Log(title = "更新会话标题", businessType = BusinessType.UPDATE)
     @PutMapping("/session/{sessionId}/title")
-    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody java.util.Map<String, String> body) {
+    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody java.util.Map<String, String> body,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String title = body.get("title");
         if (org.dromara.common.core.utils.StringUtils.isBlank(title)) {
             return R.fail("标题不能为空");
         }
-        return toAjax(chatService.updateSessionTitle(sessionId, title));
+        Long userId = getUserIdFromContext(authHeader);
+        return toAjax(chatService.updateSessionTitle(sessionId, title, userId));
     }
 
     /**
      * 查询会话的执行详情
      * 调试会话（sessionId < 0）不支持查询，因为调试数据不保存到数据库
      */
-    @SaCheckPermission("ai:chat:history")
     @GetMapping("/execution/session/{sessionId}")
-    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId) {
+    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 调试会话（sessionId < 0）不支持查询
         if (sessionId < 0) {
             return R.fail("调试会话不保存执行记录");
         }
+        Long userId = getUserIdFromContext(authHeader);
+        return R.ok(chatService.getExecutionDetails(sessionId, userId));
+    }
 
-        return R.ok(chatService.getExecutionDetails(sessionId));
+    /**
+     * 获取当前操作用户ID (登录用户或匿名用户)
+     */
+    private Long getUserIdFromContext(String authHeader) {
+        if (StpUtil.isLogin()) {
+            return StpUtil.getLoginIdAsLong();
+        }
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        if (info.getUserId() == null) {
+            throw new org.dromara.common.core.exception.ServiceException("无权限：非法的用户标识");
+        }
+        return info.getUserId();
     }
 }

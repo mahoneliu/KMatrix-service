@@ -35,56 +35,64 @@ public interface IKmChatService {
      * 获取会话历史消息
      *
      * @param sessionId 会话ID
+     * @param userId    当前用户ID
      * @return 消息列表
      */
-    List<KmChatMessageVo> getHistory(Long sessionId);
+    List<KmChatMessageVo> getHistory(Long sessionId, Long userId);
 
     /**
-     * 获取应用的所有会话
+     * 获取应用的所有会话 (仅ID)
      *
-     * @param appId 应用ID
-     * @return 会话列表
+     * @param appId  应用ID
+     * @param userId 当前用户ID
+     * @return 会话ID列表
      */
-    List<Long> getSessionsByAppId(Long appId);
+    List<Long> getSessionsByAppId(Long appId, Long userId);
 
     /**
      * 获取应用下的会话列表
      *
-     * @param appId 应用ID
+     * @param appId  应用ID
+     * @param userId 当前用户ID
      * @return 会话列表
      */
-    List<KmChatSessionVo> getSessionList(Long appId);
+    List<KmChatSessionVo> getSessionList(Long appId, Long userId);
 
     /**
      * 清除会话历史
      *
      * @param sessionId 会话ID
+     * @param userId    当前用户ID
      * @return 是否成功
      */
-    Boolean clearHistory(Long sessionId);
+    Boolean clearHistory(Long sessionId, Long userId);
 
     /**
      * 清除应用下所有会话
      *
-     * @param appId 应用ID
+     * @param appId  应用ID
+     * @param userId 当前用户ID
      * @return 是否成功
      */
-    Boolean clearAppHistory(Long appId);
+    Boolean clearAppHistory(Long appId, Long userId);
 
     /**
      * 更新会话标题
      *
      * @param sessionId 会话ID
      * @param title     新标题
+     * @param userId    当前用户ID
      * @return 是否成功
      */
-    Boolean updateSessionTitle(Long sessionId, String title);
+    Boolean updateSessionTitle(Long sessionId, String title, Long userId);
 
     /**
      * 获取会话的执行详情
      *
      * @param sessionId 会话ID
+     * @param userId    当前用户ID
      * @return 执行详情列表
      */
-    List<org.dromara.ai.domain.vo.KmNodeExecutionVo> getExecutionDetails(Long sessionId);
+    List<org.dromara.ai.domain.vo.KmNodeExecutionVo> getExecutionDetails(Long sessionId, Long userId);
+
 }

@@ -51,4 +51,9 @@ public class KmChatSendBo {
      * 与debug不同的是，showExecutionInfo模式下执行详情仍然入库
      */
     private Boolean showExecutionInfo = false;
+
+    /**
+     * 用户ID（匿名用户认证时从 Session Token 解析后设置）
+     */
+    private Long userId;
 }

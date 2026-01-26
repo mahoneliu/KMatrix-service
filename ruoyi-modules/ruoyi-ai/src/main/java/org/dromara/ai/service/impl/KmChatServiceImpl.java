@@ -78,7 +78,7 @@ public class KmChatServiceImpl implements IKmChatService {
      * 获取会话历史消息
      */
     @Override
-    public List<KmChatMessageVo> getHistory(Long sessionId) {
+    public List<KmChatMessageVo> getHistory(Long sessionId, Long userId) {
         List<KmChatMessageVo> vos = messageMapper.selectVoList(
                 new LambdaQueryWrapper<KmChatMessage>()
                         .eq(KmChatMessage::getSessionId, sessionId)
@@ -114,8 +114,12 @@ public class KmChatServiceImpl implements IKmChatService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SseEmitter streamChat(KmChatSendBo bo) {
-        // 获取当前用户ID (必须在主线程获取，异步线程无法获取ThreadLocal)
-        Long userId = LoginHelper.getUserId();
+        // 获取当前用户ID (优先使用 BO 中的 userId，用于支持匿名调用)
+        Long userIdTemp = bo.getUserId();
+        if (userIdTemp == null) {
+            userIdTemp = LoginHelper.getUserId();
+        }
+        final Long userId = userIdTemp;
 
         // 创建SSE发射器
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
@@ -299,7 +303,11 @@ public class KmChatServiceImpl implements IKmChatService {
         KmAppVo app = loadApp(bo.getAppId());
         KmModel model = loadModel(app.getModelId());
         KmModelProvider provider = loadProvider(model.getProviderId());
-        Long userId = LoginHelper.getUserId();
+
+        Long userId = bo.getUserId();
+        if (userId == null) {
+            userId = LoginHelper.getUserId();
+        }
 
         // 2. 获取或创建会话
         Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId);
@@ -327,7 +335,7 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 8. 保存AI响应
-        saveMessage(sessionId, "assistant", aiResponse, LoginHelper.getUserId());
+        saveMessage(sessionId, "assistant", aiResponse, userId);
 
         return aiResponse;
     }
@@ -336,8 +344,7 @@ public class KmChatServiceImpl implements IKmChatService {
      * 获取应用的所有会话
      */
     @Override
-    public List<Long> getSessionsByAppId(Long appId) {
-        Long userId = LoginHelper.getUserId();
+    public List<Long> getSessionsByAppId(Long appId, Long userId) {
         List<KmChatSession> sessions = sessionMapper.selectList(
                 new LambdaQueryWrapper<KmChatSession>()
                         .eq(KmChatSession::getAppId, appId)
@@ -352,26 +359,30 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean clearHistory(Long sessionId) {
+    public Boolean clearHistory(Long sessionId, Long userId) {
+        // 验证所有权
+        KmChatSession session = sessionMapper.selectById(sessionId);
+        if (session == null) {
+            return false;
+        }
+        if (!session.getUserId().equals(userId)) {
+            throw new ServiceException("无权限操作此会话");
+        }
         // 删除会话消息
         messageMapper.delete(new LambdaQueryWrapper<KmChatMessage>()
                 .eq(KmChatMessage::getSessionId, sessionId));
 
         // 软删除会话
-        KmChatSession session = sessionMapper.selectById(sessionId);
-        if (session != null) {
-            session.setDelFlag("1");
-            return sessionMapper.updateById(session) > 0;
-        }
-        return false;
+        // 软删除会话
+        session.setDelFlag("1");
+        return sessionMapper.updateById(session) > 0;
     }
 
     /**
      * 获取应用下的会话列表
      */
     @Override
-    public List<KmChatSessionVo> getSessionList(Long appId) {
-        Long userId = LoginHelper.getUserId();
+    public List<KmChatSessionVo> getSessionList(Long appId, Long userId) {
         List<KmChatSession> sessions = sessionMapper.selectList(
                 new LambdaQueryWrapper<KmChatSession>()
                         .eq(KmChatSession::getAppId, appId)
@@ -386,8 +397,7 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean clearAppHistory(Long appId) {
-        Long userId = LoginHelper.getUserId();
+    public Boolean clearAppHistory(Long appId, Long userId) {
 
         // 查询用户在该应用下的所有会话
         List<KmChatSession> sessions = sessionMapper.selectList(
@@ -611,8 +621,7 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean updateSessionTitle(Long sessionId, String title) {
-        Long userId = LoginHelper.getUserId();
+    public Boolean updateSessionTitle(Long sessionId, String title, Long userId) {
         KmChatSession session = sessionMapper.selectById(sessionId);
 
         if (session == null) {
@@ -634,7 +643,16 @@ public class KmChatServiceImpl implements IKmChatService {
      * 获取会话的执行详情
      */
     @Override
-    public List<KmNodeExecutionVo> getExecutionDetails(Long sessionId) {
+    public List<KmNodeExecutionVo> getExecutionDetails(Long sessionId, Long userId) {
+        // 验证会话存在及权限
+        KmChatSession session = sessionMapper.selectById(sessionId);
+        if (session == null) {
+            return Collections.emptyList();
+        }
+        // 如果不是同一个用户，拒绝访问
+        if (!session.getUserId().equals(userId)) {
+            return Collections.emptyList();
+        }
         // 1. 查询会话的所有消息
         List<KmChatMessage> messages = messageMapper.selectList(
                 new LambdaQueryWrapper<KmChatMessage>()

@@ -119,6 +119,7 @@ security:
     - /*/api-docs/**
     - /warm-flow-ui/config
     - /ai/chat/stream
+    - /ai/chat/**
     - /chat/**
 
 # MyBatisPlus配置

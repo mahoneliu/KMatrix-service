@@ -42,6 +42,11 @@ public class KmChatSessionVo implements Serializable {
     private Long userId;
 
     /**
+     * 用户类型 (anonymous_user/system_user/third_user)
+     */
+    private String userType;
+
+    /**
      * 创建时间
      */
     private Date createTime;

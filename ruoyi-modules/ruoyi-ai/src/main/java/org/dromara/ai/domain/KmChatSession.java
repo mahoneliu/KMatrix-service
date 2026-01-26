@@ -44,6 +44,11 @@ public class KmChatSession extends BaseEntity {
     private Long userId;
 
     /**
+     * 用户类型 (anonymous_user/system_user/third_user)
+     */
+    private String userType;
+
+    /**
      * 删除标志(0代表存在 1代表删除)
      */
     private String delFlag;
