@@ -83,9 +83,14 @@ public class EmbedController {
     public void getChatPage(@PathVariable String token,
             @RequestParam(required = false) String mode,
             HttpServletResponse response) throws IOException {
-        // 开发环境下重定向到 9527，生产环境下重定向到相对路径或当前域名
-        // 这里暂时硬编码 localhost:9527 以便测试，实际应从配置获取
-        String frontendUrl = "http://localhost:9527/ai/chat?token=" + token;
+        // 验证 Token 并获取 AppId
+        Long appId = appTokenService.validateToken(token, null);
+        if (appId == null) {
+            response.sendError(401, "Invalid token");
+            return;
+        }
+        // 重定向到 embed.html（独立入口，不触发主应用的认证流程）
+        String frontendUrl = "http://localhost:9527/embed.html?appToken=" + token + "&appId=" + appId;
         if (mode != null) {
             frontendUrl += "&mode=" + mode;
         }
