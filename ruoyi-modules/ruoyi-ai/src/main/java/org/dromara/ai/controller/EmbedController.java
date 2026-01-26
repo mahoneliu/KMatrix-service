@@ -4,10 +4,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.service.IKmAppTokenService;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 嵌入对话脚本Controller
@@ -99,133 +102,26 @@ public class EmbedController {
 
     /**
      * 生成嵌入脚本内容
+     * 从模板文件读取并注入参数
      */
     private String generateEmbedScript(String baseUrl, String chatUrl, String token) {
-        return """
-                (function() {
-                    // 防止重复加载
-                    if (window.__KMATRIX_EMBED_LOADED__) return;
-                    window.__KMATRIX_EMBED_LOADED__ = true;
+        try {
+            // 读取模板文件
+            Resource resource = new ClassPathResource("static/embed.template.js");
+            String template = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
-                    // 配置
-                    var config = {
-                        baseUrl: '%s',
-                        chatUrl: '%s',
-                        token: '%s'
-                    };
+            // 替换占位符
+            String script = template
+                    .replace("{{BASE_URL}}", baseUrl)
+                    .replace("{{CHAT_URL}}", chatUrl)
+                    .replace("{{TOKEN}}", token);
 
-                    // 创建样式
-                    var style = document.createElement('style');
-                    style.textContent = `
-                        #km-embed-btn {
-                            position: fixed;
-                            bottom: 24px;
-                            right: 24px;
-                            width: 56px;
-                            height: 56px;
-                            border-radius: 50%%;
-                            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-                            border: none;
-                            cursor: pointer;
-                            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            z-index: 999998;
-                            transition: transform 0.2s, box-shadow 0.2s;
-                        }
-                        #km-embed-btn:hover {
-                            transform: scale(1.05);
-                            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-                        }
-                        #km-embed-btn svg {
-                            width: 28px;
-                            height: 28px;
-                            fill: white;
-                        }
-                        #km-embed-container {
-                            position: fixed;
-                            bottom: 96px;
-                            right: 24px;
-                            width: 400px;
-                            height: 600px;
-                            max-height: calc(100vh - 120px);
-                            border-radius: 16px;
-                            overflow: hidden;
-                            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-                            z-index: 999999;
-                            display: none;
-                            background: white;
-                        }
-                        #km-embed-container.active {
-                            display: block;
-                            animation: km-slide-up 0.3s ease-out;
-                        }
-                        #km-embed-container iframe {
-                            width: 100%%;
-                            height: 100%%;
-                            border: none;
-                        }
-                        @keyframes km-slide-up {
-                            from {
-                                opacity: 0;
-                                transform: translateY(20px);
-                            }
-                            to {
-                                opacity: 1;
-                                transform: translateY(0);
-                            }
-                        }
-                        @media (max-width: 480px) {
-                            #km-embed-container {
-                                width: calc(100vw - 32px);
-                                right: 16px;
-                                bottom: 88px;
-                                height: calc(100vh - 120px);
-                            }
-                            #km-embed-btn {
-                                right: 16px;
-                                bottom: 16px;
-                            }
-                        }
-                    `;
-                    document.head.appendChild(style);
-
-                    // 创建按钮
-                    var btn = document.createElement('button');
-                    btn.id = 'km-embed-btn';
-                    btn.title = 'AI 助手';
-                    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3c5.5 0 10 3.58 10 8s-4.5 8-10 8c-1.24 0-2.43-.18-3.53-.5C5.55 21 2 21 2 21c2.33-2.33 2.7-3.9 2.75-4.5C3.05 15.07 2 13.13 2 11c0-4.42 4.5-8 10-8z"/></svg>';
-                    document.body.appendChild(btn);
-
-                    // 创建容器
-                    var container = document.createElement('div');
-                    container.id = 'km-embed-container';
-                    container.innerHTML = '<iframe src="' + config.chatUrl + '?mode=float" allow="microphone"></iframe>';
-                    document.body.appendChild(container);
-
-                    // 切换显示
-                    var isOpen = false;
-                    btn.addEventListener('click', function() {
-                        isOpen = !isOpen;
-                        if (isOpen) {
-                            container.classList.add('active');
-                        } else {
-                            container.classList.remove('active');
-                        }
-                    });
-
-                    // 点击外部关闭
-                    document.addEventListener('click', function(e) {
-                        if (isOpen && !container.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-                            isOpen = false;
-                            container.classList.remove('active');
-                        }
-                    });
-
-                    console.log('KMatrix Embed loaded successfully');
-                })();
-                """
-                .formatted(baseUrl, chatUrl, token);
+            log.info("成功从模板生成嵌入脚本, baseUrl: {}, chatUrl: {}", baseUrl, chatUrl);
+            return script;
+        } catch (Exception e) {
+            log.error("Failed to load embed template", e);
+            // 降级：返回基本的错误脚本
+            return "console.error('[KMatrix Embed] Failed to load embed script template: " + e.getMessage() + "');";
+        }
     }
 }
