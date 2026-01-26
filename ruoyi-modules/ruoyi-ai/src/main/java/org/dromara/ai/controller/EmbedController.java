@@ -1,7 +1,6 @@
 package org.dromara.ai.controller;
 
 import cn.hutool.core.util.IdUtil;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

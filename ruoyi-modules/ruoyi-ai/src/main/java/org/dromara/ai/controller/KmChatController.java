@@ -1,6 +1,5 @@
 package org.dromara.ai.controller;
 
-import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -12,8 +11,6 @@ import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
-import org.dromara.common.log.annotation.Log;
-import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -82,10 +79,12 @@ public class KmChatController extends BaseController {
     /**
      * 普通对话(非流式)
      */
-    @SaCheckPermission("ai:chat:send")
     @PostMapping("/send")
-    public R<String> send(@Valid @RequestBody KmChatSendBo bo) {
+    public R<String> send(@Valid @RequestBody KmChatSendBo bo,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         bo.setStream(false);
+        // 设置用户ID (登录或匿名)
+        bo.setUserId(getUserIdFromContext(authHeader));
         return R.ok(chatService.chat(bo));
     }
 
