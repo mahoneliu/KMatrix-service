@@ -4,7 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
-import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
+import org.dromara.ai.domain.KmDatabaseMeta;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -14,15 +14,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * MyBatis TypeHandler for converting JSON string to List<NodeParamDefinitionVo>
+ * MyBatis TypeHandler for converting JSON string to
+ * List<KmDatabaseMeta.ColumnMeta>
  *
  * @author Mahone
- * @date 2026-01-14
+ * @date 2026-01-27
  */
-public class NodeParamListTypeHandler extends BaseTypeHandler<List<NodeParamDefinitionVo>> {
+public class ColumnMetaListTypeHandler extends BaseTypeHandler<List<KmDatabaseMeta.ColumnMeta>> {
 
     @Override
-    public void setNonNullParameter(PreparedStatement ps, int i, List<NodeParamDefinitionVo> parameter,
+    public void setNonNullParameter(PreparedStatement ps, int i, List<KmDatabaseMeta.ColumnMeta> parameter,
             JdbcType jdbcType) throws SQLException {
         String json = JSONUtil.toJsonStr(parameter);
         if (isPostgreSQL(ps)) {
@@ -53,26 +54,27 @@ public class NodeParamListTypeHandler extends BaseTypeHandler<List<NodeParamDefi
     }
 
     @Override
-    public List<NodeParamDefinitionVo> getNullableResult(ResultSet rs, String columnName) throws SQLException {
+    public List<KmDatabaseMeta.ColumnMeta> getNullableResult(ResultSet rs, String columnName) throws SQLException {
         return parseJson(rs.getString(columnName));
     }
 
     @Override
-    public List<NodeParamDefinitionVo> getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
+    public List<KmDatabaseMeta.ColumnMeta> getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         return parseJson(rs.getString(columnIndex));
     }
 
     @Override
-    public List<NodeParamDefinitionVo> getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
+    public List<KmDatabaseMeta.ColumnMeta> getNullableResult(CallableStatement cs, int columnIndex)
+            throws SQLException {
         return parseJson(cs.getString(columnIndex));
     }
 
-    private List<NodeParamDefinitionVo> parseJson(String json) {
+    private List<KmDatabaseMeta.ColumnMeta> parseJson(String json) {
         if (StrUtil.isBlank(json)) {
             return Collections.emptyList();
         }
         try {
-            return JSONUtil.toList(json, NodeParamDefinitionVo.class);
+            return JSONUtil.toList(json, KmDatabaseMeta.ColumnMeta.class);
         } catch (Exception e) {
             return Collections.emptyList();
         }

@@ -1,36 +1,29 @@
 package org.dromara.ai.controller;
 
-import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.stp.StpUtil;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.bo.KmChatSendBo;
-import org.dromara.ai.domain.bo.KmWorkflowTemplateBo;
+import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmAppVo;
-import org.dromara.ai.domain.vo.KmWorkflowTemplateVo;
+import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppService;
-import org.dromara.ai.service.IKmWorkflowTemplateService;
 import org.dromara.ai.workflow.WorkflowExecutor;
-import org.dromara.common.core.domain.R;
-import org.dromara.common.log.annotation.Log;
-import org.dromara.common.log.enums.BusinessType;
-import org.dromara.common.mybatis.core.page.PageQuery;
-import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.Arrays;
 import java.util.Map;
 
 /**
- * 工作流管理Controller
+ * 工作流执行接入Controller (公共/嵌入式)
+ * 仅支持通过 Token (Session Token) 授权的执行
  *
  * @author Mahone
- * @date 2026-01-26
  */
 @Slf4j
 @Validated
@@ -39,66 +32,19 @@ import java.util.Map;
 @RequestMapping("/ai/workflow")
 public class KmWorkflowController extends BaseController {
 
-    private final IKmWorkflowTemplateService workflowTemplateService;
-    private final WorkflowExecutor workflowExecutor;
     private final IKmAppService appService;
+    private final WorkflowExecutor workflowExecutor;
+    private final IChatSessionTokenService chatSessionTokenService;
 
     /**
-     * 查询工作流模板列表
-     */
-    @SaCheckPermission("ai:workflow:list")
-    @GetMapping("/template/list")
-    public TableDataInfo<KmWorkflowTemplateVo> list(KmWorkflowTemplateBo bo, PageQuery pageQuery) {
-        return workflowTemplateService.queryPageList(bo, pageQuery);
-    }
-
-    /**
-     * 获取工作流模板详细信息
-     */
-    @SaCheckPermission("ai:workflow:query")
-    @GetMapping("/template/{templateId}")
-    public R<KmWorkflowTemplateVo> getInfo(@PathVariable Long templateId) {
-        return R.ok(workflowTemplateService.queryById(templateId));
-    }
-
-    /**
-     * 新增工作流模板
-     */
-    @SaCheckPermission("ai:workflow:add")
-    @Log(title = "工作流模板", businessType = BusinessType.INSERT)
-    @PostMapping("/template")
-    public R<Void> add(@Validated @RequestBody KmWorkflowTemplateBo bo) {
-        return toAjax(workflowTemplateService.insertByBo(bo));
-    }
-
-    /**
-     * 修改工作流模板
-     */
-    @SaCheckPermission("ai:workflow:edit")
-    @Log(title = "工作流模板", businessType = BusinessType.UPDATE)
-    @PutMapping("/template")
-    public R<Void> edit(@Validated @RequestBody KmWorkflowTemplateBo bo) {
-        return toAjax(workflowTemplateService.updateByBo(bo));
-    }
-
-    /**
-     * 删除工作流模板
-     */
-    @SaCheckPermission("ai:workflow:remove")
-    @Log(title = "工作流模板", businessType = BusinessType.DELETE)
-    @DeleteMapping("/template/{templateIds}")
-    public R<Void> remove(@PathVariable Long[] templateIds) {
-        return toAjax(workflowTemplateService.deleteWithValidByIds(Arrays.asList(templateIds), true));
-    }
-
-    /**
-     * 执行工作流 (调试模式)
-     * 用于在通过应用ID执行前，直接使用 DSL JSON测试
+     * 执行工作流
      */
     @PostMapping(value = "/execute", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter execute(@RequestBody Map<String, Object> params, HttpServletResponse response) {
-        response.setHeader("X-Accel-Buffering", "no");
-        response.setHeader("Cache-Control", "no-cache");
+    public SseEmitter execute(@RequestBody Map<String, Object> params,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        // 鉴权：仅支持 Token 接入
+        ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
 
         // 构建 SseEmitter
         SseEmitter emitter = new SseEmitter(300000L); // 5分钟超时
@@ -107,52 +53,89 @@ public class KmWorkflowController extends BaseController {
             // 提取参数
             Long appId = params.get("appId") != null ? Long.valueOf(params.get("appId").toString()) : null;
             String message = (String) params.get("message");
-            // Map<String, Object> inputs = (Map<String, Object>) params.get("inputs");
-            String dslData = (String) params.get("dslData"); // 调试时传递 DSL
 
-            if (appId == null && dslData == null) {
-                throw new RuntimeException("AppID 或 DSL 数据不能为空");
+            if (appId == null) {
+                throw new RuntimeException("AppID 不能为空");
             }
 
             // 构造 ChatSendBo
             KmChatSendBo chatSendBo = new KmChatSendBo();
             chatSendBo.setAppId(appId);
             chatSendBo.setMessage(message);
-            // chatSendBo.setInputs(inputs); // ChatSendBo 需要支持 inputs，如果没有字段需添加或通过其他方式传
+            chatSendBo.setUserId(tokenInfo.getUserId());
+            if (tokenInfo.getUserType() != null) {
+                chatSendBo.setUserType(tokenInfo.getUserType().getCode());
+            }
 
             // 获取 App 信息
-            KmAppVo appVo;
-            if (appId != null) {
-                appVo = appService.queryById(appId);
-                // 如果传入了新的 DSL (调试模式)，覆盖 App 中的 DSL
-                if (dslData != null) {
-                    appVo.setDslData(dslData);
-                }
-            } else {
-                // 纯 DSL 模式构造虚拟 AppVo
-                appVo = new KmAppVo();
-                appVo.setAppId(-1L);
-                appVo.setAppName("Debug Workflow");
-                appVo.setDslData(dslData);
+            KmAppVo appVo = appService.queryById(appId);
+            if (appVo == null) {
+                throw new ServiceException("应用不存在");
             }
 
             // 执行
-            // 异步执行以支持 SSE
             new Thread(() -> {
                 try {
-                    workflowExecutor.executeWorkflowDebug(appVo, -1L, chatSendBo, emitter, StpUtil.getLoginIdAsLong());
+                    workflowExecutor.executeWorkflowDebug(appVo, -1L, chatSendBo, emitter, tokenInfo.getUserId());
                     emitter.complete();
                 } catch (Exception e) {
-                    log.error("工作流执行异常", e);
+                    log.error("公共端工作流执行异常", e);
                     emitter.completeWithError(e);
                 }
             }).start();
 
         } catch (Exception e) {
-            log.error("初始化工作流执行失败", e);
+            log.error("初始化公共端工作流失败", e);
             emitter.completeWithError(e);
         }
 
         return emitter;
+    }
+
+    /**
+     * 验证并解析 Token
+     */
+    private ChatSessionTokenInfo validateAndParseToken(String authHeader) {
+        String token = extractToken(authHeader);
+
+        // 1. 如果提供了 Token，尝试解析
+        if (StringUtils.isNotBlank(token)) {
+            ChatSessionTokenInfo tokenInfo = chatSessionTokenService.validateToken(token);
+            if (tokenInfo != null) {
+                return tokenInfo;
+            }
+        }
+
+        // 2. 回退检查：是否为系统登录用户
+        if (LoginHelper.isLogin()) {
+            ChatSessionTokenInfo info = new ChatSessionTokenInfo();
+            info.setUserId(LoginHelper.getUserId());
+            info.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER);
+            return info;
+        }
+
+        if (StringUtils.isBlank(token)) {
+            throw new ServiceException("访问受限：未提供 Token");
+        } else {
+            throw new ServiceException("访问受限：无效的 Token");
+        }
+    }
+
+    /**
+     * 提取 Token
+     */
+    private String extractToken(String authHeader) {
+        if (StringUtils.isBlank(authHeader)) {
+            return null;
+        }
+        String token = authHeader.trim();
+        if (token.equalsIgnoreCase("Bearer")) {
+            return null;
+        }
+        if (StringUtils.startsWithIgnoreCase(token, "Bearer ")) {
+            String value = token.substring(7).trim();
+            return StringUtils.isNotBlank(value) ? value : null;
+        }
+        return token;
     }
 }

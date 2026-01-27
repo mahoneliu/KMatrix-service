@@ -1,34 +1,31 @@
 package org.dromara.ai.controller;
 
-import cn.dev33.satoken.stp.StpUtil;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
-import org.dromara.ai.domain.vo.KmNodeExecutionVo;
 import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 
 /**
- * AI对话Controller
+ * AI对话接入Controller (公共/嵌入式)
+ * 仅用于通过 Session Token 或 App Token 接入的对话
  *
  * @author Mahone
- * @date 2025-12-31
  */
 @Validated
 @RequiredArgsConstructor
@@ -42,45 +39,23 @@ public class KmChatController extends BaseController {
 
     /**
      * 流式对话 (SSE)
-     * 支持正常对话和调试模式
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo, HttpServletResponse response,
+    public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        response.setHeader("X-Accel-Buffering", "no");
-        response.setHeader("Cache-Control", "no-cache");
+        ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
 
-        // 如果没有常规登录，检查是否提供了 Session Token 或 App Token
-        if (!StpUtil.isLogin()) {
-            ChatSessionTokenInfo tokenInfo = parseSessionToken(authHeader);
-            if (tokenInfo != null) {
-                // Session Token 有效，设置 appId 和 userId 和 userType
-                bo.setAppId(tokenInfo.getAppId());
-                bo.setUserId(tokenInfo.getUserId());
-                bo.setUserType(tokenInfo.getUserType().getCode());
-            } else {
-                // 尝试验证 App Token (向后兼容)
-                String token = extractToken(authHeader);
-                if (token != null) {
-                    Long appId = appTokenService.validateToken(token, null);
-                    if (appId != null) {
-                        bo.setAppId(appId);
-                        bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
-                    } else {
-                        throw new ServiceException("无效的访问 Token");
-                    }
-                } else {
-                    throw new ServiceException("未登录且未提供访问 Token");
-                }
-            }
+        // 设置鉴权后的属性
+        if (tokenInfo.getUserType() != null) {
+            bo.setUserType(tokenInfo.getUserType().getCode());
         } else {
-            // 登录用户默认为系统用户
-            bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
-            // 调试模式需要额外权限校验
-            if (Boolean.TRUE.equals(bo.getDebug())) {
-                StpUtil.checkPermission("ai:app:edit");
-            }
+            bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
         }
+
+        if (tokenInfo.getAppId() != null) {
+            bo.setAppId(tokenInfo.getAppId());
+        }
+        bo.setUserId(tokenInfo.getUserId());
 
         return chatService.streamChat(bo);
     }
@@ -92,102 +67,39 @@ public class KmChatController extends BaseController {
     public R<String> send(@Valid @RequestBody KmChatSendBo bo,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         bo.setStream(false);
-        // 设置用户ID (登录或匿名)
-        if (StpUtil.isLogin()) {
-            bo.setUserId(StpUtil.getLoginIdAsLong());
-            bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
-        } else {
-            ChatSessionTokenInfo info = validateAndParseToken(authHeader);
-            bo.setUserId(info.getUserId());
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+
+        bo.setUserId(info.getUserId());
+        if (info.getUserType() != null) {
             bo.setUserType(info.getUserType().getCode());
+        } else {
+            bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
         }
+
         return R.ok(chatService.chat(bo));
     }
 
+    /**
+     * 获取历史记录
+     */
     @GetMapping("/history/{sessionId}")
     public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Long userId;
-        if (StpUtil.isLogin()) {
-            userId = StpUtil.getLoginIdAsLong();
-        } else {
-            ChatSessionTokenInfo info = validateAndParseToken(authHeader);
-            userId = info.getUserId();
-        }
-        return R.ok(chatService.getHistory(sessionId, userId));
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return R.ok(chatService.getHistory(sessionId, info.getUserId()));
     }
 
+    /**
+     * 获取会话列表
+     */
     @GetMapping("/sessions/{appId}")
     public R<List<KmChatSessionVo>> getSessionList(@PathVariable Long appId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Long userId;
-        if (StpUtil.isLogin()) {
-            userId = StpUtil.getLoginIdAsLong();
-        } else {
-            // 尝试解析 Session Token 获取匿名用户 userId
-            ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
-            userId = tokenInfo.getUserId();
-            if (userId == null) {
-                // 如果是 App Token，没有 userId，无法查询会话列表(除了免登录模式下的)
-                // 但这里我们简单处理：必须要有一个 userId
-                throw new ServiceException("需要有效的 Session Token");
-            }
+        ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
+        if (tokenInfo.getUserId() == null) {
+            throw new ServiceException("需要有效的 Session Token");
         }
-        return R.ok(chatService.getSessionList(appId, userId));
-    }
-
-    /**
-     * 从 Authorization 头提取 Token
-     */
-    private String extractToken(String authHeader) {
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-        return null;
-    }
-
-    /**
-     * 解析 Session Token（不抛异常）
-     */
-    private ChatSessionTokenInfo parseSessionToken(String authHeader) {
-        String token = extractToken(authHeader);
-        if (token == null) {
-            return null;
-        }
-        return chatSessionTokenService.validateToken(token);
-    }
-
-    /**
-     * 验证并解析 Token（失败抛异常）
-     */
-    private ChatSessionTokenInfo validateAndParseToken(String authHeader) {
-        String token = extractToken(authHeader);
-        if (token == null) {
-            throw new ServiceException("未提供访问 Token");
-        }
-
-        // 优先尝试 Session Token
-        ChatSessionTokenInfo tokenInfo = chatSessionTokenService.validateToken(token);
-        if (tokenInfo != null) {
-            return tokenInfo;
-        }
-
-        // 降级尝试 App Token
-        Long appId = appTokenService.validateToken(token, null);
-        if (appId != null) {
-            ChatSessionTokenInfo info = new ChatSessionTokenInfo();
-            info.setAppId(appId);
-            return info;
-        }
-
-        throw new ServiceException("访问受限：无效的 Token");
-    }
-
-    /**
-     * 内部校验 Token（向后兼容方法）
-     */
-    private void validateToken(String authHeader) {
-        validateAndParseToken(authHeader);
+        return R.ok(chatService.getSessionList(appId, tokenInfo.getUserId()));
     }
 
     /**
@@ -196,10 +108,8 @@ public class KmChatController extends BaseController {
     @DeleteMapping("/clear/{sessionId}")
     public R<Void> clearHistory(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Long userId = getUserIdFromContext(authHeader);
-        // 如果是登录用户，为了兼容旧的前端逻辑，这里不校验 checkPermission，而是依赖 service 层的 ownership 校验
-        // 如果需要管理员强删功能，则需要另外的接口或者判断 role
-        return toAjax(chatService.clearHistory(sessionId, userId));
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return toAjax(chatService.clearHistory(sessionId, info.getUserId()));
     }
 
     /**
@@ -208,50 +118,92 @@ public class KmChatController extends BaseController {
     @DeleteMapping("/clear-app/{appId}")
     public R<Void> clearAppHistory(@PathVariable Long appId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Long userId = getUserIdFromContext(authHeader);
-        return toAjax(chatService.clearAppHistory(appId, userId));
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return toAjax(chatService.clearAppHistory(appId, info.getUserId()));
     }
 
     /**
      * 更新会话标题
      */
     @PutMapping("/session/{sessionId}/title")
-    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody Map<String, String> body,
+    public R<Void> updateSessionTitle(@PathVariable Long sessionId,
+            @RequestBody java.util.Map<String, String> params,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String title = body.get("title");
-        if (StringUtils.isBlank(title)) {
-            return R.fail("标题不能为空");
-        }
-        Long userId = getUserIdFromContext(authHeader);
-        return toAjax(chatService.updateSessionTitle(sessionId, title, userId));
+        String title = params.get("title");
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        chatService.updateSessionTitle(sessionId, title, info.getUserId());
+        return R.ok();
     }
 
     /**
-     * 查询会话的执行详情
-     * 调试会话（sessionId < 0）不支持查询，因为调试数据不保存到数据库
+     * 验证并解析 Token
+     */
+    private ChatSessionTokenInfo validateAndParseToken(String authHeader) {
+        String token = extractToken(authHeader);
+
+        // 1. 如果提供了 Token，尝试解析
+        if (StringUtils.isNotBlank(token)) {
+            // 尝试 Session Token
+            ChatSessionTokenInfo tokenInfo = chatSessionTokenService.validateToken(token);
+            if (tokenInfo != null) {
+                return tokenInfo;
+            }
+
+            // 尝试 App Token
+            Long appId = appTokenService.validateToken(token, null);
+            if (appId != null) {
+                ChatSessionTokenInfo info = new ChatSessionTokenInfo();
+                info.setAppId(appId);
+                info.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER);
+                return info;
+            }
+        }
+
+        // 2. 如果都没有，或者 Token 无效，尝试检查当前是否为系统登录用户 (Sa-Token 会话)
+        // 这样管理端在预览/调试时，共用这些公共接口也能正常工作
+        if (LoginHelper.isLogin()) {
+            ChatSessionTokenInfo info = new ChatSessionTokenInfo();
+            info.setUserId(LoginHelper.getUserId());
+            info.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER);
+            return info;
+        }
+
+        if (StringUtils.isBlank(token)) {
+            throw new ServiceException("访问受限：未提供 Token");
+        } else {
+            throw new ServiceException("访问受限：无效的 Token");
+        }
+    }
+
+    /**
+     * 查询会话的执行详情 (公共端)
+     * 调试会话（sessionId < 0）不支持查询
      */
     @GetMapping("/execution/session/{sessionId}")
-    public R<List<KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
+    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        // 调试会话（sessionId < 0）不支持查询
         if (sessionId < 0) {
             return R.fail("调试会话不保存执行记录");
         }
-        Long userId = getUserIdFromContext(authHeader);
-        return R.ok(chatService.getExecutionDetails(sessionId, userId));
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return R.ok(chatService.getExecutionDetails(sessionId, info.getUserId()));
     }
 
     /**
-     * 获取当前操作用户ID (登录用户或匿名用户)
+     * 从 Authorization 头提取 Token
      */
-    private Long getUserIdFromContext(String authHeader) {
-        if (StpUtil.isLogin()) {
-            return StpUtil.getLoginIdAsLong();
+    private String extractToken(String authHeader) {
+        if (StringUtils.isBlank(authHeader)) {
+            return null;
         }
-        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
-        if (info.getUserId() == null) {
-            throw new ServiceException("无权限：非法的用户标识");
+        String token = authHeader.trim();
+        if (token.equalsIgnoreCase("Bearer")) {
+            return null;
         }
-        return info.getUserId();
+        if (StringUtils.startsWithIgnoreCase(token, "Bearer ")) {
+            String value = token.substring(7).trim();
+            return StringUtils.isNotBlank(value) ? value : null;
+        }
+        return token;
     }
 }

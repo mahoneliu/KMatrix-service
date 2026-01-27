@@ -120,7 +120,14 @@ security:
     - /warm-flow-ui/config
     - /ai/chat/stream
     - /ai/chat/**
+    - /ai/workflow/**
     - /chat/**
+
+  # SSE 排除路径 (跳过 ASYNC 鉴权)
+  sseExcludes:
+    - /ai/chat/stream
+    - /ai/admin/chat/stream
+    - /ai/workflow/execute
 
 # MyBatisPlus配置
 # https://baomidou.com/config/

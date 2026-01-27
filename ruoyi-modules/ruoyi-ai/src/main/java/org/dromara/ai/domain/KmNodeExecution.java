@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 
@@ -53,13 +53,13 @@ public class KmNodeExecution implements Serializable {
     /**
      * 输入参数
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> inputParams;
 
     /**
      * 输出参数
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> outputParams;
 
     /**

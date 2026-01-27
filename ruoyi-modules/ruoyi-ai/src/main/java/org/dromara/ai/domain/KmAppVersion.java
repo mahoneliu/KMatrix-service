@@ -3,7 +3,7 @@ package org.dromara.ai.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import org.dromara.ai.domain.vo.config.AppSnapshot;
 
@@ -41,7 +41,7 @@ public class KmAppVersion implements Serializable {
     /**
      * 应用配置快照
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private AppSnapshot appSnapshot;
 
     /**

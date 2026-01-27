@@ -17,11 +17,25 @@
 
     <dependencies>
 
-        <!-- Mysql驱动包 -->
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-        </dependency>
+        <!-- PostgreSQL驱动包 -->
+        <!-- <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.5</version>
+        </dependency> -->
+
+        <!-- pgvector Java 支持 -->
+        <!-- <dependency>
+            <groupId>com.pgvector</groupId>
+            <artifactId>pgvector</artifactId>
+            <version>0.1.6</version>
+        </dependency> -->
+
+<!--        &lt;!&ndash; Mysql驱动包 &ndash;&gt;-->
+       <dependency>
+           <groupId>com.mysql</groupId>
+           <artifactId>mysql-connector-j</artifactId>
+       </dependency>
 
 <!--        &lt;!&ndash; mp支持的数据库均支持 只需要增加对应的jdbc依赖即可 &ndash;&gt;-->
 <!--        &lt;!&ndash; Oracle &ndash;&gt;-->
@@ -44,6 +58,7 @@
 <!--            <groupId>com.microsoft.sqlserver</groupId>-->
 <!--            <artifactId>mssql-jdbc</artifactId>-->
 <!--        </dependency>-->
+
 
         <dependency>
             <groupId>org.dromara</groupId>

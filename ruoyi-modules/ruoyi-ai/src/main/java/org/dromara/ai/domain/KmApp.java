@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.ai.domain.vo.config.AppKnowledgeConfig;
@@ -65,35 +65,37 @@ public class KmApp extends BaseEntity {
     /**
      * 模型配置
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private AppModelConfig modelSetting;
 
     /**
      * 知识库配置
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private AppKnowledgeConfig knowledgeSetting;
 
     /**
      * 工作流配置(元配置)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private AppWorkflowConfig workflowConfig;
 
     /**
      * 前端画布数据(JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String graphData;
 
     /**
      * 后端执行DSL(JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String dslData;
 
     /**
      * 应用参数配置(全局/接口/会话)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private AppParametersConfig parameters;
 
     /**

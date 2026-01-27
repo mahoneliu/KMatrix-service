@@ -3,7 +3,7 @@ package org.dromara.ai.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.ai.mapper.handler.NodeParamListTypeHandler;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -85,13 +85,13 @@ public class KmNodeDefinition extends BaseEntity {
     /**
      * 输入参数定义 (JSON Array)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = NodeParamListTypeHandler.class)
     List<NodeParamDefinitionVo> inputParams;
 
     /**
      * 输出参数定义 (JSON Array)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = NodeParamListTypeHandler.class)
     List<NodeParamDefinitionVo> outputParams;
 
     /**

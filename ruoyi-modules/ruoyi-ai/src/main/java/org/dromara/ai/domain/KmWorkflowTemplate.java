@@ -1,7 +1,9 @@
 package org.dromara.ai.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
@@ -16,7 +18,7 @@ import java.util.Date;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("km_workflow_template")
+@TableName(value = "km_workflow_template", autoResultMap = true)
 public class KmWorkflowTemplate extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
@@ -60,11 +62,13 @@ public class KmWorkflowTemplate extends BaseEntity {
     /**
      * 工作流DSL配置 (WorkflowConfig JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String workflowConfig;
 
     /**
      * 前端画布数据 (Vue Flow JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String graphData;
 
     /**

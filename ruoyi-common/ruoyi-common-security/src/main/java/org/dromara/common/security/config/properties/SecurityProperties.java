@@ -17,5 +17,9 @@ public class SecurityProperties {
      */
     private String[] excludes;
 
+    /**
+     * SSE 排除路径
+     */
+    private String[] sseExcludes;
 
 }

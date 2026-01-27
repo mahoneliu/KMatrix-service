@@ -8,6 +8,7 @@ import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import cn.dev33.satoken.util.SaTokenConsts;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -49,9 +50,9 @@ public class SecurityConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册路由拦截器，自定义验证规则
         registry.addInterceptor(new SaInterceptor(handler -> {
-                AllUrlHandler allUrlHandler = SpringUtils.getBean(AllUrlHandler.class);
-                // 登录验证 -- 排除多个路径
-                SaRouter
+            AllUrlHandler allUrlHandler = SpringUtils.getBean(AllUrlHandler.class);
+            // 登录验证 -- 排除多个路径
+            SaRouter
                     // 获取所有的
                     .match(allUrlHandler.getUrls())
                     // 对未排除的路径进行检查
@@ -69,21 +70,45 @@ public class SecurityConfig implements WebMvcConfigurer {
                         if (!StringUtils.equalsAny(clientId, headerCid, paramCid)) {
                             // token 无效
                             throw NotLoginException.newInstance(StpUtil.getLoginType(),
-                                "-100", "客户端ID与Token不匹配",
-                                StpUtil.getTokenValue());
+                                    "-100", "客户端ID与Token不匹配",
+                                    StpUtil.getTokenValue());
                         }
 
                         // 有效率影响 用于临时测试
                         // if (log.isDebugEnabled()) {
-                        //     log.info("剩余有效时间: {}", StpUtil.getTokenTimeout());
-                        //     log.info("临时有效时间: {}", StpUtil.getTokenActivityTimeout());
+                        // log.info("剩余有效时间: {}", StpUtil.getTokenTimeout());
+                        // log.info("临时有效时间: {}", StpUtil.getTokenActivityTimeout());
                         // }
 
                     });
-            })).addPathPatterns("/**")
-            // 排除不需要拦截的路径
-            .excludePathPatterns(securityProperties.getExcludes())
-            .excludePathPatterns(ssePath);
+        }) {
+            @SuppressWarnings("all")
+            @Override
+            public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+                    throws Exception {
+                // 如果是 SSE 的异步分发，跳过鉴权，防止上下文丢失报错
+                // 仅针对 SSE 路径和 AI 流式对话路径生效，确保安全
+                if (DispatcherType.ASYNC.equals(request.getDispatcherType())) {
+                    String uri = request.getRequestURI();
+                    // 检查 sse.path
+                    if (StringUtils.startsWith(uri, ssePath)) {
+                        return true;
+                    }
+                    // 检查自定义的 SSE 排除路径
+                    if (securityProperties.getSseExcludes() != null) {
+                        for (String exclude : securityProperties.getSseExcludes()) {
+                            if (StringUtils.startsWith(uri, exclude)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return super.preHandle(request, response, handler);
+            }
+        }).addPathPatterns("/**")
+                // 排除不需要拦截的路径
+                .excludePathPatterns(securityProperties.getExcludes())
+                .excludePathPatterns(ssePath);
     }
 
     /**
@@ -94,15 +119,15 @@ public class SecurityConfig implements WebMvcConfigurer {
         String username = SpringUtils.getProperty("spring.boot.admin.client.username");
         String password = SpringUtils.getProperty("spring.boot.admin.client.password");
         return new SaServletFilter()
-            .addInclude("/actuator", "/actuator/**")
-            .setAuth(obj -> {
-                SaHttpBasicUtil.check(username + ":" + password);
-            })
-            .setError(e -> {
-                HttpServletResponse response = ServletUtils.getResponse();
-                response.setContentType(SaTokenConsts.CONTENT_TYPE_APPLICATION_JSON);
-                return SaResult.error(e.getMessage()).setCode(HttpStatus.UNAUTHORIZED);
-            });
+                .addInclude("/actuator", "/actuator/**")
+                .setAuth(obj -> {
+                    SaHttpBasicUtil.check(username + ":" + password);
+                })
+                .setError(e -> {
+                    HttpServletResponse response = ServletUtils.getResponse();
+                    response.setContentType(SaTokenConsts.CONTENT_TYPE_APPLICATION_JSON);
+                    return SaResult.error(e.getMessage()).setCode(HttpStatus.UNAUTHORIZED);
+                });
     }
 
 }

@@ -156,20 +156,20 @@ public class KmChatServiceImpl implements IKmChatService {
                 // 判断是否为新会话（首次对话）
                 boolean isNewSession = (bo.getSessionId() == null);
 
-                // 4. 保存用户消息
-                saveMessage(sessionId, "user", bo.getMessage(), userId);
-
                 // 5. 检查应用类型
                 if ("2".equals(app.getAppType())) {
                     // 工作流类型应用
                     log.info("使用工作流处理对话, appId={}, isNewSession={}", app.getAppId(), isNewSession);
                     try {
-                        // 执行工作流
+                        // 先执行工作流获取 instanceId
                         Map<String, Object> result = workflowExecutor.executeWorkflow(
                                 app, sessionId, bo, emitter, userId);
 
                         String aiResponse = (String) result.get("finalResponse");
                         Long instanceId = (Long) result.get("instanceId");
+
+                        // 保存用户消息（带 instanceId）
+                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, effectiveUserId);
 
                         // 保存AI响应
                         if (aiResponse != null) {
@@ -200,7 +200,8 @@ public class KmChatServiceImpl implements IKmChatService {
                     return;
                 }
 
-                // 基础对话类型 - 使用原有逻辑
+                // 基础对话类型 - 先保存用户消息
+                saveMessage(sessionId, "user", bo.getMessage(), userId);
                 KmModel model = loadModel(app.getModelId());
                 KmModelProvider provider = loadProvider(model.getProviderId());
 

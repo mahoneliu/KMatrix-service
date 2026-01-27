@@ -3,7 +3,7 @@ package org.dromara.ai.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.ai.mapper.handler.ColumnMetaListTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
@@ -58,7 +58,7 @@ public class KmDatabaseMeta extends BaseEntity {
     /**
      * 列信息 (JSON数组)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = ColumnMetaListTypeHandler.class)
     private List<ColumnMeta> columns;
 
     /**

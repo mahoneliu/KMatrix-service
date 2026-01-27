@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import org.dromara.ai.domain.enums.WorkflowInstanceStatus;
 
@@ -43,6 +43,7 @@ public class KmWorkflowInstance implements Serializable {
     /**
      * 工作流配置快照(JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String workflowConfig;
 
     /**
@@ -58,7 +59,7 @@ public class KmWorkflowInstance implements Serializable {
     /**
      * 全局状态数据
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> globalState;
 
     /**

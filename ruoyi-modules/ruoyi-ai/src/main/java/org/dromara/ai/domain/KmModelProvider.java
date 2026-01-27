@@ -1,7 +1,9 @@
 package org.dromara.ai.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
@@ -14,7 +16,7 @@ import org.dromara.common.mybatis.core.domain.BaseEntity;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("km_model_provider")
+@TableName(value = "km_model_provider", autoResultMap = true)
 public class KmModelProvider extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
@@ -53,6 +55,7 @@ public class KmModelProvider extends BaseEntity {
     /**
      * 配置参数定义 (JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String configSchema;
 
     /**
@@ -68,6 +71,7 @@ public class KmModelProvider extends BaseEntity {
     /**
      * 支持的基础模型(JSON)
      */
+    @TableField(typeHandler = JsonTypeHandler.class)
     private String models;
 
     /**
