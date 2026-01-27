@@ -383,13 +383,14 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     public List<KmChatSessionVo> getSessionList(Long appId, Long userId) {
-        List<KmChatSession> sessions = sessionMapper.selectList(
+        List<KmChatSessionVo> sessions = sessionMapper.selectVoList(
                 new LambdaQueryWrapper<KmChatSession>()
                         .eq(KmChatSession::getAppId, appId)
                         .eq(KmChatSession::getUserId, userId)
                         .eq(KmChatSession::getDelFlag, "0")
+                        .last("limit 20")
                         .orderByDesc(KmChatSession::getCreateTime));
-        return MapstructUtils.convert(sessions, KmChatSessionVo.class);
+        return sessions;
     }
 
     /**

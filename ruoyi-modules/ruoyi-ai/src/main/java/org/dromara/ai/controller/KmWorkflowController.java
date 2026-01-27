@@ -10,7 +10,6 @@ import org.dromara.ai.domain.bo.KmWorkflowTemplateBo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmWorkflowTemplateVo;
 import org.dromara.ai.service.IKmAppService;
-import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.service.IKmWorkflowTemplateService;
 import org.dromara.ai.workflow.WorkflowExecutor;
 import org.dromara.common.core.domain.R;

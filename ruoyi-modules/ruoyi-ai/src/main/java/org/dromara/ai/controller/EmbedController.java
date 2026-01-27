@@ -6,7 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.bo.AnonymousAuthBo;
 import org.dromara.ai.domain.vo.AnonymousAuthVo;
+import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
+import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IChatSessionTokenService;
+import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class EmbedController {
 
     private final IKmAppTokenService appTokenService;
-    private final org.dromara.ai.service.IKmAppService appService;
+    private final IKmAppService appService;
     private final IChatSessionTokenService chatSessionTokenService;
 
     /**
@@ -70,13 +73,21 @@ public class EmbedController {
     /**
      * 获取应用信息 (免登录，通过 Token)
      */
-    @GetMapping("/app-info/{token}")
-    public org.dromara.common.core.domain.R<org.dromara.ai.domain.vo.KmAppVo> getAppInfo(@PathVariable String token) {
+    @GetMapping("/app-info")
+    public R<KmAppVo> getAppInfo(
+            @RequestParam("token") String token) {
+        // 1. 尝试验证 Session Token
+        ChatSessionTokenInfo sessionInfo = chatSessionTokenService.validateToken(token);
+        if (sessionInfo != null) {
+            return R.ok(appService.queryById(sessionInfo.getAppId()));
+        }
+
+        // 2. 尝试验证 App Token
         Long appId = appTokenService.validateToken(token, null);
         if (appId == null) {
-            return org.dromara.common.core.domain.R.fail("无效的 Token");
+            return R.fail("无效的 Token");
         }
-        return org.dromara.common.core.domain.R.ok(appService.queryById(appId));
+        return R.ok(appService.queryById(appId));
     }
 
 }

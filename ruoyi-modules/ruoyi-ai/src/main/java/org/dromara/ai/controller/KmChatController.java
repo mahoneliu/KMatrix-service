@@ -8,9 +8,13 @@ import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
+import org.dromara.ai.domain.vo.KmNodeExecutionVo;
 import org.dromara.ai.service.IChatSessionTokenService;
+import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * AI对话Controller
@@ -32,7 +37,7 @@ import java.util.List;
 public class KmChatController extends BaseController {
 
     private final IKmChatService chatService;
-    private final org.dromara.ai.service.IKmAppTokenService appTokenService;
+    private final IKmAppTokenService appTokenService;
     private final IChatSessionTokenService chatSessionTokenService;
 
     /**
@@ -60,10 +65,10 @@ public class KmChatController extends BaseController {
                     if (appId != null) {
                         bo.setAppId(appId);
                     } else {
-                        throw new org.dromara.common.core.exception.ServiceException("无效的访问 Token");
+                        throw new ServiceException("无效的访问 Token");
                     }
                 } else {
-                    throw new org.dromara.common.core.exception.ServiceException("未登录且未提供访问 Token");
+                    throw new ServiceException("未登录且未提供访问 Token");
                 }
             }
         } else {
@@ -108,13 +113,13 @@ public class KmChatController extends BaseController {
         if (StpUtil.isLogin()) {
             userId = StpUtil.getLoginIdAsLong();
         } else {
-            // 尝试解析 Session Token 获取 userId
+            // 尝试解析 Session Token 获取匿名用户 userId
             ChatSessionTokenInfo tokenInfo = validateAndParseToken(authHeader);
             userId = tokenInfo.getUserId();
             if (userId == null) {
                 // 如果是 App Token，没有 userId，无法查询会话列表(除了免登录模式下的)
                 // 但这里我们简单处理：必须要有一个 userId
-                throw new org.dromara.common.core.exception.ServiceException("需要有效的 Session Token");
+                throw new ServiceException("需要有效的 Session Token");
             }
         }
         return R.ok(chatService.getSessionList(appId, userId));
@@ -147,7 +152,7 @@ public class KmChatController extends BaseController {
     private ChatSessionTokenInfo validateAndParseToken(String authHeader) {
         String token = extractToken(authHeader);
         if (token == null) {
-            throw new org.dromara.common.core.exception.ServiceException("未提供访问 Token");
+            throw new ServiceException("未提供访问 Token");
         }
 
         // 优先尝试 Session Token
@@ -164,7 +169,7 @@ public class KmChatController extends BaseController {
             return info;
         }
 
-        throw new org.dromara.common.core.exception.ServiceException("访问受限：无效的 Token");
+        throw new ServiceException("访问受限：无效的 Token");
     }
 
     /**
@@ -200,10 +205,10 @@ public class KmChatController extends BaseController {
      * 更新会话标题
      */
     @PutMapping("/session/{sessionId}/title")
-    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody java.util.Map<String, String> body,
+    public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody Map<String, String> body,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String title = body.get("title");
-        if (org.dromara.common.core.utils.StringUtils.isBlank(title)) {
+        if (StringUtils.isBlank(title)) {
             return R.fail("标题不能为空");
         }
         Long userId = getUserIdFromContext(authHeader);
@@ -215,7 +220,7 @@ public class KmChatController extends BaseController {
      * 调试会话（sessionId < 0）不支持查询，因为调试数据不保存到数据库
      */
     @GetMapping("/execution/session/{sessionId}")
-    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
+    public R<List<KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // 调试会话（sessionId < 0）不支持查询
         if (sessionId < 0) {
@@ -234,7 +239,7 @@ public class KmChatController extends BaseController {
         }
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
         if (info.getUserId() == null) {
-            throw new org.dromara.common.core.exception.ServiceException("无权限：非法的用户标识");
+            throw new ServiceException("无权限：非法的用户标识");
         }
         return info.getUserId();
     }

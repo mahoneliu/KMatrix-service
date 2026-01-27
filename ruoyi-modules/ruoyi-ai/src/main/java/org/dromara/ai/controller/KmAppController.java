@@ -1,8 +1,10 @@
 package org.dromara.ai.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmAppBo;
+import org.dromara.ai.domain.vo.KmAppStatisticsVo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.common.core.domain.R;
@@ -15,6 +17,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.Map;
 
 /**
  * AI应用Controller
@@ -45,7 +48,7 @@ public class KmAppController extends BaseController {
     @SaCheckPermission("ai:app:export")
     @Log(title = "AI应用", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(KmAppBo bo, jakarta.servlet.http.HttpServletResponse response) {
+    public void export(KmAppBo bo, HttpServletResponse response) {
         // List<KmAppVo> list = appService.queryList(bo);
         // ExcelUtil.exportExcel(list, "AI应用", KmAppVo.class, response);
     }
@@ -97,7 +100,7 @@ public class KmAppController extends BaseController {
     @Log(title = "AI应用发布", businessType = BusinessType.UPDATE)
     @PostMapping("/publish/{appId}")
     public R<Void> publish(@PathVariable Long appId,
-            @RequestBody(required = false) java.util.Map<String, String> body) {
+            @RequestBody(required = false) Map<String, String> body) {
         String remark = body != null ? body.get("remark") : null;
         return toAjax(appService.publishApp(appId, remark));
     }
@@ -109,7 +112,7 @@ public class KmAppController extends BaseController {
     @Log(title = "更新公开访问", businessType = BusinessType.UPDATE)
     @PatchMapping("/{appId}/public-access")
     public R<Void> updatePublicAccess(@PathVariable Long appId,
-            @RequestBody java.util.Map<String, String> body) {
+            @RequestBody Map<String, String> body) {
         String publicAccess = body.get("publicAccess");
         return toAjax(appService.updatePublicAccess(appId, publicAccess));
     }
@@ -117,9 +120,8 @@ public class KmAppController extends BaseController {
     /**
      * 获取应用统计数据
      */
-    @SaCheckPermission("ai:app:query")
     @GetMapping("/{appId}/statistics")
-    public R<org.dromara.ai.domain.vo.KmAppStatisticsVo> getStatistics(@PathVariable Long appId,
+    public R<KmAppStatisticsVo> getStatistics(@PathVariable Long appId,
             @RequestParam(defaultValue = "7d") String period) {
         return R.ok(appService.getAppStatistics(appId, period));
     }
