@@ -150,7 +150,8 @@ public class KmChatServiceImpl implements IKmChatService {
                 final Long effectiveUserId = tempUserId;
 
                 // 4. 获取或创建会话
-                Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId);
+                Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId,
+                        bo.getUserType());
 
                 // 判断是否为新会话（首次对话）
                 boolean isNewSession = (bo.getSessionId() == null);
@@ -310,7 +311,7 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 2. 获取或创建会话
-        Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId);
+        Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId, bo.getUserType());
 
         // 3. 保存用户消息
         saveMessage(sessionId, "user", bo.getMessage(), userId);
@@ -518,7 +519,7 @@ public class KmChatServiceImpl implements IKmChatService {
     /**
      * 获取或创建会话
      */
-    private Long getOrCreateSession(Long appId, Long sessionId, Long userId) {
+    private Long getOrCreateSession(Long appId, Long sessionId, Long userId, String userType) {
         if (sessionId != null) {
             KmChatSession session = sessionMapper.selectById(sessionId);
             if (session != null && "0".equals(session.getDelFlag())) {
@@ -530,6 +531,7 @@ public class KmChatServiceImpl implements IKmChatService {
         KmChatSession newSession = new KmChatSession();
         newSession.setAppId(appId);
         newSession.setUserId(userId);
+        newSession.setUserType(userType);
         newSession.setTitle("新会话");
         newSession.setCreateTime(new Date());
         newSession.setDelFlag("0");

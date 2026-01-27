@@ -54,9 +54,10 @@ public class KmChatController extends BaseController {
         if (!StpUtil.isLogin()) {
             ChatSessionTokenInfo tokenInfo = parseSessionToken(authHeader);
             if (tokenInfo != null) {
-                // Session Token 有效，设置 appId 和 userId
+                // Session Token 有效，设置 appId 和 userId 和 userType
                 bo.setAppId(tokenInfo.getAppId());
                 bo.setUserId(tokenInfo.getUserId());
+                bo.setUserType(tokenInfo.getUserType().getCode());
             } else {
                 // 尝试验证 App Token (向后兼容)
                 String token = extractToken(authHeader);
@@ -64,6 +65,7 @@ public class KmChatController extends BaseController {
                     Long appId = appTokenService.validateToken(token, null);
                     if (appId != null) {
                         bo.setAppId(appId);
+                        bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
                     } else {
                         throw new ServiceException("无效的访问 Token");
                     }
@@ -72,6 +74,8 @@ public class KmChatController extends BaseController {
                 }
             }
         } else {
+            // 登录用户默认为系统用户
+            bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
             // 调试模式需要额外权限校验
             if (Boolean.TRUE.equals(bo.getDebug())) {
                 StpUtil.checkPermission("ai:app:edit");
@@ -89,7 +93,14 @@ public class KmChatController extends BaseController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         bo.setStream(false);
         // 设置用户ID (登录或匿名)
-        bo.setUserId(getUserIdFromContext(authHeader));
+        if (StpUtil.isLogin()) {
+            bo.setUserId(StpUtil.getLoginIdAsLong());
+            bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
+        } else {
+            ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+            bo.setUserId(info.getUserId());
+            bo.setUserType(info.getUserType().getCode());
+        }
         return R.ok(chatService.chat(bo));
     }
 

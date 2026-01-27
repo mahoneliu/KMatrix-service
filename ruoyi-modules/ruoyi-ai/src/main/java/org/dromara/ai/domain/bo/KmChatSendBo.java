@@ -56,4 +56,9 @@ public class KmChatSendBo {
      * 用户ID（匿名用户认证时从 Session Token 解析后设置）
      */
     private Long userId;
+
+    /**
+     * 用户类型 (anonymous_user/system_user/third_user)
+     */
+    private String userType;
 }
