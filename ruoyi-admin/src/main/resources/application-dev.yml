@@ -63,7 +63,7 @@ spring:
           driverClassName: org.postgresql.Driver
           url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
           username: postgres
-          password: your_password
+          password: password
 #        # MySQL 数据源 (已注释)
 #        mysql_master:
 #          type: ${spring.datasource.type}

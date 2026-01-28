@@ -555,7 +555,7 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 (2014, '清空对话', 2011, 3, '', '', 1, 0, 'F', '0', '0', 'ai:chat:clear', '#', 1, CURRENT_TIMESTAMP, ''),
 (2015, '节点定义', 2000, 3, 'node-definition', 'ai/node-definition/index', 1, 1, 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
 (2016, '数据源管理', 2000, 4, 'datasource-manager', 'ai/datasource-manager/index', 1, 1, 'C', '0', '0', 'ai:datasourceManager:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
-(2017, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', '', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, NOW());
+(2017, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, CURRENT_TIMESTAMP,'');
 
 INSERT INTO sys_role_menu (role_id, menu_id) 
-SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2016;
+SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2017;

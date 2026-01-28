@@ -293,12 +293,12 @@ insert into sys_menu VALUES ('11641', '请假申请修改', '11638', 3, '#', '',
 insert into sys_menu VALUES ('11642', '请假申请删除', '11638', 4, '#', '', '', 1, 0, 'F', '0', '0', 'workflow:leave:remove', '#', 103, 1, sysdate(), NULL, NULL, '');
 insert into sys_menu VALUES ('11643', '请假申请导出', '11638', 5, '#', '', '', 1, 0, 'F', '0', '0', 'workflow:leave:export', '#', 103, 1, sysdate(), NULL, NULL, '');
 
-INSERT INTO sys_dict_type VALUES (13, '000000', '业务状态', 'wf_business_status', 103, 1, sysdate(), NULL, NULL, '业务状态列表');
-INSERT INTO sys_dict_type VALUES (14, '000000', '表单类型', 'wf_form_type', 103, 1, sysdate(), NULL, NULL, '表单类型列表');
-INSERT INTO sys_dict_type VALUES (15, '000000', '任务状态', 'wf_task_status', 103, 1, sysdate(), NULL, NULL, '任务状态');
-INSERT INTO sys_dict_data VALUES (39, '000000', 1, '已撤销', 'cancel', 'wf_business_status', '', 'danger', 'N', 103, 1, sysdate(), NULL, NULL,'已撤销');
+INSERT INTO sys_dict_type VALUES (13, '000000', 1, '业务状态', 'wf_business_status', 103, 1, sysdate(), NULL, NULL, '业务状态列表');
+INSERT INTO sys_dict_type VALUES (14, '000000', 1, '表单类型', 'wf_form_type', 103, 1, sysdate(), NULL, NULL, '表单类型列表');
+INSERT INTO sys_dict_type VALUES (15, '000000', 1, '任务状态', 'wf_task_status', 103, 1, sysdate(), NULL, NULL, '任务状态');
+INSERT INTO sys_dict_data VALUES (39, '000000', 1, '已撤销', 'cancel', 'wf_business_status', '', 'danger', 'N', 103, 1, sysdate(), NULL, NULL, '已撤销');
 INSERT INTO sys_dict_data VALUES (40, '000000', 2, '草稿', 'draft', 'wf_business_status', '', 'info', 'N', 103, 1, sysdate(), NULL, NULL, '草稿');
-INSERT INTO sys_dict_data VALUES (41, '000000', 3, '待审核', 'waiting', 'wf_business_status', '', 'primary', 'N', 103, 1, sysdate(), NULL, NULL,'待审核');
+INSERT INTO sys_dict_data VALUES (41, '000000', 3, '待审核', 'waiting', 'wf_business_status', '', 'primary', 'N', 103, 1, sysdate(), NULL, NULL, '待审核');
 INSERT INTO sys_dict_data VALUES (42, '000000', 4, '已完成', 'finish', 'wf_business_status', '', 'success', 'N', 103, 1, sysdate(), NULL, NULL,'已完成');
 INSERT INTO sys_dict_data VALUES (43, '000000', 5, '已作废', 'invalid', 'wf_business_status', '', 'danger', 'N', 103, 1, sysdate(), NULL, NULL,'已作废');
 INSERT INTO sys_dict_data VALUES (44, '000000', 6, '已退回', 'back', 'wf_business_status', '', 'danger', 'N', 103, 1, sysdate(), NULL, NULL,'已退回');
