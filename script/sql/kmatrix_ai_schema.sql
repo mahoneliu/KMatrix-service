@@ -432,7 +432,8 @@ INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`
 (2010, '工作流编排', 2000, 10, 'workflow', 'ai/workflow/index', 1, 0, 'C', '1', '0', 'ai:app:workflow', '#', 1, NOW()),
 (2011, 'AI对话', 2000, 3, 'chat', 'ai/chat/index', 1, 0, 'C', '1', '0', 'ai:chat:view', 'chat', 1, NOW()),
 (2013, '节点定义', 2000, 3, 'node-definition', 'ai/node-definition/index', 1, 1, 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi:menu', 1, NOW()),
-(2014, '数据源管理', 2000, 4, 'datasource-manager', 'ai/datasource-manager/index', 1, 1, 'C', '0', '0', 'ai:datasourceManager:list', 'mdi:menu', 1, NOW());
+(2014, '数据源管理', 2000, 4, 'datasource-manager', 'ai/datasource-manager/index', 1, 1, 'C', '0', '0', 'ai:datasourceManager:list', 'mdi:menu', 1, NOW()),
+(2015, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', '', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, NOW());
 
 -- 角色权限
 INSERT INTO `sys_role_menu` (`role_id`, `menu_id`) 
