@@ -99,27 +99,27 @@ CREATE TABLE km_knowledge (
 -- ----------------------------
 -- 3. 知识库文档表
 -- ----------------------------
-DROP TABLE IF EXISTS km_document CASCADE;
-CREATE TABLE km_document (
-    doc_id          BIGINT          NOT NULL,
-    knowledge_id    BIGINT          NOT NULL,
-    file_name       VARCHAR(128)    NOT NULL,
-    file_url        VARCHAR(500)    NOT NULL,
-    file_type       VARCHAR(10)     DEFAULT '',
-    file_size       BIGINT          DEFAULT 0,
-    char_count      INTEGER         DEFAULT 0,
-    status          CHAR(1)         DEFAULT '0',
-    error_msg       VARCHAR(1000)   DEFAULT '',
-    create_dept     BIGINT          DEFAULT NULL,
-    create_by       BIGINT          DEFAULT NULL,
-    create_time     TIMESTAMP       DEFAULT NULL,
-    update_by       BIGINT          DEFAULT NULL,
-    update_time     TIMESTAMP       DEFAULT NULL,
-    del_flag        CHAR(1)         DEFAULT '0',
-    remark          VARCHAR(500)    DEFAULT NULL,
-    PRIMARY KEY (doc_id)
-);
-CREATE INDEX idx_km_doc_kb_id ON km_document(knowledge_id);
+-- DROP TABLE IF EXISTS km_document CASCADE;
+-- CREATE TABLE km_document (
+--     doc_id          BIGINT          NOT NULL,
+--     knowledge_id    BIGINT          NOT NULL,
+--     file_name       VARCHAR(128)    NOT NULL,
+--     file_url        VARCHAR(500)    NOT NULL,
+--     file_type       VARCHAR(10)     DEFAULT '',
+--     file_size       BIGINT          DEFAULT 0,
+--     char_count      INTEGER         DEFAULT 0,
+--     status          CHAR(1)         DEFAULT '0',
+--     error_msg       VARCHAR(1000)   DEFAULT '',
+--     create_dept     BIGINT          DEFAULT NULL,
+--     create_by       BIGINT          DEFAULT NULL,
+--     create_time     TIMESTAMP       DEFAULT NULL,
+--     update_by       BIGINT          DEFAULT NULL,
+--     update_time     TIMESTAMP       DEFAULT NULL,
+--     del_flag        CHAR(1)         DEFAULT '0',
+--     remark          VARCHAR(500)    DEFAULT NULL,
+--     PRIMARY KEY (doc_id)
+-- );
+-- CREATE INDEX idx_km_doc_kb_id ON km_document(knowledge_id);
 
 -- ----------------------------
 -- 3.1 文档分段表 (Paragraph) 并集成 pgvector

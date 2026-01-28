@@ -58,6 +58,12 @@
             <artifactId>ruoyi-common-log</artifactId>
         </dependency>
 
+        <!-- 引入 ruoyi-system 模块，用于 ISysOssService -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-system</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.dromara</groupId>
             <artifactId>ruoyi-common-doc</artifactId>
@@ -135,6 +141,79 @@
             <version>${langgraph4j.version}</version>
         </dependency>
 
+        <!-- LangChain4j PgVector 向量存储 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-pgvector</artifactId>
+        </dependency>
+
+        <!-- LangChain4j ONNX Embeddings (支持 BGE 等本地模型) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+        </dependency>
+
+        <!-- LangChain4j ONNX Scoring/Reranker (BGE-Reranker 等) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-onnx-scoring</artifactId>
+        </dependency>
+
+        <!-- LangChain4j Apache Tika 文档解析器 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.linpeilie</groupId>
+            <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
+        </dependency>
+
     </dependencies>
 
+    <!-- <build>
+        <plugins>
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.14.0</version>
+    <configuration>
+        <useIncrementalCompilation>false</useIncrementalCompilation>
+        <compilerArgs>
+            <arg>-AadapterPackage=org.dromara.ai.convert</arg>
+            <arg>-AmapperPackage=org.dromara.ai.convert.mapper</arg>
+            <arg>-parameters</arg>
+        </compilerArgs>
+        <annotationProcessorPaths>
+            <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </path>
+            <path>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct-processor</artifactId>
+                <version>1.5.5.Final</version>
+            </path>
+            <path>
+                <groupId>io.github.linpeilie</groupId>
+                <artifactId>mapstruct-plus-processor</artifactId>
+                <version>${mapstruct-plus.version}</version>
+            </path>
+            <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok-mapstruct-binding</artifactId>
+                <version>${mapstruct-plus.lombok.version}</version>
+            </path>
+            <path>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-configuration-processor</artifactId>
+                <version>${spring-boot.version}</version>
+            </path>
+        </annotationProcessorPaths>
+    </configuration>
+</plugin>
+        </plugins>
+    </build> -->
 </project>

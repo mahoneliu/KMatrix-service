@@ -80,27 +80,27 @@ CREATE TABLE `km_knowledge` (
   PRIMARY KEY (`knowledge_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库表';
 
-DROP TABLE IF EXISTS `km_document`;
-CREATE TABLE `km_document` (
-  `doc_id` bigint(20) NOT NULL COMMENT '文档ID',
-  `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
-  `file_name` varchar(128) NOT NULL COMMENT '文件名',
-  `file_url` varchar(500) NOT NULL COMMENT '文件路径',
-  `file_type` varchar(10) DEFAULT '' COMMENT '文件类型',
-  `file_size` bigint(20) DEFAULT '0' COMMENT '文件大小',
-  `char_count` int(11) DEFAULT '0' COMMENT '字符数',
-  `status` char(1) DEFAULT '0' COMMENT '状态（0待解析 1解析中 2完成 3失败）',
-  `error_msg` varchar(1000) DEFAULT '' COMMENT '错误信息',
-  `create_dept` bigint(20) DEFAULT NULL COMMENT '创建部门',
-  `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` bigint(20) DEFAULT NULL COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (`doc_id`),
-  KEY `idx_kb_id` (`knowledge_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库文档表';
+-- DROP TABLE IF EXISTS `km_document`;
+-- CREATE TABLE `km_document` (
+--   `doc_id` bigint(20) NOT NULL COMMENT '文档ID',
+--   `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
+--   `file_name` varchar(128) NOT NULL COMMENT '文件名',
+--   `file_url` varchar(500) NOT NULL COMMENT '文件路径',
+--   `file_type` varchar(10) DEFAULT '' COMMENT '文件类型',
+--   `file_size` bigint(20) DEFAULT '0' COMMENT '文件大小',
+--   `char_count` int(11) DEFAULT '0' COMMENT '字符数',
+--   `status` char(1) DEFAULT '0' COMMENT '状态（0待解析 1解析中 2完成 3失败）',
+--   `error_msg` varchar(1000) DEFAULT '' COMMENT '错误信息',
+--   `create_dept` bigint(20) DEFAULT NULL COMMENT '创建部门',
+--   `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
+--   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+--   `update_by` bigint(20) DEFAULT NULL COMMENT '更新者',
+--   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+--   `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
+--   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+--   PRIMARY KEY (`doc_id`),
+--   KEY `idx_kb_id` (`knowledge_id`)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库文档表';
 
 DROP TABLE IF EXISTS `km_paragraph`;
 CREATE TABLE `km_paragraph` (
