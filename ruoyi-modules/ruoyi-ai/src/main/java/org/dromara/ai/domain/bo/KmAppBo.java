@@ -118,4 +118,14 @@ public class KmAppBo extends BaseEntity {
      */
     private String remark;
 
+    /**
+     * 来源模版ID
+     */
+    private Long sourceTemplateId;
+
+    /**
+     * 来源模版类型(0系统/1自建)
+     */
+    private String sourceTemplateScope;
+
 }

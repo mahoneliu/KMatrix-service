@@ -119,6 +119,16 @@ public class KmApp extends BaseEntity {
     private String publicAccess;
 
     /**
+     * 来源模版ID
+     */
+    private Long sourceTemplateId;
+
+    /**
+     * 来源模版类型(0系统/1自建)
+     */
+    private String sourceTemplateScope;
+
+    /**
      * 删除标志
      */
     private String delFlag;

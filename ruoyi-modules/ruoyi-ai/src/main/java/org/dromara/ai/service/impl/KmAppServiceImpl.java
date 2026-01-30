@@ -52,7 +52,18 @@ public class KmAppServiceImpl implements IKmAppService {
      */
     @Override
     public KmAppVo queryById(Long appId) {
-        return baseMapper.selectVoById(appId);
+        KmAppVo vo = baseMapper.selectVoById(appId);
+        if (vo != null) {
+            List<KmAppKnowledge> list = appKnowledgeMapper.selectList(
+                    new LambdaQueryWrapper<KmAppKnowledge>().eq(KmAppKnowledge::getAppId, appId));
+            if (CollUtil.isNotEmpty(list)) {
+                String ids = list.stream()
+                        .map(k -> k.getKnowledgeId().toString())
+                        .collect(Collectors.joining(","));
+                vo.setKnowledgeIds(ids);
+            }
+        }
+        return vo;
     }
 
     /**

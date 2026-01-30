@@ -110,6 +110,16 @@ public class KmAppVo implements Serializable {
     private String publicAccess;
 
     /**
+     * 来源模版ID
+     */
+    private Long sourceTemplateId;
+
+    /**
+     * 来源模版类型(0系统/1自建)
+     */
+    private String sourceTemplateScope;
+
+    /**
      * 创建者
      */
     private String createBy;
@@ -119,6 +129,11 @@ public class KmAppVo implements Serializable {
      */
     @Translation(type = TransConstant.USER_ID_TO_NAME, mapper = "createBy")
     private String createByName;
+
+    /**
+     * 关联知识库ID集合（逗号分隔）
+     */
+    private String knowledgeIds;
 
     /**
      * 更新者

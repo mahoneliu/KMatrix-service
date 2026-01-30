@@ -139,6 +139,10 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         appBo.setStatus("0"); // 草稿状态
         appBo.setGraphData(template.getGraphData());
 
+        // 2.1 记录模版来源
+        appBo.setSourceTemplateId(templateId);
+        appBo.setSourceTemplateScope(template.getScopeType()); // 0=系统, 1=自建
+
         // 3. 解析 workflowConfig JSON
         if (StringUtils.isNotBlank(template.getWorkflowConfig())) {
             try {
