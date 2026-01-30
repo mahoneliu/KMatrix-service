@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
 import org.dromara.ai.domain.vo.KmKnowledgeBaseVo;
+import org.dromara.ai.domain.vo.KmStatisticsVo;
 import org.dromara.ai.service.IKmKnowledgeBaseService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.validate.AddGroup;
@@ -54,6 +55,14 @@ public class KmKnowledgeBaseController extends BaseController {
     @GetMapping("/{id}")
     public R<KmKnowledgeBaseVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return R.ok(knowledgeBaseService.queryById(id));
+    }
+
+    /**
+     * 获取知识库统计信息
+     */
+    @GetMapping("/statistics")
+    public R<KmStatisticsVo> getStatistics() {
+        return R.ok(knowledgeBaseService.getStatistics());
     }
 
     /**

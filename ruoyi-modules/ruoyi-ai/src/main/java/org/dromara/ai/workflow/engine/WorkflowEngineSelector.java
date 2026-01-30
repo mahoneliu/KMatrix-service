@@ -2,7 +2,7 @@ package org.dromara.ai.workflow.engine;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.workflow.config.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

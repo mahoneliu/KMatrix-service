@@ -50,4 +50,9 @@ public class KmRetrievalBo implements Serializable {
      * 是否启用 Rerank
      */
     private Boolean enableRerank = false;
+
+    /**
+     * 是否启用关键词高亮 (默认 false，仅全文检索场景使用)
+     */
+    private Boolean enableHighlight = false;
 }

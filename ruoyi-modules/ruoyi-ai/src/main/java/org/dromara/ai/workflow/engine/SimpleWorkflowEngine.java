@@ -5,12 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.service.IWorkflowInstanceService;
-import org.dromara.ai.workflow.config.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.factory.NodeFactory;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 

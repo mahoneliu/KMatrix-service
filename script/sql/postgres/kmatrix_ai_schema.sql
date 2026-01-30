@@ -521,7 +521,8 @@ INSERT INTO km_node_definition(node_def_id, node_type, node_label, node_icon, no
 (7, 'FIXED_RESPONSE', '指定回复', 'mdi:message-text', '#7A7170FF', 'action', '返回预设的固定文本内容', '0', '1', '1', '0', '[]', '[{"key":"response","label":"回复内容","type":"string","required":true,"defaultValue":null,"description":"固定的回复文本"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-24 02:47:10', NULL),
 (8, 'DB_QUERY', '数据库查询', 'mdi:database-search', '#06b6d4', 'ai', '结合LLM智能分析用户问题，生成SQL查询并返回自然语言回答', '0', '1', '0', '0', '[{"key":"userQuery","label":"用户问题","type":"string","required":true,"defaultValue":null,"description":"用户提出的业务问题"}]', '[{"key":"generatedSql","label":"生成的SQL","type":"string","required":true,"defaultValue":null,"description":"LLM生成的SQL语句"},{"key":"queryResult","label":"查询结果","type":"object","required":true,"defaultValue":null,"description":"SQL执行结果(JSON)"},{"key":"response","label":"AI回复","type":"string","required":true,"defaultValue":null,"description":"基于查询结果生成的自然语言回答"}]', 1, NULL, NULL, NULL, '2026-01-20 02:50:40', 1, '2026-01-20 03:07:34', NULL),
 (9, 'SQL_GENERATE', 'SQL生成', 'mdi:database-cog', '#8b5cf6', 'ai', '使用LLM分析用户问题，结合数据库元数据生成SQL语句', '0', '1', '0', '0', '[{"key":"userQuery","label":"用户问题","type":"string","required":true,"description":"用户提出的业务问题"}]', '[{"key":"generatedSql","label":"生成的SQL","type":"string","required":true,"description":"LLM生成的SQL语句"}]', 1, NULL, NULL, NULL, '2026-01-24 02:16:29', NULL, NULL, NULL),
-(10, 'SQL_EXECUTE', 'SQL执行', 'mdi:database-arrow-right', '#06b6d4', 'database', '执行SQL语句并返回查询结果', '0', '1', '0', '0', '[{"key":"sql","label":"SQL语句","type":"string","required":true,"defaultValue":null,"description":"待执行的SQL语句"}]', '[{"key":"queryResult","label":"查询结果","type":"object","required":true,"defaultValue":null,"description":"SQL执行结果(JSON)"},{"key":"rowCount","label":"返回行数","type":"number","required":true,"defaultValue":null,"description":"查询返回的行数"},{"key":"strResult","label":"查询结果","type":"string","required":true,"defaultValue":"","description":""}]', 1, NULL, NULL, NULL, '2026-01-24 02:16:29', 1, '2026-01-24 04:32:48', NULL);
+(10, 'SQL_EXECUTE', 'SQL执行', 'mdi:database-arrow-right', '#06b6d4', 'database', '执行SQL语句并返回查询结果', '0', '1', '0', '0', '[{"key":"sql","label":"SQL语句","type":"string","required":true,"defaultValue":null,"description":"待执行的SQL语句"}]', '[{"key":"queryResult","label":"查询结果","type":"object","required":true,"defaultValue":null,"description":"SQL执行结果(JSON)"},{"key":"rowCount","label":"返回行数","type":"number","required":true,"defaultValue":null,"description":"查询返回的行数"},{"key":"strResult","label":"查询结果","type":"string","required":true,"defaultValue":"","description":""}]', 1, NULL, NULL, NULL, '2026-01-24 02:16:29', 1, '2026-01-24 04:32:48', NULL),
+(11, 'KNOWLEDGE_RETRIEVAL', '知识检索', 'mdi:book-search', '#f59e0b', 'ai', '从知识库中检索相关文档片段，用于RAG对话', '0', '1', '0', '0', '[{"key":"query","label":"查询文本","type":"string","required":true,"description":"用于检索的查询文本"}]', '[{"key":"context","label":"检索上下文","type":"string","required":true,"description":"拼接后的上下文文本"},{"key":"docCount","label":"文档数量","type":"number","required":true,"description":"检索到的文档数量"},{"key":"retrievedDocs","label":"检索结果","type":"array","required":true,"description":"检索到的文档片段列表"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-31 10:28:03', NULL);
 
 -- 3. 连接规则数据 (1-44 号规则)
 INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, create_time) VALUES 
@@ -534,7 +535,14 @@ INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type
 (26, 'START', 'SQL_GENERATE', '0', 10, CURRENT_TIMESTAMP), (27, 'LLM_CHAT', 'SQL_GENERATE', '0', 10, CURRENT_TIMESTAMP), (28, 'CONDITION', 'SQL_GENERATE', '0', 10, CURRENT_TIMESTAMP), (29, 'INTENT_CLASSIFIER', 'SQL_GENERATE', '0', 10, CURRENT_TIMESTAMP),
 (30, 'SQL_GENERATE', 'SQL_EXECUTE', '0', 10, CURRENT_TIMESTAMP), (31, 'SQL_GENERATE', 'END', '0', 10, CURRENT_TIMESTAMP), (32, 'SQL_GENERATE', 'LLM_CHAT', '0', 10, CURRENT_TIMESTAMP), (33, 'SQL_GENERATE', 'CONDITION', '0', 10, CURRENT_TIMESTAMP), (34, 'SQL_GENERATE', 'FIXED_RESPONSE', '0', 10, CURRENT_TIMESTAMP),
 (35, 'START', 'SQL_EXECUTE', '0', 10, CURRENT_TIMESTAMP), (37, 'LLM_CHAT', 'SQL_EXECUTE', '0', 10, CURRENT_TIMESTAMP), (38, 'CONDITION', 'SQL_EXECUTE', '0', 10, CURRENT_TIMESTAMP), (39, 'INTENT_CLASSIFIER', 'SQL_EXECUTE', '0', 10, CURRENT_TIMESTAMP),
-(40, 'SQL_EXECUTE', 'END', '0', 10, CURRENT_TIMESTAMP), (41, 'SQL_EXECUTE', 'LLM_CHAT', '0', 10, CURRENT_TIMESTAMP), (42, 'SQL_EXECUTE', 'CONDITION', '0', 10, CURRENT_TIMESTAMP), (43, 'SQL_EXECUTE', 'FIXED_RESPONSE', '0', 10, CURRENT_TIMESTAMP), (44, 'SQL_EXECUTE', 'INTENT_CLASSIFIER', '0', 10, CURRENT_TIMESTAMP);
+(40, 'SQL_EXECUTE', 'END', '0', 10, CURRENT_TIMESTAMP), (41, 'SQL_EXECUTE', 'LLM_CHAT', '0', 10, CURRENT_TIMESTAMP), (42, 'SQL_EXECUTE', 'CONDITION', '0', 10, CURRENT_TIMESTAMP), (43, 'SQL_EXECUTE', 'FIXED_RESPONSE', '0', 10, CURRENT_TIMESTAMP), (44, 'SQL_EXECUTE', 'INTENT_CLASSIFIER', '0', 10, CURRENT_TIMESTAMP),
+(50, 'START', 'KNOWLEDGE_RETRIEVAL', '0', 10, NOW()),
+(51, 'LLM_CHAT', 'KNOWLEDGE_RETRIEVAL', '0', 10, NOW()),
+(52, 'CONDITION', 'KNOWLEDGE_RETRIEVAL', '0', 10, NOW()),
+(53, 'INTENT_CLASSIFIER', 'KNOWLEDGE_RETRIEVAL', '0', 10, NOW()),
+(54, 'KNOWLEDGE_RETRIEVAL', 'LLM_CHAT', '0', 10, NOW()),
+(55, 'KNOWLEDGE_RETRIEVAL', 'CONDITION', '0', 10, NOW()),
+(56, 'KNOWLEDGE_RETRIEVAL', 'END', '0', 10, NOW());
 
 -- 4. 菜单数据
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES 
@@ -555,7 +563,177 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 (2014, '清空对话', 2011, 3, '', '', 1, 0, 'F', '0', '0', 'ai:chat:clear', '#', 1, CURRENT_TIMESTAMP, ''),
 (2015, '节点定义', 2000, 3, 'node-definition', 'ai/node-definition/index', 1, 1, 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
 (2016, '数据源管理', 2000, 4, 'datasource-manager', 'ai/datasource-manager/index', 1, 1, 'C', '0', '0', 'ai:datasourceManager:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
-(2017, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, CURRENT_TIMESTAMP,'');
+(2017, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, CURRENT_TIMESTAMP,'')，
+(2020, '工作流模板', 2000, 3, 'workflow-template', 'ai/workflow-template/index', '1', '0', 'C', '0', '0', 'ai:workflow-template:list', 'mdi:file-document-outline', 103, 1, NOW(), '工作流模板管理'),
+(2021, '模板查询', 2020, 1, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:query', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
+(2022, '模板新增', 2020, 2, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:add', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
+(2023, '模板修改', 2020, 3, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:edit', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
+(2024, '模板删除', 2020, 4, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:remove', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING;
 
 INSERT INTO sys_role_menu (role_id, menu_id) 
-SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2017;
+SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2024;
+
+-- 5、内置系统模板: 标准知识库问答
+-- graph_data 结构说明:
+-- 1. nodes.type 必须为 "custom"
+-- 2. nodes.data 必须包含 nodeType, config, paramBindings 等完整属性
+-- 3. edges.type 必须为 "custom"
+INSERT INTO km_workflow_template (
+    template_id, template_name, template_code, description, icon, category, scope_type,
+    workflow_config, graph_data, version, is_published, is_enabled, use_count,
+    create_dept, create_by, create_time, update_by, update_time, remark
+) VALUES (
+    1, '标准知识库问答', 'standard_knowledge_qa',
+    '基于知识库的智能问答模板，包含开始节点、知识检索节点、大模型对话节点和回复节点，支持混合检索和上下文注入。',
+    'mdi:frequently-asked-questions', 'knowledge_qa', '0',
+    '{"enableDebug": true}',
+    '{
+  "edges": [
+    {
+      "id": "e_start_to_retrieval",
+      "type": "custom",
+      "label": "",
+      "source": "start",
+      "target": "knowledge_retrieval_1",
+      "animated": true,
+      "updatable": "target"
+    },
+    {
+      "id": "e_retrieval_to_llm",
+      "type": "custom",
+      "label": "",
+      "source": "knowledge_retrieval_1",
+      "target": "llm_chat_1",
+      "animated": true,
+      "updatable": "target"
+    },
+    {
+      "id": "e_llm_to_end",
+      "type": "custom",
+      "label": "",
+      "source": "llm_chat_1",
+      "target": "end",
+      "animated": true,
+      "updatable": "target"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "custom",
+      "position": { "x": 100, "y": 250 },
+      "data": {
+        "id": "start",
+        "nodeType": "START",
+        "nodeLabel": "开始",
+        "nodeIcon": "mdi:play-circle",
+        "nodeColor": "#1E6021FF",
+        "description": "工作流的入口节点",
+        "status": "idle",
+        "config": {
+          "globalParams": [
+            {"key": "userInput", "type": "string", "label": "用户问题", "required": true}
+          ]
+        },
+        "paramBindings": [],
+        "customInputParams": [],
+        "customOutputParams": []
+      }
+    },
+    {
+      "id": "knowledge_retrieval_1",
+      "type": "custom",
+      "position": { "x": 400, "y": 250 },
+      "data": {
+        "id": "knowledge_retrieval_1",
+        "nodeType": "KNOWLEDGE_RETRIEVAL",
+        "nodeLabel": "知识检索",
+        "nodeIcon": "mdi:book-search",
+        "nodeColor": "#30B50FFF",
+        "description": "从知识库中检索相关文档片段",
+        "status": "idle",
+        "config": {
+          "mode": "HYBRID",
+          "topK": 5,
+          "threshold": 0.5,
+          "kbIds": [],
+          "enableRerank": false
+        },
+        "paramBindings": [
+          {
+            "paramKey": "query",
+            "sourceKey": "start",
+            "sourceType": "node",
+            "sourceParam": "userInput"
+          }
+        ],
+        "customInputParams": [],
+        "customOutputParams": []
+      }
+    },
+    {
+      "id": "llm_chat_1",
+      "type": "custom",
+      "position": { "x": 700, "y": 250 },
+      "data": {
+        "id": "llm_chat_1",
+        "nodeType": "LLM_CHAT",
+        "nodeLabel": "两只熊对话",
+        "nodeIcon": "mdi:robot",
+        "nodeColor": "#3b82f6",
+        "description": "调用大语言模型进行对话",
+        "status": "idle",
+        "config": {
+          "temperature": 0.7,
+          "systemPrompt": "你是一个智能助手，请根据提供的上下文信息(Context)回答用户的问题。如果上下文中没有相关信息，请如实告知用户。",
+          "historyEnabled": true,
+          "historyCount": 10
+        },
+        "paramBindings": [
+          {
+            "paramKey": "inputMessage",
+            "sourceKey": "start",
+            "sourceType": "node",
+            "sourceParam": "userInput"
+          },
+          {
+            "paramKey": "context",
+            "sourceKey": "knowledge_retrieval_1",
+            "sourceType": "node",
+            "sourceParam": "context"
+          }
+        ],
+        "customInputParams": [],
+        "customOutputParams": []
+      }
+    },
+    {
+      "id": "end",
+      "type": "custom",
+      "position": { "x": 1000, "y": 250 },
+      "data": {
+        "id": "end",
+        "nodeType": "END",
+        "nodeLabel": "结束",
+        "nodeIcon": "mdi:stop-circle",
+        "nodeColor": "#9875BFFF",
+        "description": "工作流的结束节点",
+        "status": "idle",
+        "config": {},
+        "paramBindings": [
+          {
+            "paramKey": "finalResponse",
+            "sourceKey": "llm_chat_1",
+            "sourceType": "node",
+            "sourceParam": "response"
+          }
+        ],
+        "customInputParams": [],
+        "customOutputParams": []
+      }
+    }
+  ]
+}',
+    1, '1', '1', 0,
+    103, 1, NOW(), 1, NOW(), '系统内置模板，不可修改删除'
+) 

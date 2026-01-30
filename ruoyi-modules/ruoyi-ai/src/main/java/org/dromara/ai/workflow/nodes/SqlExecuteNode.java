@@ -9,8 +9,8 @@ import org.dromara.ai.mapper.KmDataSourceMapper;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
-import org.dromara.ai.workflow.util.SqlExecutor;
-import org.dromara.ai.workflow.util.SqlValidator;
+import org.dromara.ai.workflow.nodes.nodeUtils.SqlExecutor;
+import org.dromara.ai.workflow.nodes.nodeUtils.SqlValidator;
 import org.dromara.common.json.utils.JsonUtils;
 import org.springframework.stereotype.Component;
 

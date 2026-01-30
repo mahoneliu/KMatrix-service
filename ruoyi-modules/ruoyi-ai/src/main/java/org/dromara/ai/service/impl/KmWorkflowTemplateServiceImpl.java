@@ -3,15 +3,22 @@ package org.dromara.ai.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmWorkflowTemplate;
+import org.dromara.ai.domain.bo.KmAppBo;
 import org.dromara.ai.domain.bo.KmWorkflowTemplateBo;
 import org.dromara.ai.domain.vo.KmWorkflowTemplateVo;
+import org.dromara.ai.domain.vo.config.AppWorkflowConfig;
 import org.dromara.ai.mapper.KmWorkflowTemplateMapper;
+import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.service.IKmWorkflowTemplateService;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -23,11 +30,14 @@ import java.util.List;
  * @author Mahone
  * @date 2026-01-26
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService {
 
     private final KmWorkflowTemplateMapper baseMapper;
+    @Lazy
+    private final IKmAppService appService;
 
     /**
      * 查询工作流模板
@@ -107,5 +117,46 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
             // TODO 做一些业务上的校验,判断是否需要校验
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    /**
+     * 通过模板创建应用
+     */
+    @Override
+    public Long createAppFromTemplate(Long templateId, String appName) {
+        // 1. 查询模板
+        KmWorkflowTemplate template = baseMapper.selectById(templateId);
+        if (template == null) {
+            throw new ServiceException("模板不存在");
+        }
+
+        // 2. 构建应用 Bo 对象
+        KmAppBo appBo = new KmAppBo();
+        appBo.setAppName(appName);
+        appBo.setDescription("基于模板【" + template.getTemplateName() + "】创建");
+        appBo.setIcon(template.getIcon());
+        appBo.setAppType("2"); // 工作流类型
+        appBo.setStatus("0"); // 草稿状态
+        appBo.setGraphData(template.getGraphData());
+
+        // 3. 解析 workflowConfig JSON
+        if (StringUtils.isNotBlank(template.getWorkflowConfig())) {
+            try {
+                AppWorkflowConfig workflowConfig = JsonUtils.parseObject(template.getWorkflowConfig(),
+                        AppWorkflowConfig.class);
+                appBo.setWorkflowConfig(workflowConfig);
+            } catch (Exception e) {
+                log.warn("解析模板 workflowConfig 失败: {}", e.getMessage());
+            }
+        }
+
+        // 4. 调用 AppService 创建应用（复用逻辑，会自动创建 Token）
+        String appIdStr = appService.insertByBo(appBo);
+
+        // 5. 更新模板使用次数
+        template.setUseCount(template.getUseCount() != null ? template.getUseCount() + 1 : 1);
+        baseMapper.updateById(template);
+
+        return Long.valueOf(appIdStr);
     }
 }

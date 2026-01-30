@@ -1,4 +1,4 @@
-package org.dromara.ai.workflow.util;
+package org.dromara.ai.workflow.nodes.nodeUtils;
 
 import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.data.message.ChatMessage;

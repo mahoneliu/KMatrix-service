@@ -7,12 +7,12 @@ import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.service.IWorkflowInstanceService;
-import org.dromara.ai.workflow.config.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.factory.NodeFactory;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -22,6 +22,7 @@ import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.StateGraph.END;
 import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 import org.bsc.langgraph4j.action.AsyncEdgeAction;
+import org.dromara.ai.workflow.nodes.nodeUtils.VariableResolver;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -87,7 +88,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
     /**
      * 构建 StateGraph
-     * 
+     *
      * @param emitter SSE推送器，通过闭包传递给节点执行
      */
     private StateGraph<WorkflowState> buildGraph(WorkflowConfig config, SseEmitter emitter) throws Exception {
@@ -244,7 +245,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     /**
      * 从边的 condition 字段中提取 handleId
      * 前端编码格式：__HANDLE__:condition-0 或 __HANDLE__:default
-     * 
+     *
      * @param condition 边的条件字段
      * @return handleId，如果没有则返回 null
      */
@@ -257,7 +258,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
     /**
      * 执行节点
-     * 
+     *
      * @param emitter 通过闭包传递的SSE推送器，确保并行节点也能正确获取
      */
     private Map<String, Object> executeNode(
@@ -298,10 +299,13 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             nodeName = StringUtil.isNullOrEmpty(nodeName) ? node.getNodeName() : nodeName;
 
             // 准备输入参数
-            Map<String, Object> inputs = resolveInputs(nodeConfig.getInputs(), state);
+            Map<String, Object> inputs = VariableResolver.resolveInputs(nodeConfig.getInputs(), state);
+
+            // 准备节点配置（也需要进行变量替换，因为 LLM 的 systemPrompt 等在 config 中）
+            Map<String, Object> resolvedConfig = VariableResolver.resolveInputs(nodeConfig.getConfig(), state);
 
             // 设置节点配置和输入
-            context.setNodeConfig(nodeConfig.getConfig() != null ? nodeConfig.getConfig() : new HashMap<>());
+            context.setNodeConfig(resolvedConfig);
             context.setNodeInputs(inputs);
 
             // 创建节点执行记录（调试模式：不写数据库）
@@ -384,56 +388,6 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             updates.put("finished", true);
             return updates;
         }
-    }
-
-    /**
-     * 解析输入参数
-     */
-    private Map<String, Object> resolveInputs(Map<String, Object> inputDefs, WorkflowState state) {
-        Map<String, Object> inputs = new HashMap<>();
-
-        if (inputDefs == null) {
-            return inputs;
-        }
-
-        for (Map.Entry<String, Object> entry : inputDefs.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-
-            // 解析表达式 ${nodeId.outputKey} 或 ${globalKey}
-            if (value instanceof String) {
-                String strValue = (String) value;
-                if (strValue.startsWith("${") && strValue.endsWith("}")) {
-                    value = resolveExpression(strValue, state);
-                }
-            }
-
-            inputs.put(key, value);
-        }
-
-        return inputs;
-    }
-
-    /**
-     * 解析表达式
-     */
-    private Object resolveExpression(String expression, WorkflowState state) {
-        String expr = expression.substring(2, expression.length() - 1);
-
-        // 解析 nodeId.outputKey
-        String[] parts = expr.split("\\.");
-        if (parts.length == 2) {
-            String nodeId = parts[0];
-            String outputKey = parts[1];
-
-            Map<String, Object> outputs = state.getNodeOutput(nodeId);
-            if (outputs != null) {
-                return outputs.get(outputKey);
-            }
-        }
-
-        // 尝试从全局状态获取
-        return state.getGlobalState().get(expr);
     }
 
     /**

@@ -60,10 +60,15 @@ spring:
           # username: root
           # password: kyxxjs@2tencent
           # PostgreSQL 连接配置 - 请根据实际环境修改
+          # driverClassName: org.postgresql.Driver
+          # url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          # username: postgres
+          # password: password
+          # PostgreSQL 连接配置 - 腾讯云
           driverClassName: org.postgresql.Driver
-          url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
-          username: postgres
-          password: password
+          url: jdbc:postgresql://159.75.166.187:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          username: kmatrix
+          password: kmatrix!1pwd
 #        # MySQL 数据源 (已注释)
 #        mysql_master:
 #          type: ${spring.datasource.type}
@@ -283,3 +288,12 @@ justauth:
       client-id: 10**********6
       client-secret: 1f7d08**********5b7**********29e
       redirect-uri: ${justauth.address}/social-callback?source=gitea
+--- # AI 配置
+ai:
+  reranker:
+    # 是否启用 ONNX BGE-Reranker 模型
+    enabled: true
+    # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
+    model-path: F:\reranker\model.onnx
+    # Tokenizer 文件路径
+    tokenizer-path: F:\reranker\tokenizer.json

@@ -1,4 +1,4 @@
-package org.dromara.ai.workflow.config;
+package org.dromara.ai.workflow.core;
 
 import lombok.Data;
 
@@ -146,7 +146,7 @@ public class WorkflowConfig {
 
     /**
      * 校验工作流配置
-     * 
+     *
      * @throws IllegalArgumentException 如果配置不合法
      */
     public void validate() {

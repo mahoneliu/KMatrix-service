@@ -4,13 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.workflow.condition.ConditionBranch;
-import org.dromara.ai.workflow.condition.ConditionEvaluator;
-import org.dromara.ai.workflow.condition.ConditionGroup;
+import org.dromara.ai.workflow.nodes.condition.ConditionBranch;
+import org.dromara.ai.workflow.nodes.condition.ConditionEvaluator;
+import org.dromara.ai.workflow.nodes.condition.ConditionGroup;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

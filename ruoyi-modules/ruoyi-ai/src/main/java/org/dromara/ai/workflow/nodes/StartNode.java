@@ -7,7 +7,7 @@ import java.util.List;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.springframework.stereotype.Component;
 

@@ -8,9 +8,9 @@ import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IWorkflowInstanceService;
-import org.dromara.ai.workflow.config.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.ai.workflow.engine.LangGraphWorkflowEngine;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.HashMap;
@@ -50,7 +50,7 @@ public class WorkflowExecutor {
 
     /**
      * 执行工作流（内部统一实现）
-     * 
+     *
      * @param debug true=调试模式（不入库），false=正式模式（入库）
      */
     private Map<String, Object> executeWorkflow(KmAppVo app, Long sessionId, KmChatSendBo bo,

@@ -2,6 +2,7 @@ package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
 import org.dromara.ai.domain.vo.KmKnowledgeBaseVo;
+import org.dromara.ai.domain.vo.KmStatisticsVo;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 
@@ -45,4 +46,9 @@ public interface IKmKnowledgeBaseService {
      * 校验并批量删除知识库信息
      */
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
+
+    /**
+     * 获取知识库统计信息
+     */
+    KmStatisticsVo getStatistics();
 }

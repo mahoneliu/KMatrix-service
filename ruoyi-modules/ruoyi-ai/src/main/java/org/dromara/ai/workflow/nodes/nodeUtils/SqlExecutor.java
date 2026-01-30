@@ -1,4 +1,4 @@
-package org.dromara.ai.workflow.util;
+package org.dromara.ai.workflow.nodes.nodeUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

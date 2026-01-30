@@ -15,7 +15,7 @@ import org.dromara.ai.mapper.KmAppKnowledgeMapper;
 import org.dromara.ai.mapper.KmAppMapper;
 import org.dromara.ai.mapper.KmAppVersionMapper;
 import org.dromara.ai.service.IKmAppService;
-import org.dromara.ai.workflow.config.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;

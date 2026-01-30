@@ -203,4 +203,25 @@ public class NodeContext {
     public void setGlobalVariable(String key, Object value) {
         setGlobalValue(key, value);
     }
+
+    // ========== 基础信息访问方法 ==========
+
+    /**
+     * 获取会话ID
+     * 从 globalState 中获取，用于加载历史对话
+     */
+    public Long getSessionId() {
+        Object value = globalState.get("sessionId");
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        try {
+            return Long.parseLong(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

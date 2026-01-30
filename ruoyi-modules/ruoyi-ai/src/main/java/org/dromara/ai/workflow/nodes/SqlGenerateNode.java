@@ -17,10 +17,10 @@ import org.dromara.ai.util.ModelBuilder;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
-import org.dromara.ai.workflow.util.SchemaBuilder;
-import org.dromara.ai.workflow.util.SqlGenerator;
-import org.dromara.ai.workflow.util.SqlValidator;
-import org.dromara.ai.workflow.util.SseHelper;
+import org.dromara.ai.workflow.nodes.nodeUtils.SchemaBuilder;
+import org.dromara.ai.workflow.nodes.nodeUtils.SqlGenerator;
+import org.dromara.ai.workflow.nodes.nodeUtils.SqlValidator;
+import org.dromara.ai.workflow.nodes.nodeUtils.SseHelper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 

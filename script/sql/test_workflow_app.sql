@@ -28,7 +28,7 @@ INSERT INTO `km_app` (
     1002,                                  -- app_id
     '科亿智能助手V3(意图分支)',             -- app_name
     '基于意图识别的条件分支工作流',        -- description
-    '',                                    -- icon
+    'mdi:book-search',                                    -- icon
     '2',                                   -- app_type (2=工作流)
     '1',                                   -- status (1=发布)
     '你好，我是科亿',                      -- prologue

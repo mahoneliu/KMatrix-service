@@ -49,4 +49,9 @@ public class KmRetrievalResultVo implements Serializable {
      * 切片元数据
      */
     private Object metadata;
+
+    /**
+     * 高亮后的内容片段 (HTML，仅启用高亮时返回)
+     */
+    private String highlight;
 }

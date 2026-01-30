@@ -1,0 +1,39 @@
+sudo apt install postgresql-16-pgvector
+
+sudo -u postgres psql
+-- 创建用户 kmatrix，并设置密码
+CREATE USER kmatrix WITH PASSWORD 'kmatrix!1pwd';
+
+-- 创建数据库 kmatrix，并指定所有者为该用户
+CREATE DATABASE kmatrix OWNER kmatrix;
+
+-- 授予该用户对数据库的所有权限（可选，通常 OWNER 已经足够）
+GRANT ALL PRIVILEGES ON DATABASE kmatrix TO kmatrix;
+ALTER USER kmatrix WITH SUPERUSER;
+
+编辑配置文件：sudo nano /etc/postgresql/16/main/pg_hba.conf
+
+将 local all all peer 修改为 local all all scram-sha-256 (或 md5)。
+
+重启服务：sudo systemctl restart postgresql@16-main
+
+
+sudo apt-get update
+sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+
+# key 可以使用wget，注意有两个子模块要手动分别下载
+git clone https://github.com/jaiminpan/pg_jieba.git
+
+cd pg_jieba
+
+mkdir build && cd build
+
+# 自动探测路径（如果环境干净，标准路径通常能自动识别）
+# which psql  假设返回 /usr/lib/postgresql，那么你的PostgreSQL_CONFIG_EXECUTABLE 显然就是 /usr/lib/postgresql/16/bin/pg_config
+ cmake .. -DPostgreSQL_CONFIG_EXECUTABLE=/usr/lib/postgresql/16/bin/pg_config
+
+make
+sudo make install
+
+sudo systemctl status postgresql@16-main
+

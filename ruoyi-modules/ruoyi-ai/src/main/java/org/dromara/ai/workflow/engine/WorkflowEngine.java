@@ -1,7 +1,7 @@
 package org.dromara.ai.workflow.engine;
 
-import org.dromara.ai.workflow.config.WorkflowConfig;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowConfig;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**

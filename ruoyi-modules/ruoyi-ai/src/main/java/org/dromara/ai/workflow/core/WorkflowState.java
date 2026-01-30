@@ -1,10 +1,10 @@
-package org.dromara.ai.workflow.state;
+package org.dromara.ai.workflow.core;
 
 import lombok.Data;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.Channel;
 import org.bsc.langgraph4j.state.Channels;
-import org.dromara.ai.workflow.core.NodeContext;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;

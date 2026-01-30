@@ -1,8 +1,10 @@
 package org.dromara.ai.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.onnx.OnnxScoringModel;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.service.IKmRerankService;
@@ -10,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -29,11 +34,11 @@ public class KmRerankServiceImpl implements IKmRerankService {
     @Value("${ai.reranker.enabled:false}")
     private boolean enabled;
 
-    // TODO: 将来集成 ONNX 模型后取消注释
-    // @Value("${ai.reranker.model-path:}")
-    // private String modelPath;
-    // @Value("${ai.reranker.tokenizer-path:}")
-    // private String tokenizerPath;
+    @Value("${ai.reranker.model-path:}")
+    private String modelPath;
+
+    @Value("${ai.reranker.tokenizer-path:}")
+    private String tokenizerPath;
 
     private ScoringModel scoringModel;
     private boolean initialized = false;
@@ -41,28 +46,37 @@ public class KmRerankServiceImpl implements IKmRerankService {
     @PostConstruct
     public void init() {
         if (!enabled) {
-            log.info("Reranker model is disabled, using keyword-based rerank fallback");
+            log.info("Reranker is disabled, using keyword-based rerank fallback");
             return;
         }
 
-        // TODO: 集成 ONNX BGE-Reranker 模型
-        // 需要下载模型文件并配置路径:
-        // - ai.reranker.model-path: ONNX 模型文件路径 (.onnx)
-        // - ai.reranker.tokenizer-path: Tokenizer 文件路径
-        //
-        // 示例代码:
-        // try {
-        // scoringModel = OnnxScoringModel.builder()
-        // .modelPath(modelPath)
-        // .tokenizerPath(tokenizerPath)
-        // .build();
-        // initialized = true;
-        // log.info("BGE-Reranker initialized from {}", modelPath);
-        // } catch (Exception e) {
-        // log.error("Failed to initialize BGE-Reranker: {}", e.getMessage());
-        // }
+        // 检查模型文件是否配置且存在
+        if (StrUtil.isBlank(modelPath) || StrUtil.isBlank(tokenizerPath)) {
+            log.warn("Reranker enabled but model-path or tokenizer-path not configured, using keyword-based fallback");
+            return;
+        }
 
-        log.info("Reranker enabled but ONNX model not configured, using keyword-based fallback");
+        Path modelFilePath = Paths.get(modelPath);
+        Path tokenizerFilePath = Paths.get(tokenizerPath);
+
+        if (!Files.exists(modelFilePath)) {
+            log.warn("ONNX model file not found: {}, using keyword-based fallback", modelPath);
+            return;
+        }
+        if (!Files.exists(tokenizerFilePath)) {
+            log.warn("Tokenizer file not found: {}, using keyword-based fallback", tokenizerPath);
+            return;
+        }
+
+        try {
+            log.info("Initializing BGE-Reranker from: {}", modelPath);
+            scoringModel = new OnnxScoringModel(modelPath, tokenizerPath);
+            initialized = true;
+            log.info("BGE-Reranker initialized successfully");
+        } catch (Exception e) {
+            log.error("Failed to initialize BGE-Reranker: {}", e.getMessage(), e);
+            log.info("Falling back to keyword-based rerank");
+        }
     }
 
     @Override

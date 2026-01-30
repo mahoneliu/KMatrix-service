@@ -270,3 +270,12 @@ justauth:
       client-id: 10**********6
       client-secret: 1f7d08**********5b7**********29e
       redirect-uri: ${justauth.address}/social-callback?source=gitea
+--- # AI 配置
+ai:
+  reranker:
+    # 是否启用 ONNX BGE-Reranker 模型
+    enabled: false
+    # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
+    model-path: /opt/models/bge-reranker-large-onnx/model.onnx
+    # Tokenizer 文件路径
+    tokenizer-path: /opt/models/bge-reranker-large-onnx/sentencepiece.bpe.model

@@ -45,4 +45,13 @@ public interface IKmWorkflowTemplateService {
      * 校验并批量删除工作流模板信息
      */
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
+
+    /**
+     * 通过模板创建应用
+     * 
+     * @param templateId 模板ID
+     * @param appName    应用名称
+     * @return 新创建的应用ID
+     */
+    Long createAppFromTemplate(Long templateId, String appName);
 }

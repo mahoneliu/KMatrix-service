@@ -61,7 +61,11 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
         switch (mode.toUpperCase()) {
             case "KEYWORD":
-                results = keywordSearch(bo.getQuery(), datasetIds, topK);
+                if (Boolean.TRUE.equals(bo.getEnableHighlight())) {
+                    results = keywordSearchWithHighlight(bo.getQuery(), datasetIds, topK);
+                } else {
+                    results = keywordSearch(bo.getQuery(), datasetIds, topK);
+                }
                 break;
             case "HYBRID":
                 results = hybridSearch(bo.getQuery(), datasetIds, topK, threshold);
@@ -95,8 +99,23 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
     @Override
     public List<KmRetrievalResultVo> keywordSearch(String query, List<Long> datasetIds, int topK) {
+        if (StrUtil.isBlank(query)) {
+            return Collections.emptyList();
+        }
+        // pg_jieba 会自动进行中英文分词
         List<Map<String, Object>> rows = chunkMapper.keywordSearch(query, datasetIds, topK);
         return convertToResultList(rows);
+    }
+
+    /**
+     * 关键词检索 (带高亮)
+     */
+    public List<KmRetrievalResultVo> keywordSearchWithHighlight(String query, List<Long> datasetIds, int topK) {
+        if (StrUtil.isBlank(query)) {
+            return Collections.emptyList();
+        }
+        List<Map<String, Object>> rows = chunkMapper.keywordSearchWithHighlight(query, datasetIds, topK);
+        return convertToResultListWithHighlight(rows);
     }
 
     @Override
@@ -192,7 +211,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
         Map<Long, String> docNameMap = new HashMap<>();
         if (!docIds.isEmpty()) {
-            List<KmDocument> docs = documentMapper.selectBatchIds(docIds);
+            List<KmDocument> docs = documentMapper.selectByIds(docIds);
             docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
         }
 
@@ -216,6 +235,41 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     private List<KmRetrievalResultVo> convertAndFilter(List<Map<String, Object>> rows, double threshold) {
         return convertToResultList(rows).stream()
                 .filter(r -> r.getScore() >= threshold)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 转换查询结果为 VO 列表 (含高亮)
+     */
+    private List<KmRetrievalResultVo> convertToResultListWithHighlight(List<Map<String, Object>> rows) {
+        if (CollUtil.isEmpty(rows)) {
+            return Collections.emptyList();
+        }
+
+        // 获取文档名称映射
+        Set<Long> docIds = rows.stream()
+                .map(r -> ((Number) r.get("document_id")).longValue())
+                .collect(Collectors.toSet());
+
+        Map<Long, String> docNameMap = new HashMap<>();
+        if (!docIds.isEmpty()) {
+            List<KmDocument> docs = documentMapper.selectByIds(docIds);
+            docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
+        }
+
+        return rows.stream()
+                .map(row -> {
+                    KmRetrievalResultVo vo = new KmRetrievalResultVo();
+                    vo.setChunkId(((Number) row.get("chunk_id")).longValue());
+                    vo.setDocumentId(((Number) row.get("document_id")).longValue());
+                    vo.setContent((String) row.get("content"));
+                    vo.setMetadata(row.get("metadata"));
+                    vo.setScore(row.get("score") != null ? ((Number) row.get("score")).doubleValue() : 0);
+                    vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
+                    // 高亮字段
+                    vo.setHighlight((String) row.get("highlight"));
+                    return vo;
+                })
                 .collect(Collectors.toList());
     }
 }

@@ -3,9 +3,14 @@ package org.dromara.ai.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmKnowledgeBase;
 import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
 import org.dromara.ai.domain.vo.KmKnowledgeBaseVo;
+import org.dromara.ai.domain.vo.KmStatisticsVo;
+import org.dromara.ai.mapper.KmDatasetMapper;
+import org.dromara.ai.mapper.KmDocumentChunkMapper;
+import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.mapper.KmKnowledgeBaseMapper;
 import org.dromara.ai.service.IKmKnowledgeBaseService;
 import org.dromara.common.core.utils.MapstructUtils;
@@ -30,6 +35,9 @@ import java.util.List;
 public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
 
     private final KmKnowledgeBaseMapper baseMapper;
+    private final KmDatasetMapper datasetMapper;
+    private final KmDocumentMapper documentMapper;
+    private final KmDocumentChunkMapper chunkMapper;
 
     /**
      * 查询知识库
@@ -111,5 +119,37 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
             // TODO: 校验逻辑，例如知识库下是否存在数据集
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    /**
+     * 获取知识库统计信息
+     */
+    @Override
+    public KmStatisticsVo getStatistics() {
+        KmStatisticsVo vo = new KmStatisticsVo();
+
+        // 知识库总数
+        vo.setTotalKbs(baseMapper.selectCount(null));
+
+        // 数据集总数
+        vo.setTotalDatasets(datasetMapper.selectCount(null));
+
+        // 文档总数
+        vo.setTotalDocuments(documentMapper.selectCount(null));
+
+        // 切片总数
+        vo.setTotalChunks(chunkMapper.selectCount(null));
+
+        // 处理中文档数
+        LambdaQueryWrapper<KmDocument> processingQuery = new LambdaQueryWrapper<>();
+        processingQuery.eq(KmDocument::getStatus, "PROCESSING");
+        vo.setProcessingDocs(documentMapper.selectCount(processingQuery));
+
+        // 失败文档数
+        LambdaQueryWrapper<KmDocument> errorQuery = new LambdaQueryWrapper<>();
+        errorQuery.eq(KmDocument::getStatus, "ERROR");
+        vo.setErrorDocs(documentMapper.selectCount(errorQuery));
+
+        return vo;
     }
 }

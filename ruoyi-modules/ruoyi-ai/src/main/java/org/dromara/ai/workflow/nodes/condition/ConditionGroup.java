@@ -1,4 +1,4 @@
-package org.dromara.ai.workflow.condition;
+package org.dromara.ai.workflow.nodes.condition;
 
 import lombok.Data;
 

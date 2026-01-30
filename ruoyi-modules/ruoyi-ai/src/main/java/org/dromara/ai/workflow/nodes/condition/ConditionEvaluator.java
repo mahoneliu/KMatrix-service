@@ -1,11 +1,11 @@
-package org.dromara.ai.workflow.condition;
+package org.dromara.ai.workflow.nodes.condition;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.enums.ComparisonOperator;
 import org.dromara.ai.domain.enums.LogicalOperator;
-import org.dromara.ai.workflow.state.WorkflowState;
+import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

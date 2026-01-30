@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.nodes;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -9,9 +10,11 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmChatMessage;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.enums.SseEventType;
+import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
@@ -20,7 +23,9 @@ import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * LLM对话节点
- * 调用大语言模型进行对话
+ * 调用大语言模型进行对话，支持历史对话上下文
  *
  * @author Mahone
  * @date 2026-01-02
@@ -42,6 +47,10 @@ public class LlmChatNode implements WorkflowNode {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final ModelBuilder modelBuilder;
+    private final KmChatMessageMapper chatMessageMapper;
+
+    /** 默认历史消息条数限制 */
+    private static final int DEFAULT_HISTORY_LIMIT = 10;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -56,6 +65,10 @@ public class LlmChatNode implements WorkflowNode {
         Double temperature = context.getConfigAsDouble("temperature", null);
         Integer maxTokens = context.getConfigAsInteger("maxTokens", null);
         Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+
+        // 历史对话配置
+        Boolean historyEnabled = context.getConfigAsBoolean("historyEnabled", false);
+        Integer historyLimit = context.getConfigAsInteger("historyLimit", DEFAULT_HISTORY_LIMIT);
 
         // systemPrompt支持从inputs动态获取，也支持从config静态配置
         String systemPrompt = (String) context.getInput("systemPrompt");
@@ -78,8 +91,15 @@ public class LlmChatNode implements WorkflowNode {
         if (inputMessage == null) {
             throw new RuntimeException("inputMessage不能为空");
         }
-        // 构建消息列表
-        List<ChatMessage> messages = buildMessages(inputMessage, systemPrompt);
+
+        // 获取会话ID用于加载历史对话
+        Long sessionId = context.getSessionId();
+
+        // 构建消息列表（包含历史对话）
+        List<ChatMessage> messages = buildMessages(inputMessage, systemPrompt, sessionId, historyEnabled, historyLimit);
+
+        log.info("LLM_CHAT节点 - 历史对话: enabled={}, limit={}, sessionId={}, 消息总数={}",
+                historyEnabled, historyLimit, sessionId, messages.size());
 
         // 使用流式模型（带参数）
         StreamingChatLanguageModel streamingModel = modelBuilder
@@ -170,18 +190,68 @@ public class LlmChatNode implements WorkflowNode {
         return output;
     }
 
-    private List<ChatMessage> buildMessages(String inputMessage, String systemPrompt) {
+    /**
+     * 构建消息列表（包含历史对话）
+     *
+     * @param inputMessage   当前用户输入
+     * @param systemPrompt   系统提示词
+     * @param sessionId      会话ID
+     * @param historyEnabled 是否启用历史对话
+     * @param historyLimit   历史消息条数限制
+     * @return 完整的消息列表
+     */
+    private List<ChatMessage> buildMessages(String inputMessage, String systemPrompt,
+            Long sessionId, Boolean historyEnabled, Integer historyLimit) {
         List<ChatMessage> messages = new ArrayList<>();
 
-        // 添加系统提示
+        // 1. 添加系统提示
         if (systemPrompt != null && !systemPrompt.isEmpty()) {
             messages.add(new SystemMessage(systemPrompt));
         }
 
-        // 添加用户消息
+        // 2. 加载并添加历史对话
+        if (Boolean.TRUE.equals(historyEnabled) && sessionId != null) {
+            List<KmChatMessage> historyMessages = loadHistoryMessages(sessionId, historyLimit);
+            for (KmChatMessage msg : historyMessages) {
+                if ("user".equals(msg.getRole())) {
+                    messages.add(new UserMessage(msg.getContent()));
+                } else if ("assistant".equals(msg.getRole())) {
+                    messages.add(new AiMessage(msg.getContent()));
+                }
+            }
+            log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, historyMessages.size());
+        }
+
+        // 3. 添加当前用户消息
         if (inputMessage != null) {
             messages.add(new UserMessage(inputMessage));
         }
+
+        return messages;
+    }
+
+    /**
+     * 从数据库加载历史对话消息
+     *
+     * @param sessionId 会话ID
+     * @param limit     最大条数
+     * @return 历史消息列表（按时间升序）
+     */
+    private List<KmChatMessage> loadHistoryMessages(Long sessionId, Integer limit) {
+        if (sessionId == null || limit == null || limit <= 0) {
+            return Collections.emptyList();
+        }
+
+        // 查询该会话的最近N条消息，按创建时间降序
+        LambdaQueryWrapper<KmChatMessage> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(KmChatMessage::getSessionId, sessionId)
+                .orderByDesc(KmChatMessage::getCreateTime)
+                .last("LIMIT " + limit);
+
+        List<KmChatMessage> messages = chatMessageMapper.selectList(queryWrapper);
+
+        // 反转列表，使其按时间升序排列（先旧后新）
+        Collections.reverse(messages);
 
         return messages;
     }
