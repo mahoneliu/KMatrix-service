@@ -45,7 +45,7 @@ public class KmAppVo implements Serializable {
     private String icon;
 
     /**
-     * 应用类型（1基础对话 2工作流）
+     * 应用类型（1固定模板 2自定义工作流）
      */
     private String appType;
 

@@ -83,6 +83,17 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
     @Override
     public Boolean insertByBo(KmWorkflowTemplateBo bo) {
         KmWorkflowTemplate add = MapstructUtils.convert(bo, KmWorkflowTemplate.class);
+
+        // 如果 workflow_config 为空,设置默认值
+        if (StringUtils.isBlank(add.getWorkflowConfig())) {
+            add.setWorkflowConfig("{}");
+        }
+
+        // 如果 scopeType 为空,默认设置为用户级别
+        if (StringUtils.isBlank(add.getScopeType())) {
+            add.setScopeType("1");
+        }
+
         validEntityBeforeSave(add);
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
@@ -135,7 +146,14 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         appBo.setAppName(appName);
         appBo.setDescription("基于模板【" + template.getTemplateName() + "】创建");
         appBo.setIcon(template.getIcon());
-        appBo.setAppType("2"); // 工作流类型
+        // 根据模板类型设置 app_type：
+        // 系统模板(scopeType=0) -> 固定模板类型(app_type=1)
+        // 自定义模板(scopeType=1) -> 自定义工作流类型(app_type=2)
+        if ("0".equals(template.getScopeType())) {
+            appBo.setAppType("1"); // 固定模板
+        } else {
+            appBo.setAppType("2"); // 自定义工作流
+        }
         appBo.setStatus("0"); // 草稿状态
         appBo.setGraphData(template.getGraphData());
 
@@ -162,5 +180,40 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         baseMapper.updateById(template);
 
         return Long.valueOf(appIdStr);
+    }
+
+    /**
+     * 复制模板为自定义模板
+     */
+    @Override
+    public Long copyTemplate(Long templateId, String newName) {
+        // 1. 查询源模板
+        KmWorkflowTemplate source = baseMapper.selectById(templateId);
+        if (source == null) {
+            throw new ServiceException("源模板不存在");
+        }
+
+        // 2. 创建新模板
+        KmWorkflowTemplate newTemplate = new KmWorkflowTemplate();
+        newTemplate.setTemplateName(newName);
+        newTemplate.setTemplateCode(source.getTemplateCode() + "_copy_" + System.currentTimeMillis());
+        newTemplate.setDescription("复制自：" + source.getTemplateName());
+        newTemplate.setIcon(source.getIcon());
+        newTemplate.setCategory(source.getCategory());
+        newTemplate.setScopeType("1"); // 强制设置为自定义模板
+        newTemplate.setWorkflowConfig(source.getWorkflowConfig());
+        newTemplate.setGraphData(source.getGraphData());
+        newTemplate.setVersion(1);
+        newTemplate.setIsPublished("0");
+        newTemplate.setIsEnabled("1");
+        newTemplate.setUseCount(0);
+
+        // 3. 插入新模板
+        boolean flag = baseMapper.insert(newTemplate) > 0;
+        if (!flag) {
+            throw new ServiceException("复制模板失败");
+        }
+
+        return newTemplate.getTemplateId();
     }
 }

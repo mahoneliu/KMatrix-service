@@ -1,5 +1,26 @@
 {
-    "java.autobuild.enabled": true,
-    "java.project.outputPath": "out",
-    "java.compile.nullAnalysis.mode": "disabled"
+    "terminal.integrated.env.windows": {
+        "JAVA_TOOL_OPTIONS": "-Dfile.encoding=UTF-8",
+        "PYTHONIOENCODING": "UTF-8"
+    },
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "$OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8;"
+            ]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    // 禁用 VS Code 的自动构建,避免重复编译
+    "java.autobuild.enabled": false,
+    // 强制使用 Maven 编译,不使用 VS Code 内置编译器
+    "java.import.gradle.enabled": false,
+    "java.import.maven.enabled": true,
+    // 禁用增量编译,避免 MapStruct 重复生成代码
+    "java.project.outputPath": "out"
 }

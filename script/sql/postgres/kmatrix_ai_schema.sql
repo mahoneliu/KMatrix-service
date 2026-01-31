@@ -564,11 +564,13 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 (2015, '节点定义', 2000, 3, 'node-definition', 'ai/node-definition/index', 1, 1, 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
 (2016, '数据源管理', 2000, 4, 'datasource-manager', 'ai/datasource-manager/index', 1, 1, 'C', '0', '0', 'ai:datasourceManager:list', 'mdi:menu', 1, CURRENT_TIMESTAMP, ''),
 (2017, 'APP详情', 2000, 10, 'app-detail', 'ai/app-detail/index', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi:menu', 1, CURRENT_TIMESTAMP,'')，
-(2020, '工作流模板', 2000, 3, 'workflow-template', 'ai/workflow-template/index', '1', '0', 'C', '0', '0', 'ai:workflow-template:list', 'mdi:file-document-outline', 103, 1, NOW(), '工作流模板管理'),
-(2021, '模板查询', 2020, 1, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:query', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
-(2022, '模板新增', 2020, 2, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:add', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
-(2023, '模板修改', 2020, 3, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:edit', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING,
-(2024, '模板删除', 2020, 4, '', '', '1', '0', 'F', '0', '0', 'ai:workflow-template:remove', '#', 103, 1, NOW(), '') ON CONFLICT (menu_id) DO NOTHING;
+(2020, '工作流模板', 2000, 3, 'workflow-template', 'ai/workflow-template/index', '1', '0', 'C', '0', '0', 'ai:workflowTemplate:list', 'mdi:file-document-outline', 103, 1, NOW(), '工作流模板管理'),
+(2021, '模板查询', 2020, 1, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:query', '#', 103, 1, NOW(), ''),
+(2022, '模板新增', 2020, 2, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:add', '#', 103, 1, NOW(), ''),
+(2023, '模板修改', 2020, 3, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:edit', '#', 103, 1, NOW(), ''),
+(2024, '模板删除', 2020, 4, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:remove', '#', 103, 1, NOW(), ''),
+(2025, '模板工作流编排', 2000, 10, 'template-editor', 'ai/template-editor/index', '1', '0', 'C', '1', '0', 'ai:templateEditor:view', 'mdi:database-search', 103, 1, NOW(), '模板工作流编排');
+
 
 INSERT INTO sys_role_menu (role_id, menu_id) 
 SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2024;

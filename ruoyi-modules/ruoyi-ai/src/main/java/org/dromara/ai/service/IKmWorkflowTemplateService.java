@@ -54,4 +54,13 @@ public interface IKmWorkflowTemplateService {
      * @return 新创建的应用ID
      */
     Long createAppFromTemplate(Long templateId, String appName);
+
+    /**
+     * 复制模板为自定义模板
+     * 
+     * @param templateId 源模板ID
+     * @param newName    新模板名称
+     * @return 新创建的模板ID
+     */
+    Long copyTemplate(Long templateId, String newName);
 }

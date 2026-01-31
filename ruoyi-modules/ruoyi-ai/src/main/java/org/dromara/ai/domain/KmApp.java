@@ -48,7 +48,10 @@ public class KmApp extends BaseEntity {
     private String icon;
 
     /**
-     * 应用类型（1基础对话 2工作流）
+     * 应用类型（1固定模板 2自定义工作流）
+     * 说明：
+     * 固定模板：1，只能使用预设的模板，不能自定义工作流，用户通过app详情页的表单设置节点内配置信息，不涉及工作流编排
+     * 自定义工作流：2，可以自定义工作流，涉及工作流编排，注意：通过自自定义模板创建的app，也属于此类
      */
     private String appType;
 

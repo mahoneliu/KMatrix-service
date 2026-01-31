@@ -70,10 +70,11 @@ public class KmWorkflowTemplateController extends BaseController {
     @SaCheckPermission("ai:workflow-template:add")
     @Log(title = "工作流模板", businessType = BusinessType.INSERT)
     @PostMapping
-    public R<Void> add(@Validated @RequestBody KmWorkflowTemplateBo bo) {
+    public R<Long> add(@Validated @RequestBody KmWorkflowTemplateBo bo) {
         // 强制设置为用户模板
         bo.setScopeType("1");
-        return toAjax(templateService.insertByBo(bo));
+        templateService.insertByBo(bo);
+        return R.ok(bo.getTemplateId());
     }
 
     /**
@@ -122,5 +123,21 @@ public class KmWorkflowTemplateController extends BaseController {
         }
         Long appId = templateService.createAppFromTemplate(templateId, appName);
         return R.ok(appId);
+    }
+
+    /**
+     * 复制模板为自定义模板
+     */
+    @SaCheckPermission("ai:workflow-template:add")
+    @Log(title = "复制工作流模板", businessType = BusinessType.INSERT)
+    @PostMapping("/copy/{templateId}")
+    public R<Long> copyTemplate(@PathVariable Long templateId,
+            @RequestBody Map<String, String> body) {
+        String newName = body.get("newName");
+        if (newName == null || newName.isBlank()) {
+            throw new ServiceException("新模板名称不能为空");
+        }
+        Long newTemplateId = templateService.copyTemplate(templateId, newName);
+        return R.ok(newTemplateId);
     }
 }
