@@ -37,9 +37,24 @@ public class KmDocumentChunk {
     private Long documentId;
 
     /**
+     * 所属知识库ID (冗余字段，便于查询)
+     */
+    private Long kbId;
+
+    /**
      * 切片内容
      */
     private String content;
+
+    /**
+     * 分块标题 (用于标题向量化)
+     */
+    private String title;
+
+    /**
+     * 父级标题链路 (JSON数组)
+     */
+    private String parentChain;
 
     /**
      * 元数据 (JSON: page, source, etc.)

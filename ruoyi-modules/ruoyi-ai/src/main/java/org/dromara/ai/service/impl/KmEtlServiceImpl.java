@@ -8,22 +8,27 @@ import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
+import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.service.IKmEtlService;
-import org.dromara.system.service.ISysOssService;
+import org.dromara.ai.service.etl.DatasetProcessType;
+import org.dromara.ai.service.etl.EtlHandler;
+import org.dromara.common.core.utils.StringUtils;
+import org.dromara.common.oss.core.OssClient;
+import org.dromara.common.oss.factory.OssFactory;
 import org.dromara.system.domain.vo.SysOssVo;
+import org.dromara.system.service.ISysOssService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,25 +38,43 @@ import java.util.Map;
 /**
  * ETL处理服务实现
  * 负责文档的解析、分块、向量化
+ * 使用策略模式，根据数据集类型选择不同的 EtlHandler
  *
  * @author Mahone
  * @date 2026-01-28
  */
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class KmEtlServiceImpl implements IKmEtlService {
 
     private final KmDocumentMapper documentMapper;
     private final KmDocumentChunkMapper chunkMapper;
+    private final org.dromara.ai.mapper.KmEmbeddingMapper embeddingMapper;
+    private final KmDatasetMapper datasetMapper;
     private final ISysOssService ossService;
+    private final EmbeddingModel embeddingModel;
+    private final List<EtlHandler> etlHandlers;
 
-    // 使用本地 ONNX 模型 (AllMiniLmL6V2)
-    // 后续可以替换为 BGE-M3
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
-
-    // 文档解析器 (Tika)
+    // 文档解析器 (Tika) - 保留用于兼容旧接口
     private final DocumentParser documentParser = new ApacheTikaDocumentParser();
+
+    @Autowired
+    public KmEtlServiceImpl(
+            KmDocumentMapper documentMapper,
+            KmDocumentChunkMapper chunkMapper,
+            org.dromara.ai.mapper.KmEmbeddingMapper embeddingMapper,
+            KmDatasetMapper datasetMapper,
+            ISysOssService ossService,
+            EmbeddingModel embeddingModel,
+            List<EtlHandler> etlHandlers) {
+        this.documentMapper = documentMapper;
+        this.chunkMapper = chunkMapper;
+        this.embeddingMapper = embeddingMapper;
+        this.datasetMapper = datasetMapper;
+        this.ossService = ossService;
+        this.embeddingModel = embeddingModel;
+        this.etlHandlers = etlHandlers;
+    }
 
     @Override
     @Async
@@ -68,37 +91,100 @@ public class KmEtlServiceImpl implements IKmEtlService {
             // 更新状态为处理中
             updateDocumentStatus(documentId, "PROCESSING", null);
 
-            // 1. 解析文档
-            String content = parseDocument(documentId);
-            if (content == null || content.isBlank()) {
-                updateDocumentStatus(documentId, "ERROR", "文档内容为空");
+            // 获取数据集信息
+            KmDataset dataset = datasetMapper.selectById(document.getDatasetId());
+            if (dataset == null) {
+                updateDocumentStatus(documentId, "ERROR", "数据集不存在");
                 return;
             }
 
-            // 2. 分块
-            List<String> chunks = splitText(content, 500, 50);
-            if (CollUtil.isEmpty(chunks)) {
-                updateDocumentStatus(documentId, "ERROR", "分块失败");
-                return;
+            // 获取知识库ID
+            Long kbId = dataset.getKbId();
+            if (kbId == null) {
+                kbId = document.getKbId();
             }
 
-            // 3. 向量化并存储
-            embedAndStore(documentId, chunks);
+            // 文件格式校验
+            if (StringUtils.isNotBlank(dataset.getAllowedFileTypes())
+                    && StringUtils.isNotBlank(document.getOriginalFilename())) {
+                try {
+                    org.dromara.ai.util.FileTypeValidator.validate(
+                            document.getOriginalFilename(),
+                            dataset.getAllowedFileTypes());
+                } catch (Exception e) {
+                    updateDocumentStatus(documentId, "ERROR", e.getMessage());
+                    return;
+                }
+            }
 
-            // 4. 更新文档状态
-            KmDocument update = new KmDocument();
-            update.setId(documentId);
-            update.setStatus("COMPLETED");
-            update.setTokenCount(content.length()); // 简化: 用字符数代替 token
-            update.setChunkCount(chunks.size());
-            documentMapper.updateById(update);
+            // 根据数据集处理类型选择 Handler
+            String processType = dataset.getProcessType();
+            if (processType == null) {
+                processType = DatasetProcessType.GENERIC_FILE;
+            }
 
-            log.info("Document processing completed: {}, chunks: {}", documentId, chunks.size());
+            EtlHandler handler = findHandler(processType);
+            if (handler == null) {
+                // 兜底使用旧逻辑
+                log.warn("No handler found for processType: {}, using legacy logic", processType);
+                processLegacy(document, kbId);
+            } else {
+                // 使用 Handler 处理
+                handler.process(document, dataset, kbId);
+            }
+
+            // 更新文档状态
+            updateDocumentStatusCompleted(documentId);
+
+            log.info("Document processing completed: {}", documentId);
 
         } catch (Exception e) {
             log.error("Failed to process document: {}", documentId, e);
             updateDocumentStatus(documentId, "ERROR", e.getMessage());
         }
+    }
+
+    /**
+     * 查找支持指定处理类型的 Handler
+     */
+    private EtlHandler findHandler(String processType) {
+        for (EtlHandler handler : etlHandlers) {
+            if (handler.supports(processType)) {
+                return handler;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 兼容旧逻辑的处理方法
+     */
+    private void processLegacy(KmDocument document, Long kbId) {
+        // 1. 解析文档
+        String content = parseDocument(document.getId());
+        if (content == null || content.isBlank()) {
+            throw new RuntimeException("文档内容为空");
+        }
+
+        // 2. 分块
+        List<String> chunks = splitText(content, 500, 50);
+        if (CollUtil.isEmpty(chunks)) {
+            throw new RuntimeException("分块失败");
+        }
+
+        // 3. 向量化并存储
+        embedAndStore(document.getId(), kbId, chunks);
+    }
+
+    private void updateDocumentStatusCompleted(Long documentId) {
+        // 统计 chunk 数量
+        int chunkCount = chunkMapper.countByDocumentId(documentId);
+
+        KmDocument update = new KmDocument();
+        update.setId(documentId);
+        update.setStatus("COMPLETED");
+        update.setChunkCount(chunkCount);
+        documentMapper.updateById(update);
     }
 
     @Override
@@ -108,7 +194,6 @@ public class KmEtlServiceImpl implements IKmEtlService {
             return null;
         }
         try {
-            // 通过 OSS ID 获取文件
             Long ossId = document.getOssId();
             if (ossId == null) {
                 throw new RuntimeException("Document OSS ID is null");
@@ -119,10 +204,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
                 throw new RuntimeException("OSS file not found: " + ossId);
             }
 
-            // 使用 OssClient 直接获取内容，避免 URL 格式问题（如 http://http://）
-            org.dromara.common.oss.core.OssClient storage = org.dromara.common.oss.factory.OssFactory
-                    .instance(ossVo.getService());
-            try (InputStream is = storage.getObjectContent(ossVo.getFileName())) { // 使用 fileName 而不是 full URL
+            OssClient storage = OssFactory.instance(ossVo.getService());
+            try (InputStream is = storage.getObjectContent(ossVo.getFileName())) {
                 Document doc = documentParser.parse(is);
                 return doc.text();
             }
@@ -134,7 +217,6 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
     @Override
     public List<String> splitText(String text, int chunkSize, int overlap) {
-        // 使用 LangChain4j 的分块器
         var splitter = DocumentSplitters.recursive(chunkSize, overlap);
         Document doc = Document.from(text);
         List<TextSegment> segments = splitter.split(doc);
@@ -148,7 +230,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void embedAndStore(Long documentId, List<String> chunks) {
+    public void embedAndStore(Long documentId, Long kbId, List<String> chunks) {
         if (CollUtil.isEmpty(chunks)) {
             return;
         }
@@ -159,20 +241,17 @@ public class KmEtlServiceImpl implements IKmEtlService {
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
 
-            // 生成向量
             float[] embedding = embeddingModel.embed(chunkText).content().vector();
 
-            // 构建切片实体
             KmDocumentChunk chunk = new KmDocumentChunk();
             chunk.setId(IdUtil.getSnowflakeNextId());
             chunk.setDocumentId(documentId);
+            chunk.setKbId(kbId);
             chunk.setContent(chunkText);
             chunk.setEmbedding(embedding);
-            // 将 float[] 转换为 PostgreSQL vector 格式字符串: [1.0,2.0,3.0]
             chunk.setEmbeddingString(java.util.Arrays.toString(embedding));
             chunk.setCreateTime(now);
 
-            // 元数据
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("chunkIndex", i);
             metadata.put("totalChunks", chunks.size());
@@ -181,8 +260,23 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunkEntities.add(chunk);
         }
 
-        // 批量插入
         chunkMapper.insertBatch(chunkEntities);
+
+        // 同步写入 Unified Index (km_embedding)
+        List<org.dromara.ai.domain.KmEmbedding> embeddings = new ArrayList<>();
+        for (KmDocumentChunk chunk : chunkEntities) {
+            org.dromara.ai.domain.KmEmbedding emp = new org.dromara.ai.domain.KmEmbedding();
+            emp.setId(IdUtil.getSnowflakeNextId());
+            emp.setKbId(chunk.getKbId());
+            emp.setSourceId(chunk.getId());
+            emp.setSourceType(org.dromara.ai.domain.KmEmbedding.SourceType.CONTENT);
+            emp.setEmbedding(chunk.getEmbedding());
+            emp.setEmbeddingString(chunk.getEmbeddingString());
+            emp.setTextContent(chunk.getContent());
+            emp.setCreateTime(now);
+            embeddings.add(emp);
+        }
+        embeddingMapper.insertBatch(embeddings);
     }
 
     @Override

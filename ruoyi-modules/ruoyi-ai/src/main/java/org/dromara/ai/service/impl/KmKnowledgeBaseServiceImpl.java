@@ -3,6 +3,7 @@ package org.dromara.ai.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmKnowledgeBase;
 import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
@@ -13,6 +14,7 @@ import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.mapper.KmKnowledgeBaseMapper;
 import org.dromara.ai.service.IKmKnowledgeBaseService;
+import org.dromara.ai.service.etl.DatasetProcessType;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
@@ -94,9 +96,69 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         }
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
+            // 自动创建系统预设数据集
+            createSystemDatasets(add.getId());
             return add.getId();
         }
         return null;
+    }
+
+    /**
+     * 创建系统预设数据集
+     */
+    private void createSystemDatasets(Long kbId) {
+        // 通用文件数据集
+        KmDataset genericFile = new KmDataset();
+        genericFile.setKbId(kbId);
+        genericFile.setName("通用文件");
+        genericFile.setType("FILE");
+        genericFile.setProcessType(DatasetProcessType.GENERIC_FILE);
+        genericFile.setSourceType(KmDataset.SourceType.FILE_UPLOAD);
+        genericFile.setIsSystem(true);
+        genericFile.setMinChunkSize(100);
+        genericFile.setMaxChunkSize(500);
+        genericFile.setChunkOverlap(50);
+        genericFile.setAllowedFileTypes("*"); // 支持所有文件格式
+        datasetMapper.insert(genericFile);
+
+        // QA问答对数据集
+        KmDataset qaPair = new KmDataset();
+        qaPair.setKbId(kbId);
+        qaPair.setName("QA问答对");
+        qaPair.setType("FILE");
+        qaPair.setProcessType(DatasetProcessType.QA_PAIR);
+        qaPair.setSourceType(KmDataset.SourceType.FILE_UPLOAD);
+        qaPair.setIsSystem(true);
+        qaPair.setAllowedFileTypes("xlsx,xls,csv"); // 仅支持 Excel 和 CSV
+        datasetMapper.insert(qaPair);
+
+        // 在线文档数据集
+        KmDataset onlineDoc = new KmDataset();
+        onlineDoc.setKbId(kbId);
+        onlineDoc.setName("在线文档");
+        onlineDoc.setType("MANUAL");
+        onlineDoc.setProcessType(DatasetProcessType.ONLINE_DOC);
+        onlineDoc.setSourceType(KmDataset.SourceType.TEXT_INPUT);
+        onlineDoc.setIsSystem(true);
+        onlineDoc.setMinChunkSize(100);
+        onlineDoc.setMaxChunkSize(500);
+        onlineDoc.setChunkOverlap(50);
+        // 在线文档不需要文件上传,无需设置 allowedFileTypes
+        datasetMapper.insert(onlineDoc);
+
+        // 网页链接数据集
+        KmDataset webLink = new KmDataset();
+        webLink.setKbId(kbId);
+        webLink.setName("网页链接");
+        webLink.setType("WEB");
+        webLink.setProcessType(DatasetProcessType.WEB_LINK);
+        webLink.setSourceType(KmDataset.SourceType.WEB_CRAWL);
+        webLink.setIsSystem(true);
+        webLink.setMinChunkSize(100);
+        webLink.setMaxChunkSize(500);
+        webLink.setChunkOverlap(50);
+        // 网页链接不需要文件上传,无需设置 allowedFileTypes
+        datasetMapper.insert(webLink);
     }
 
     /**

@@ -80,4 +80,24 @@ public class KmDocument extends BaseEntity {
      * 文件哈希 (用于去重)
      */
     private String hashCode;
+
+    /**
+     * 所属知识库ID (冗余字段，便于查询)
+     */
+    private Long kbId;
+
+    /**
+     * 文档标题 (用于向量化和检索显示)
+     */
+    private String title;
+
+    /**
+     * 在线文档内容 (富文本HTML,用于 ONLINE_DOC 类型)
+     */
+    private String content;
+
+    /**
+     * 网页链接 URL (用于 WEB_LINK 类型)
+     */
+    private String url;
 }

@@ -59,4 +59,39 @@ public class KmDatasetVo implements Serializable {
      * 文档数量
      */
     private Integer documentCount;
+
+    /**
+     * 处理类型
+     */
+    private String processType;
+
+    /**
+     * 是否系统预设数据集
+     */
+    private Boolean isSystem;
+
+    /**
+     * 数据来源类型
+     */
+    private String sourceType;
+
+    /**
+     * 最小分块大小
+     */
+    private Integer minChunkSize;
+
+    /**
+     * 最大分块大小
+     */
+    private Integer maxChunkSize;
+
+    /**
+     * 分块重叠大小
+     */
+    private Integer chunkOverlap;
+
+    /**
+     * 支持的文件格式 (逗号分隔)
+     */
+    private String allowedFileTypes;
 }

@@ -55,4 +55,10 @@ public class KmRetrievalBo implements Serializable {
      * 是否启用关键词高亮 (默认 false，仅全文检索场景使用)
      */
     private Boolean enableHighlight = false;
+
+    /**
+     * 是否启用多源检索 (默认 true，搜索 km_embedding 表，包括 Content + Question + Title)
+     * 如果设为 false，则降级到旧版检索 (直接查询 km_document_chunk 表)
+     */
+    private Boolean enableMultiSource = true;
 }

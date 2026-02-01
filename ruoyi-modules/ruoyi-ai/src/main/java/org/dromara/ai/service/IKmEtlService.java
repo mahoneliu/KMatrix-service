@@ -41,9 +41,10 @@ public interface IKmEtlService {
      * 对切片进行向量化并存储
      *
      * @param documentId 文档ID
+     * @param kbId       知识库ID
      * @param chunks     切片列表
      */
-    void embedAndStore(Long documentId, List<String> chunks);
+    void embedAndStore(Long documentId, Long kbId, List<String> chunks);
 
     /**
      * 删除文档的所有切片

@@ -84,4 +84,27 @@ public class KmDocumentController extends BaseController {
     public R<Void> reprocess(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return toAjax(documentService.reprocessDocument(id));
     }
+
+    /**
+     * 创建在线文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/createOnlineDoc")
+    public R<KmDocumentVo> createOnlineDoc(
+            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "标题不能为空") @RequestParam String title,
+            @NotNull(message = "内容不能为空") @RequestParam String content) {
+        return R.ok(documentService.createOnlineDocument(datasetId, title, content));
+    }
+
+    /**
+     * 创建网页链接文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/createWebLink")
+    public R<KmDocumentVo> createWebLink(
+            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "URL不能为空") @RequestParam String url) {
+        return R.ok(documentService.createWebLinkDocument(datasetId, url));
+    }
 }

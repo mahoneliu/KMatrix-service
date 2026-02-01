@@ -98,7 +98,13 @@ public class KmDatasetServiceImpl implements IKmDatasetService {
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if (isValid) {
-            // TODO: 校验逻辑，例如数据集下是否存在文档
+            // 检查是否包含系统预设数据集
+            for (Long id : ids) {
+                KmDataset dataset = baseMapper.selectById(id);
+                if (dataset != null && Boolean.TRUE.equals(dataset.getIsSystem())) {
+                    throw new RuntimeException("系统预设数据集不可删除: " + dataset.getName());
+                }
+            }
         }
         return baseMapper.deleteByIds(ids) > 0;
     }

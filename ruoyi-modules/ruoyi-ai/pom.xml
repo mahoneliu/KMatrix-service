@@ -79,6 +79,13 @@
             <artifactId>ruoyi-common-translation</artifactId>
         </dependency>
 
+        <!-- Jsoup for web crawling -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
+
         <dependency>
             <groupId>org.dromara</groupId>
             <artifactId>ruoyi-common-idempotent</artifactId>
@@ -170,6 +177,20 @@
             <artifactId>langchain4j-document-parser-apache-tika</artifactId>
         </dependency>
 
+        <!-- Hutool POI for Excel/CSV parsing -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-poi</artifactId>
+            <version>5.8.26</version>
+        </dependency>
+
+        <!-- Apache POI (required by hutool-poi) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <dependency>
             <groupId>io.github.linpeilie</groupId>
             <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
@@ -177,7 +198,7 @@
 
     </dependencies>
 
-    <!-- <build>
+    <build>
         <plugins>
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
@@ -220,5 +241,5 @@
     </configuration>
 </plugin>
         </plugins>
-    </build> -->
+    </build>
 </project>

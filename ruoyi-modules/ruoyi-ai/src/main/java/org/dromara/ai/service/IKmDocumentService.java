@@ -62,4 +62,23 @@ public interface IKmDocumentService {
      * @return 是否成功
      */
     Boolean reprocessDocument(Long id);
+
+    /**
+     * 创建在线文档
+     *
+     * @param datasetId 数据集ID
+     * @param title     文档标题
+     * @param content   文档内容 (富文本HTML)
+     * @return 文档信息
+     */
+    KmDocumentVo createOnlineDocument(Long datasetId, String title, String content);
+
+    /**
+     * 创建网页链接文档
+     *
+     * @param datasetId 数据集ID
+     * @param url       网页URL
+     * @return 文档信息
+     */
+    KmDocumentVo createWebLinkDocument(Long datasetId, String url);
 }

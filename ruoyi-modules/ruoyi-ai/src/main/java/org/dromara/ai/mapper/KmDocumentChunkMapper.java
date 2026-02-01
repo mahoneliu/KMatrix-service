@@ -23,10 +23,10 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 批量插入切片 (含向量)
          */
         @Insert("<script>" +
-                        "INSERT INTO km_document_chunk (id, document_id, content, metadata, embedding, create_time) VALUES "
+                        "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, embedding, create_time) VALUES "
                         +
                         "<foreach collection='chunks' item='chunk' separator=','>" +
-                        "(#{chunk.id}, #{chunk.documentId}, #{chunk.content}, #{chunk.metadata, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb, "
+                        "(#{chunk.id}, #{chunk.documentId}, #{chunk.kbId}, #{chunk.content}, #{chunk.metadata, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb, "
                         +
                         "#{chunk.embeddingString}::vector, #{chunk.createTime})"
                         +
@@ -45,6 +45,18 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          */
         @Select("SELECT COUNT(*) FROM km_document_chunk WHERE document_id = #{documentId}")
         int countByDocumentId(@Param("documentId") Long documentId);
+
+        /**
+         * 根据切片ID列表批量查询切片
+         */
+        @Select("<script>" +
+                        "SELECT id, document_id, content, metadata FROM km_document_chunk " +
+                        "WHERE id IN " +
+                        "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+                        "  #{id}" +
+                        "</foreach>" +
+                        "</script>")
+        List<Map<String, Object>> selectChunksByIds(@Param("ids") List<Long> ids);
 
         /**
          * 向量相似度检索 (余弦距离)
@@ -113,6 +125,33 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
         List<Map<String, Object>> keywordSearch(
                         @Param("query") String query,
                         @Param("datasetIds") List<Long> datasetIds,
+                        @Param("topK") int topK);
+
+        /**
+         * 关键词检索 (通过 kb_id 过滤)
+         * 支持 PostgreSQL 全文检索
+         */
+        @Select("<script>" +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, " +
+                        "       ts_rank(c.content_search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score "
+                        +
+                        "FROM km_document_chunk c " +
+                        "<where>" +
+                        "  c.content_search_vector @@ to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')) "
+                        +
+                        "  <if test='kbIds != null and kbIds.size() > 0'>" +
+                        "    AND c.kb_id IN " +
+                        "    <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
+                        "      #{id}" +
+                        "    </foreach>" +
+                        "  </if>" +
+                        "</where>" +
+                        "ORDER BY score DESC " +
+                        "LIMIT #{topK}" +
+                        "</script>")
+        List<Map<String, Object>> keywordSearchByKbIds(
+                        @Param("query") String query,
+                        @Param("kbIds") List<Long> kbIds,
                         @Param("topK") int topK);
 
         /**

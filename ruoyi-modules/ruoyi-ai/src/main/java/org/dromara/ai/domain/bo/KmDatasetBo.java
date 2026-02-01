@@ -48,4 +48,39 @@ public class KmDatasetBo implements Serializable {
      * ETL配置 (JSON)
      */
     private Map<String, Object> config;
+
+    /**
+     * 处理类型: GENERIC_FILE, QA_PAIR, ONLINE_DOC, WEB_LINK
+     */
+    private String processType;
+
+    /**
+     * 是否系统预设数据集
+     */
+    private Boolean isSystem;
+
+    /**
+     * 数据来源类型: FILE_UPLOAD, TEXT_INPUT, WEB_CRAWL
+     */
+    private String sourceType;
+
+    /**
+     * 最小分块大小 (token)
+     */
+    private Integer minChunkSize;
+
+    /**
+     * 最大分块大小 (token)
+     */
+    private Integer maxChunkSize;
+
+    /**
+     * 分块重叠大小 (token)
+     */
+    private Integer chunkOverlap;
+
+    /**
+     * 支持的文件格式 (逗号分隔)
+     */
+    private String allowedFileTypes;
 }

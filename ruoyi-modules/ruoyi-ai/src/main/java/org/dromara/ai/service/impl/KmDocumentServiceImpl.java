@@ -134,4 +134,55 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         etlService.processDocumentAsync(id);
         return true;
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KmDocumentVo createOnlineDocument(Long datasetId, String title, String content) {
+        // 1. 创建文档记录
+        KmDocument document = new KmDocument();
+        document.setDatasetId(datasetId);
+        document.setTitle(title);
+        document.setContent(content);
+        document.setOriginalFilename(title); // 使用 title 作为文件名
+        document.setFileType("html");
+        document.setStatus("PENDING");
+
+        documentMapper.insert(document);
+
+        // 2. 异步触发 ETL 处理
+        Long docId = document.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                etlService.processDocumentAsync(docId);
+            }
+        });
+
+        return documentMapper.selectVoById(document.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public KmDocumentVo createWebLinkDocument(Long datasetId, String url) {
+        // 1. 创建文档记录
+        KmDocument document = new KmDocument();
+        document.setDatasetId(datasetId);
+        document.setUrl(url);
+        document.setOriginalFilename(url); // 使用 URL 作为文件名
+        document.setFileType("url");
+        document.setStatus("PENDING");
+
+        documentMapper.insert(document);
+
+        // 2. 异步触发 ETL 处理
+        Long docId = document.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                etlService.processDocumentAsync(docId);
+            }
+        });
+
+        return documentMapper.selectVoById(document.getId());
+    }
 }
