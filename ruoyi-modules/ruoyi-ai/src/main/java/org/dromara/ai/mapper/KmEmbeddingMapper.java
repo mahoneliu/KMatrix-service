@@ -134,7 +134,7 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         +
                         "       ts_headline('jiebacfg', text_content, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')), "
                         +
-                        "                   'StartSel=<mark>, StopSel=</mark>, MaxWords=80, MinWords=30') as highlight "
+                        "                   'StartSel=&lt;mark&gt;, StopSel=&lt;/mark&gt;, MaxWords=80, MinWords=30') as highlight "
                         +
                         "FROM km_embedding " +
                         "<where>" +
