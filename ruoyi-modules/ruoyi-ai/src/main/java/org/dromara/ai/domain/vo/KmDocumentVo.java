@@ -4,8 +4,11 @@ import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import org.dromara.ai.domain.KmDocument;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 /**
  * 文档VO
@@ -17,11 +20,13 @@ import java.util.Date;
 @AutoMapper(target = KmDocument.class)
 public class KmDocumentVo implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
      * 文档ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**

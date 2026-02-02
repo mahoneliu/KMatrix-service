@@ -18,6 +18,11 @@ import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.service.IKmEtlService;
 import org.dromara.ai.service.etl.DatasetProcessType;
 import org.dromara.ai.service.etl.EtlHandler;
+import org.dromara.ai.mapper.KmQuestionMapper;
+import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
+import org.dromara.ai.domain.KmQuestionChunkMap;
+import org.dromara.ai.domain.KmEmbedding;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
@@ -54,6 +59,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
     private final ISysOssService ossService;
     private final EmbeddingModel embeddingModel;
     private final List<EtlHandler> etlHandlers;
+    private final KmQuestionMapper questionMapper;
+    private final KmQuestionChunkMapMapper questionChunkMapMapper;
 
     // 文档解析器 (Tika) - 保留用于兼容旧接口
     private final DocumentParser documentParser = new ApacheTikaDocumentParser();
@@ -66,7 +73,9 @@ public class KmEtlServiceImpl implements IKmEtlService {
             KmDatasetMapper datasetMapper,
             ISysOssService ossService,
             EmbeddingModel embeddingModel,
-            List<EtlHandler> etlHandlers) {
+            List<EtlHandler> etlHandlers,
+            KmQuestionMapper questionMapper,
+            KmQuestionChunkMapMapper questionChunkMapMapper) {
         this.documentMapper = documentMapper;
         this.chunkMapper = chunkMapper;
         this.embeddingMapper = embeddingMapper;
@@ -74,6 +83,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
         this.ossService = ossService;
         this.embeddingModel = embeddingModel;
         this.etlHandlers = etlHandlers;
+        this.questionMapper = questionMapper;
+        this.questionChunkMapMapper = questionChunkMapMapper;
     }
 
     @Override
@@ -280,8 +291,43 @@ public class KmEtlServiceImpl implements IKmEtlService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteChunksByDocumentId(Long documentId) {
-        chunkMapper.deleteByDocumentId(documentId);
+        // 1. Get Chunk IDs
+        List<KmDocumentChunk> chunks = chunkMapper.selectList(new LambdaQueryWrapper<KmDocumentChunk>()
+                .eq(KmDocumentChunk::getDocumentId, documentId));
+
+        if (CollUtil.isEmpty(chunks))
+            return;
+
+        List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
+
+        // 2. Delete from km_embedding (SourceType=CONTENT (1))
+        embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                .in(KmEmbedding::getSourceId, chunkIds)
+                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.CONTENT));
+
+        // 3. Find associated questions
+        List<KmQuestionChunkMap> maps = questionChunkMapMapper.selectList(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                .in(KmQuestionChunkMap::getChunkId, chunkIds));
+
+        if (CollUtil.isNotEmpty(maps)) {
+            List<Long> qIds = maps.stream().map(KmQuestionChunkMap::getQuestionId).toList();
+
+            // Delete questions and their embeddings
+            embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                    .in(KmEmbedding::getSourceId, qIds)
+                    .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+
+            questionMapper.deleteByIds(qIds);
+
+            // Delete maps
+            questionChunkMapMapper.delete(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                    .in(KmQuestionChunkMap::getChunkId, chunkIds));
+        }
+
+        // 4. Delete Chunks
+        chunkMapper.deleteByIds(chunkIds);
     }
 
     private void updateDocumentStatus(Long documentId, String status, String errorMsg) {

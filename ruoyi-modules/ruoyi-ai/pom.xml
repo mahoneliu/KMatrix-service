@@ -206,11 +206,18 @@
                 <version>3.14.0</version>
                 <configuration>
                     <useIncrementalCompilation>false</useIncrementalCompilation>
+                    <fork>true</fork>
                     <compilerArgs>
                         <arg>-AadapterPackage=org.dromara.ai.convert</arg>
+                        <arg>-AadapterClassName=RuoyiAiAutoMapperConfig</arg>
                         <arg>-AmapperPackage=org.dromara.ai.convert.mapper</arg>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                    <compilerArguments>
+                        <AadapterPackage>org.dromara.ai.convert</AadapterPackage>
+                        <AadapterClassName>RuoyiAiAutoMapperConfig</AadapterClassName>
+                        <AmapperPackage>org.dromara.ai.convert.mapper</AmapperPackage>
+                    </compilerArguments>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
