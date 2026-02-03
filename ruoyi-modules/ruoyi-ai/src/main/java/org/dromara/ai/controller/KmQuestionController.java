@@ -37,6 +37,14 @@ public class KmQuestionController extends BaseController {
     }
 
     /**
+     * 查询文档下的所有问题
+     */
+    @GetMapping("/listByDocument/{documentId}")
+    public R<List<KmQuestionVo>> listByDocument(@NotNull(message = "文档ID不能为空") @PathVariable Long documentId) {
+        return R.ok(questionService.listByDocumentId(documentId));
+    }
+
+    /**
      * 手动添加问题
      */
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)

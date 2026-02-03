@@ -64,4 +64,24 @@ public class KmDocumentChunkVo implements Serializable {
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 启用状态 (0=禁用, 1=启用)
+     */
+    private Integer enabled;
+
+    /**
+     * 向量化状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer embeddingStatus;
+
+    /**
+     * 问题生成状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer questionStatus;
+
+    /**
+     * 状态追踪元数据
+     */
+    private Map<String, Object> statusMeta;
 }

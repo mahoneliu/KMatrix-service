@@ -2,11 +2,14 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.KmDocumentChunkBo;
 import org.dromara.ai.domain.vo.KmDocumentChunkVo;
 import org.dromara.ai.service.IKmDocumentChunkService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -39,33 +42,97 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 获取切片详细信息
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public R<KmDocumentChunkVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return R.ok(chunkService.queryById(id));
     }
 
     /**
-     * 修改切片内容
+     * 修改切片
      */
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping
     public R<Void> edit(@RequestBody Map<String, Object> body) {
         Object idObj = body.get("id");
-        Object contentObj = body.get("content");
-        if (idObj == null || contentObj == null) {
-            return R.fail("参数不完整");
+        if (idObj == null) {
+            return R.fail("ID不能为空");
         }
         Long id = Long.valueOf(idObj.toString());
-        String content = contentObj.toString();
-        return toAjax(chunkService.updateChunk(id, content));
+
+        String title = body.containsKey("title") ? body.get("title").toString() : null;
+        String content = body.containsKey("content") ? body.get("content").toString() : null;
+
+        return toAjax(chunkService.updateChunk(id, title, content));
     }
 
     /**
      * 删除切片
      */
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return toAjax(chunkService.deleteById(id));
+    }
+
+    /**
+     * 分页查询切片列表
+     */
+    @GetMapping("/list")
+    public TableDataInfo<KmDocumentChunkVo> list(KmDocumentChunkBo bo, PageQuery pageQuery) {
+        return chunkService.pageList(bo, pageQuery);
+    }
+
+    /**
+     * 手工添加切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.INSERT)
+    @PostMapping
+    public R<KmDocumentChunkVo> add(@Validated @RequestBody KmDocumentChunkBo bo) {
+        return R.ok(chunkService.addChunk(bo));
+    }
+
+    /**
+     * 启用切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
+    @PutMapping("/enable/{id:\\d+}")
+    public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+        return toAjax(chunkService.enableChunk(id, true));
+    }
+
+    /**
+     * 禁用切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
+    @PutMapping("/disable/{id:\\d+}")
+    public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+        return toAjax(chunkService.enableChunk(id, false));
+    }
+
+    /**
+     * 批量启用切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
+    @PutMapping("/batchEnable")
+    public R<Void> batchEnable(@RequestBody List<Long> ids) {
+        return toAjax(chunkService.batchEnable(ids, true));
+    }
+
+    /**
+     * 批量禁用切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
+    @PutMapping("/batchDisable")
+    public R<Void> batchDisable(@RequestBody List<Long> ids) {
+        return toAjax(chunkService.batchEnable(ids, false));
+    }
+
+    /**
+     * 批量删除切片
+     */
+    @Log(title = "知识库切片", businessType = BusinessType.DELETE)
+    @DeleteMapping("/batchDelete")
+    public R<Void> batchDelete(@RequestBody List<Long> ids) {
+        return toAjax(chunkService.batchDelete(ids));
     }
 }

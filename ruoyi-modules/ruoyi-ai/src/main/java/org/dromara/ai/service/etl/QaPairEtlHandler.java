@@ -107,7 +107,10 @@ public class QaPairEtlHandler implements EtlHandler {
             chunk.setDocumentId(document.getId());
             chunk.setKbId(kbId);
             chunk.setContent(answer);
-            // QA 模式下不设置 title (使用空标题)
+            // QA 模式下将问题设为标题 (截取前255字符)
+            if (StrUtil.isNotBlank(questionText)) {
+                chunk.setTitle(questionText.length() > 255 ? questionText.substring(0, 255) : questionText);
+            }
             chunk.setCreateTime(now);
 
             // 元数据

@@ -7,6 +7,7 @@ import org.dromara.ai.domain.KmDocument;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.Map;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
@@ -78,4 +79,24 @@ public class KmDocumentVo implements Serializable {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 启用状态 (0=禁用, 1=启用)
+     */
+    private Integer enabled;
+
+    /**
+     * 向量化状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer embeddingStatus;
+
+    /**
+     * 问题生成状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer questionStatus;
+
+    /**
+     * 状态追踪元数据
+     */
+    private Map<String, Object> statusMeta;
 }

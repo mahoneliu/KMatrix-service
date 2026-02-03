@@ -26,7 +26,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
                         "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, embedding, create_time) VALUES "
                         +
                         "<foreach collection='chunks' item='chunk' separator=','>" +
-                        "(#{chunk.id}, #{chunk.documentId}, #{chunk.kbId}, #{chunk.content}, #{chunk.metadata, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb, "
+                        "(#{chunk.id}, #{chunk.documentId}, #{chunk.kbId}, #{chunk.content}, #{chunk.metadata, typeHandler=org.dromara.common.mybatis.handler.JsonTypeHandler}::jsonb, "
                         +
                         "#{chunk.embeddingString}::vector, #{chunk.createTime})"
                         +

@@ -21,6 +21,14 @@ public interface IKmQuestionService {
     List<KmQuestionVo> listByChunkId(Long chunkId);
 
     /**
+     * 查询文档下的所有问题
+     *
+     * @param documentId 文档ID
+     * @return 问题列表
+     */
+    List<KmQuestionVo> listByDocumentId(Long documentId);
+
+    /**
      * 手动添加问题
      *
      * @param chunkId 切片ID

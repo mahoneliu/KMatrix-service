@@ -5,16 +5,18 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmKnowledgeBase;
+import org.dromara.ai.domain.KmQuestion;
 import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
 import org.dromara.ai.domain.vo.KmKnowledgeBaseVo;
 import org.dromara.ai.domain.vo.KmStatisticsVo;
 import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
-import org.dromara.ai.mapper.KmDocumentMapper;
-import org.dromara.ai.mapper.KmKnowledgeBaseMapper;
+import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmKnowledgeBaseService;
 import org.dromara.ai.service.etl.DatasetProcessType;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
@@ -40,6 +42,8 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     private final KmDatasetMapper datasetMapper;
     private final KmDocumentMapper documentMapper;
     private final KmDocumentChunkMapper chunkMapper;
+    private final KmQuestionMapper questionMapper;
+    private final KmEmbeddingMapper embeddingMapper;
 
     /**
      * 查询知识库
@@ -178,8 +182,41 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if (isValid) {
-            // TODO: 校验逻辑，例如知识库下是否存在数据集
+            // 校验是否存在数据集 (无需校验，因为删除知识库会连带删除数据集)
+
+            // 校验是否存在文档
+            if (documentMapper.exists(new LambdaQueryWrapper<KmDocument>().in(KmDocument::getKbId, ids))) {
+                throw new ServiceException("当前知识库下存在文档，无法直接删除");
+            }
+            // 校验是否存在问题
+            if (questionMapper.exists(
+                    new LambdaQueryWrapper<KmQuestion>().in(KmQuestion::getKbId, ids).apply("del_flag = '0'"))) {
+                throw new ServiceException("当前知识库下存在问题，无法直接删除");
+            }
         }
+
+        // 级联删除
+        for (Long id : ids) {
+            // 删除文档 (逻辑删除)
+            // KmDocument 继承 BaseEntity，若需物理删除需检查配置。
+            // 这里我们使用 MP 的 delete 方法，假设配置了逻辑删除或者接受物理删除。
+            // 按照需求 "软删除"，通常 Entity 需有 @TableLogic。
+            // 若 KmDocument 未配置逻辑删除，此处为物理删除。
+            documentMapper.delete(new LambdaQueryWrapper<KmDocument>().eq(KmDocument::getKbId, id));
+
+            // 删除切片 (物理删除，因为 KmDocumentChunk 无 del_flag)
+            chunkMapper.delete(new LambdaQueryWrapper<KmDocumentChunk>().eq(KmDocumentChunk::getKbId, id));
+
+            // 删除问题 (逻辑删除)
+            questionMapper.deleteByKbId(id);
+
+            // 删除向量 (物理删除)
+            embeddingMapper.deleteByKbId(id);
+
+            // 删除数据集 (物理删除，因为 KmDataset 无 del_flag)
+            datasetMapper.delete(new LambdaQueryWrapper<KmDataset>().eq(KmDataset::getKbId, id));
+        }
+
         return baseMapper.deleteByIds(ids) > 0;
     }
 

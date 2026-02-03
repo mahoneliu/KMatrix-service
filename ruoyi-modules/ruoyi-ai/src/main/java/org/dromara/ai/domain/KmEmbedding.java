@@ -1,6 +1,7 @@
 package org.dromara.ai.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -48,11 +49,13 @@ public class KmEmbedding implements Serializable {
      * 向量 (存储为 float[] 或 String)
      * 注意: PostgreSQL 使用 vector 类型，需要自定义 TypeHandler
      */
+    @TableField(exist = false)
     private float[] embedding;
 
     /**
      * 向量字符串格式 (用于 SQL 插入)
      */
+    @TableField(exist = false)
     private String embeddingString;
 
     /**

@@ -2,11 +2,15 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.BatchGenerateQuestionsRequest;
+import org.dromara.ai.domain.bo.KmDocumentBo;
 import org.dromara.ai.domain.vo.KmDocumentVo;
 import org.dromara.ai.service.IKmDocumentService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -60,9 +64,17 @@ public class KmDocumentController extends BaseController {
     }
 
     /**
+     * 分页查询文档列表
+     */
+    @GetMapping("/list")
+    public TableDataInfo<KmDocumentVo> list(KmDocumentBo bo, PageQuery pageQuery) {
+        return documentService.pageList(bo, pageQuery);
+    }
+
+    /**
      * 获取文档详细信息
      */
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public R<KmDocumentVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return R.ok(documentService.queryById(id));
     }
@@ -71,7 +83,7 @@ public class KmDocumentController extends BaseController {
      * 删除文档
      */
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return toAjax(documentService.deleteById(id));
     }
@@ -80,7 +92,7 @@ public class KmDocumentController extends BaseController {
      * 重新处理文档 (重新触发ETL)
      */
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
-    @PostMapping("/reprocess/{id}")
+    @PostMapping("/reprocess/{id:\\d+}")
     public R<Void> reprocess(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return toAjax(documentService.reprocessDocument(id));
     }
@@ -106,5 +118,79 @@ public class KmDocumentController extends BaseController {
             @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
             @NotNull(message = "URL不能为空") @RequestParam String url) {
         return R.ok(documentService.createWebLinkDocument(datasetId, url));
+    }
+
+    /**
+     * 启用文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    @PutMapping("/enable/{id:\\d+}")
+    public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+        return toAjax(documentService.enableDocument(id, true));
+    }
+
+    /**
+     * 禁用文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    @PutMapping("/disable/{id:\\d+}")
+    public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+        return toAjax(documentService.enableDocument(id, false));
+    }
+
+    /**
+     * 批量启用文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    @PutMapping("/batchEnable")
+    public R<Void> batchEnable(@RequestBody List<Long> ids) {
+        return toAjax(documentService.batchEnable(ids, true));
+    }
+
+    /**
+     * 批量禁用文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    @PutMapping("/batchDisable")
+    public R<Void> batchDisable(@RequestBody List<Long> ids) {
+        return toAjax(documentService.batchEnable(ids, false));
+    }
+
+    /**
+     * 批量删除文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.DELETE)
+    @DeleteMapping("/batchDelete")
+    public R<Void> batchDelete(@RequestBody List<Long> ids) {
+        return toAjax(documentService.batchDelete(ids));
+    }
+
+    /**
+     * 更新文档名称
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id:\\d+}")
+    public R<Void> updateDocumentName(
+            @NotNull(message = "主键不能为空") @PathVariable Long id,
+            @NotNull(message = "名称不能为空") @RequestParam String originalFilename) {
+        return toAjax(documentService.updateDocumentName(id, originalFilename));
+    }
+
+    /**
+     * 批量向量化生成
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/batchEmbedding")
+    public R<Void> batchEmbedding(@RequestBody List<Long> documentIds) {
+        return toAjax(documentService.batchEmbedding(documentIds));
+    }
+
+    /**
+     * 批量问题生成
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/batchGenerateQuestions")
+    public R<Void> batchGenerateQuestions(@RequestBody BatchGenerateQuestionsRequest request) {
+        return toAjax(documentService.batchGenerateQuestions(request.getDocumentIds(), request.getModelId()));
     }
 }

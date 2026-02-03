@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import org.dromara.common.mybatis.handler.JsonTypeHandler;
 import com.pgvector.PGvector;
 import lombok.Data;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
@@ -59,7 +59,7 @@ public class KmDocumentChunk {
     /**
      * 元数据 (JSON: page, source, etc.)
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> metadata;
 
     /**
@@ -80,4 +80,26 @@ public class KmDocumentChunk {
      * 创建时间
      */
     private LocalDateTime createTime;
+
+    /**
+     * 启用状态 (0=禁用, 1=启用)
+     */
+    private Integer enabled;
+
+    /**
+     * 向量化状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer embeddingStatus;
+
+    /**
+     * 问题生成状态 (0=未生成, 1=生成中, 2=已生成, 3=生成失败)
+     */
+    private Integer questionStatus;
+
+    /**
+     * 状态追踪元数据 (JSON格式)
+     * 包含 state_time 状态时间记录
+     */
+    @TableField(typeHandler = JsonTypeHandler.class)
+    private Map<String, Object> statusMeta;
 }

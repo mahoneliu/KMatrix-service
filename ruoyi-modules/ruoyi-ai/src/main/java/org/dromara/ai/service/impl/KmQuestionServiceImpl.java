@@ -63,6 +63,40 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
     }
 
     @Override
+    public List<KmQuestionVo> listByDocumentId(Long documentId) {
+        // 1. Get all chunks for the document
+        List<KmDocumentChunk> chunks = chunkMapper.selectList(
+                new LambdaQueryWrapper<KmDocumentChunk>()
+                        .select(KmDocumentChunk::getId)
+                        .eq(KmDocumentChunk::getDocumentId, documentId));
+
+        if (CollUtil.isEmpty(chunks)) {
+            return new ArrayList<>();
+        }
+
+        List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
+
+        // 2. Get all question IDs mapped to these chunks
+        List<KmQuestionChunkMap> maps = chunkMapMapper.selectList(
+                new LambdaQueryWrapper<KmQuestionChunkMap>()
+                        .in(KmQuestionChunkMap::getChunkId, chunkIds));
+
+        if (CollUtil.isEmpty(maps)) {
+            return new ArrayList<>();
+        }
+
+        List<Long> questionIds = maps.stream().map(KmQuestionChunkMap::getQuestionId).distinct().toList();
+
+        // 3. Get questions
+        if (CollUtil.isEmpty(questionIds)) {
+            return new ArrayList<>();
+        }
+
+        List<KmQuestion> questions = baseMapper.selectBatchIds(questionIds);
+        return MapstructUtils.convert(questions, KmQuestionVo.class);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean addQuestion(Long chunkId, String content) {
         return addQuestionInternal(chunkId, null, content, "MANUAL");
@@ -193,7 +227,7 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
             embedding.setEmbeddingString(Arrays.toString(vector));
             embedding.setTextContent(content);
             embedding.setCreateTime(LocalDateTime.now());
-            embeddingMapper.insert(embedding);
+            embeddingMapper.insertOne(embedding);
         } catch (Exception e) {
             log.error("Failed to embed question: {}", content, e);
             throw new RuntimeException("Question embedding failed", e);

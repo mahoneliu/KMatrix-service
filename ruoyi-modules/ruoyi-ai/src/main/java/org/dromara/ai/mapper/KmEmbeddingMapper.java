@@ -35,6 +35,13 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
         int insertBatch(@Param("embeddings") List<KmEmbedding> embeddings);
 
         /**
+         * 单条插入向量
+         */
+        @Insert("INSERT INTO km_embedding (kb_id, source_id, source_type, embedding, text_content, create_time) " +
+                        "VALUES (#{kbId}, #{sourceId}, #{sourceType}, #{embeddingString}::vector, #{textContent}, #{createTime})")
+        int insertOne(KmEmbedding embedding);
+
+        /**
          * 根据源ID和源类型删除向量
          */
         @Delete("DELETE FROM km_embedding WHERE source_id = #{sourceId} AND source_type = #{sourceType}")
