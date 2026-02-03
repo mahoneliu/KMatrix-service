@@ -139,8 +139,8 @@ public class OnlineDocEtlHandler implements EtlHandler {
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
             chunk.setTitle(title);
-            chunk.setEmbedding(vector);
-            chunk.setEmbeddingString(vectorString);
+            // chunk.setEmbedding(vector);
+            // chunk.setEmbeddingString(vectorString);
             chunk.setCreateTime(now);
 
             Map<String, Object> metadata = new HashMap<>();

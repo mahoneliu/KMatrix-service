@@ -53,4 +53,24 @@ public interface IKmQuestionService {
      * @return 生成的问题列表
      */
     List<KmQuestionVo> generateQuestions(Long chunkId, Long modelId);
+
+    Boolean linkQuestion(Long chunkId, Long questionId);
+
+    /**
+     * Unlink a question from a chunk
+     *
+     * @param chunkId    chunk id
+     * @param questionId question id
+     * @return true if successful
+     */
+    Boolean unlinkQuestion(Long chunkId, Long questionId);
+
+    /**
+     * 批量为切片生成问题
+     *
+     * @param chunkIds 切片ID列表
+     * @param modelId  模型ID (可选)
+     * @return 是否成功
+     */
+    Boolean batchGenerateQuestions(List<Long> chunkIds, Long modelId);
 }

@@ -5,10 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import org.dromara.common.mybatis.handler.JsonTypeHandler;
-import com.pgvector.PGvector;
 import lombok.Data;
-import org.dromara.common.mybatis.core.domain.BaseEntity;
-
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -66,15 +63,15 @@ public class KmDocumentChunk {
      * 向量嵌入 (pgvector类型)
      * 注意：此字段在插入时由 embeddingString 字段处理
      */
-    @TableField(exist = false)
-    private float[] embedding;
+    // @TableField(exist = false)
+    // private float[] embedding;
 
     /**
      * 向量嵌入字符串形式 (用于SQL插入)
      * 格式: [1.0,2.0,3.0]
      */
-    @TableField(exist = false)
-    private String embeddingString;
+    // @TableField(exist = false)
+    // private String embeddingString;
 
     /**
      * 创建时间

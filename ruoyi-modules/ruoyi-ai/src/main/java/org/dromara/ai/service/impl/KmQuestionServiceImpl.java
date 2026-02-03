@@ -235,7 +235,49 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         return true;
     }
 
+    @Override
+    public Boolean linkQuestion(Long chunkId, Long questionId) {
+        // Check if mapping already exists
+        Long count = chunkMapMapper.selectCount(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                .eq(KmQuestionChunkMap::getChunkId, chunkId)
+                .eq(KmQuestionChunkMap::getQuestionId, questionId));
+
+        if (count > 0) {
+            return true;
+        }
+
+        KmQuestionChunkMap map = new KmQuestionChunkMap();
+        map.setQuestionId(questionId);
+        map.setChunkId(chunkId);
+        return chunkMapMapper.insert(map) > 0;
+    }
+
+    @Override
+    public Boolean unlinkQuestion(Long chunkId, Long questionId) {
+        return chunkMapMapper.delete(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                .eq(KmQuestionChunkMap::getChunkId, chunkId)
+                .eq(KmQuestionChunkMap::getQuestionId, questionId)) > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean batchGenerateQuestions(List<Long> chunkIds, Long modelId) {
+        if (CollUtil.isEmpty(chunkIds)) {
+            return true;
+        }
+        for (Long chunkId : chunkIds) {
+            try {
+                generateQuestions(chunkId, modelId);
+            } catch (Exception e) {
+                log.error("批量生成问题失败, chunkId={}", chunkId, e);
+                // 继续处理下一个，不中断
+            }
+        }
+        return true;
+    }
+
     private String cleanQuestion(String line) {
+
         // Remove 1. 2. - 1、 etc
         return line.replaceAll("^[0-9\\.\\-\\s\\、]+", "").trim();
     }

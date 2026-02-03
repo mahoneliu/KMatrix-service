@@ -167,9 +167,9 @@ public class WebLinkEtlHandler implements EtlHandler {
             chunk.setDocumentId(documentId);
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
-            chunk.setTitle(title);
-            chunk.setEmbedding(vector);
-            chunk.setEmbeddingString(vectorString);
+            // chunk.setTitle(title);
+            // chunk.setEmbedding(vector);
+            // chunk.setEmbeddingString(vectorString);
             chunk.setCreateTime(now);
 
             Map<String, Object> metadata = new HashMap<>();

@@ -36,6 +36,11 @@ public class KmRetrievalResultVo implements Serializable {
     private String content;
 
     /**
+     * 切片标题
+     */
+    private String title;
+
+    /**
      * 相似度分数 (0-1)
      */
     private Double score;

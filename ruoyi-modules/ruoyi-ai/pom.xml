@@ -198,7 +198,7 @@
 
     </dependencies>
 
-    <build>
+    <!-- <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -213,11 +213,6 @@
                         <arg>-AmapperPackage=org.dromara.ai.convert.mapper</arg>
                         <arg>-parameters</arg>
                     </compilerArgs>
-                    <compilerArguments>
-                        <AadapterPackage>org.dromara.ai.convert</AadapterPackage>
-                        <AadapterClassName>RuoyiAiAutoMapperConfig</AadapterClassName>
-                        <AmapperPackage>org.dromara.ai.convert.mapper</AmapperPackage>
-                    </compilerArguments>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -248,5 +243,5 @@
                 </configuration>
             </plugin>
         </plugins>
-    </build>
+    </build> -->
 </project>

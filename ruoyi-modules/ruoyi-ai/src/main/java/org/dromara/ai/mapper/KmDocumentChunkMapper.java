@@ -23,12 +23,12 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 批量插入切片 (含向量)
          */
         @Insert("<script>" +
-                        "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, embedding, create_time) VALUES "
+                        "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, title, create_time) VALUES "
                         +
                         "<foreach collection='chunks' item='chunk' separator=','>" +
                         "(#{chunk.id}, #{chunk.documentId}, #{chunk.kbId}, #{chunk.content}, #{chunk.metadata, typeHandler=org.dromara.common.mybatis.handler.JsonTypeHandler}::jsonb, "
                         +
-                        "#{chunk.embeddingString}::vector, #{chunk.createTime})"
+                        "#{chunk.title}, #{chunk.createTime})"
                         +
                         "</foreach>" +
                         "</script>")
@@ -50,7 +50,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 根据切片ID列表批量查询切片
          */
         @Select("<script>" +
-                        "SELECT id, document_id, content, metadata FROM km_document_chunk " +
+                        "SELECT id, document_id, content, metadata, title FROM km_document_chunk " +
                         "WHERE id IN " +
                         "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
                         "  #{id}" +
@@ -63,7 +63,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 返回: chunk_id, document_id, content, metadata, score (1 - cosine_distance)
          */
         @Select("<script>" +
-                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, " +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, c.title, " +
                         "       (1 - (c.embedding &lt;=&gt; #{queryVector}::vector)) as score " +
                         "FROM km_document_chunk c " +
                         "JOIN km_document d ON c.document_id = d.id " +
@@ -103,7 +103,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
                         "LIMIT #{topK}" +
                         "</if>" +
                         "<if test='_databaseId != \"mysql\"'>" +
-                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, " +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, c.title, " +
                         "       ts_rank(c.content_search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score "
                         +
                         "FROM km_document_chunk c " +
@@ -132,7 +132,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 支持 PostgreSQL 全文检索
          */
         @Select("<script>" +
-                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, " +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, c.title, " +
                         "       ts_rank(c.content_search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score "
                         +
                         "FROM km_document_chunk c " +
@@ -177,7 +177,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
                         "LIMIT #{topK}" +
                         "</if>" +
                         "<if test='_databaseId != \"mysql\"'>" +
-                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, " +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, c.title, " +
                         "       ts_rank(c.content_search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score, "
                         +
                         "       ts_headline('jiebacfg', c.content, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')), "
@@ -209,7 +209,7 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 根据ID列表查询切片
          */
         @Select("<script>" +
-                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata " +
+                        "SELECT c.id as chunk_id, c.document_id, c.content, c.metadata, c.title " +
                         "FROM km_document_chunk c " +
                         "WHERE c.id IN " +
                         "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +

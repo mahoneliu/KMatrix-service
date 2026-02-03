@@ -78,7 +78,7 @@ CREATE TABLE km_document_chunk (
     document_id BIGINT NOT NULL,
     content TEXT,
     metadata JSONB, -- {page: 1, source: "xyz.pdf"}
-    embedding vector(384), -- use all-minilm-l6-v2 dim
+    -- embedding vector(384), -- use all-minilm-l6-v2 dim
     -- Generated column for full-text search (pre-computed tsvector)
     content_search_vector tsvector GENERATED ALWAYS AS (to_tsvector('jiebacfg', content)) STORED,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP

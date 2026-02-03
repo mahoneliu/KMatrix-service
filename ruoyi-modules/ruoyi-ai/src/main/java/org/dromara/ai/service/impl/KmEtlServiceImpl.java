@@ -249,6 +249,9 @@ public class KmEtlServiceImpl implements IKmEtlService {
         List<KmDocumentChunk> chunkEntities = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
+        // 同步写入 Unified Index (km_embedding)
+        List<org.dromara.ai.domain.KmEmbedding> embeddings = new ArrayList<>();
+
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
 
@@ -259,8 +262,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunk.setDocumentId(documentId);
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
-            chunk.setEmbedding(embedding);
-            chunk.setEmbeddingString(java.util.Arrays.toString(embedding));
+            // chunk.setEmbedding(embedding);
+            // chunk.setEmbeddingString(java.util.Arrays.toString(embedding));
             chunk.setCreateTime(now);
 
             Map<String, Object> metadata = new HashMap<>();
@@ -269,24 +272,34 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunk.setMetadata(metadata);
 
             chunkEntities.add(chunk);
-        }
 
-        chunkMapper.insertBatch(chunkEntities);
-
-        // 同步写入 Unified Index (km_embedding)
-        List<org.dromara.ai.domain.KmEmbedding> embeddings = new ArrayList<>();
-        for (KmDocumentChunk chunk : chunkEntities) {
             org.dromara.ai.domain.KmEmbedding emp = new org.dromara.ai.domain.KmEmbedding();
             emp.setId(IdUtil.getSnowflakeNextId());
             emp.setKbId(chunk.getKbId());
             emp.setSourceId(chunk.getId());
             emp.setSourceType(org.dromara.ai.domain.KmEmbedding.SourceType.CONTENT);
-            emp.setEmbedding(chunk.getEmbedding());
-            emp.setEmbeddingString(chunk.getEmbeddingString());
-            emp.setTextContent(chunk.getContent());
+            emp.setEmbedding(embedding);
+            emp.setEmbeddingString(java.util.Arrays.toString(embedding));
+            emp.setTextContent(chunkText);
             emp.setCreateTime(now);
             embeddings.add(emp);
         }
+
+        chunkMapper.insertBatch(chunkEntities);
+
+        // for (KmDocumentChunk chunk : chunkEntities) {
+        // org.dromara.ai.domain.KmEmbedding emp = new
+        // org.dromara.ai.domain.KmEmbedding();
+        // emp.setId(IdUtil.getSnowflakeNextId());
+        // emp.setKbId(chunk.getKbId());
+        // emp.setSourceId(chunk.getId());
+        // emp.setSourceType(org.dromara.ai.domain.KmEmbedding.SourceType.CONTENT);
+        // emp.setEmbedding(chunk.getEmbedding());
+        // emp.setEmbeddingString(chunk.getEmbeddingString());
+        // emp.setTextContent(chunk.getContent());
+        // emp.setCreateTime(now);
+        // embeddings.add(emp);
+        // }
         embeddingMapper.insertBatch(embeddings);
     }
 

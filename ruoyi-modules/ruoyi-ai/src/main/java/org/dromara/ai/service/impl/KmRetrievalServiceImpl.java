@@ -284,6 +284,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                     vo.setChunkId(chunkId);
                     vo.setDocumentId(((Number) row.get("document_id")).longValue());
                     vo.setContent((String) row.get("content"));
+                    vo.setTitle((String) row.get("title"));
                     vo.setMetadata(row.get("metadata"));
                     vo.setScore(chunkScores.getOrDefault(chunkId, 0.0));
                     vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
@@ -443,6 +444,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                     vo.setChunkId(((Number) row.get("chunk_id")).longValue());
                     vo.setDocumentId(((Number) row.get("document_id")).longValue());
                     vo.setContent((String) row.get("content"));
+                    vo.setTitle((String) row.get("title"));
                     vo.setMetadata(row.get("metadata"));
                     vo.setScore(row.get("score") != null ? ((Number) row.get("score")).doubleValue() : 0);
                     vo.setDocumentName(docNameMap.get(vo.getDocumentId()));

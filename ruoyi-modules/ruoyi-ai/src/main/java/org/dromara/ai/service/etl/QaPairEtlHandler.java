@@ -107,10 +107,6 @@ public class QaPairEtlHandler implements EtlHandler {
             chunk.setDocumentId(document.getId());
             chunk.setKbId(kbId);
             chunk.setContent(answer);
-            // QA 模式下将问题设为标题 (截取前255字符)
-            if (StrUtil.isNotBlank(questionText)) {
-                chunk.setTitle(questionText.length() > 255 ? questionText.substring(0, 255) : questionText);
-            }
             chunk.setCreateTime(now);
 
             // 元数据
@@ -121,8 +117,8 @@ public class QaPairEtlHandler implements EtlHandler {
 
             // 生成答案向量
             float[] answerVector = embeddingModel.embed(answer).content().vector();
-            chunk.setEmbedding(answerVector);
-            chunk.setEmbeddingString(Arrays.toString(answerVector));
+            // chunk.setEmbedding(answerVector);
+            // chunk.setEmbeddingString(Arrays.toString(answerVector));
 
             chunks.add(chunk);
 
@@ -141,6 +137,11 @@ public class QaPairEtlHandler implements EtlHandler {
             // 处理问题 (支持换行符分隔多个问题)
             if (StrUtil.isNotBlank(questionText)) {
                 String[] questionLines = questionText.split("[\r\n]+");
+                // QA 模式下将第一个问题设为标题 (截取前255字符)
+                if (StrUtil.isNotBlank(questionLines[0])) {
+                    chunk.setTitle(
+                            questionLines[0].length() > 255 ? questionLines[0].substring(0, 255) : questionLines[0]);
+                }
                 for (String q : questionLines) {
                     q = q.trim();
                     if (StrUtil.isBlank(q))

@@ -176,9 +176,9 @@ public class GenericFileEtlHandler implements EtlHandler {
             chunk.setDocumentId(documentId);
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
-            chunk.setTitle(title); // 设置 title (冗余字段,用于显示)
-            chunk.setEmbedding(vector);
-            chunk.setEmbeddingString(vectorString);
+            // chunk.setTitle(title);
+            // chunk.setEmbedding(vector);
+            // chunk.setEmbeddingString(vectorString);
             chunk.setCreateTime(now);
 
             // 元数据

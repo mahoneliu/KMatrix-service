@@ -61,6 +61,44 @@ public class KmQuestionController extends BaseController {
     }
 
     /**
+     * 关联现有问题
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.INSERT)
+    @PostMapping("/link")
+    public R<Void> link(@RequestBody Map<String, Object> body) {
+        Object chunkIdObj = body.get("chunkId");
+        Object questionIdObj = body.get("questionId");
+
+        if (chunkIdObj == null || questionIdObj == null) {
+            return R.fail("参数不完整");
+        }
+
+        Long chunkId = Long.valueOf(chunkIdObj.toString());
+        Long questionId = Long.valueOf(questionIdObj.toString());
+
+        return toAjax(questionService.linkQuestion(chunkId, questionId));
+    }
+
+    /**
+     * 取消关联问题
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.DELETE)
+    @PostMapping("/unlink")
+    public R<Void> unlink(@RequestBody Map<String, Object> body) {
+        Object chunkIdObj = body.get("chunkId");
+        Object questionIdObj = body.get("questionId");
+
+        if (chunkIdObj == null || questionIdObj == null) {
+            return R.fail("参数不完整");
+        }
+
+        Long chunkId = Long.valueOf(chunkIdObj.toString());
+        Long questionId = Long.valueOf(questionIdObj.toString());
+
+        return toAjax(questionService.unlinkQuestion(chunkId, questionId));
+    }
+
+    /**
      * 删除问题
      */
     @Log(title = "知识库问题", businessType = BusinessType.DELETE)
@@ -85,5 +123,26 @@ public class KmQuestionController extends BaseController {
         Long modelId = modelIdObj != null ? Long.valueOf(modelIdObj.toString()) : null;
 
         return R.ok(questionService.generateQuestions(chunkId, modelId));
+    }
+
+    /**
+     * 批量为切片生成问题
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.INSERT)
+    @PostMapping("/batchGenerate")
+    public R<Void> batchGenerate(@RequestBody Map<String, Object> body) {
+        Object chunkIdsObj = body.get("chunkIds");
+        if (chunkIdsObj == null) {
+            return R.fail("切片ID列表不能为空");
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Number> chunkIdNumbers = (List<Number>) chunkIdsObj;
+        List<Long> chunkIds = chunkIdNumbers.stream().map(Number::longValue).toList();
+
+        Object modelIdObj = body.get("modelId");
+        Long modelId = modelIdObj != null ? Long.valueOf(modelIdObj.toString()) : null;
+
+        return toAjax(questionService.batchGenerateQuestions(chunkIds, modelId));
     }
 }

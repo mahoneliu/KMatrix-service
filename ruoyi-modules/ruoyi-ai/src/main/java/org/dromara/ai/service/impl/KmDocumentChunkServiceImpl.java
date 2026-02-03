@@ -80,8 +80,8 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
             chunk.setContent(content);
             // 更新向量
             float[] vector = embeddingModel.embed(content).content().vector();
-            chunk.setEmbedding(vector);
-            chunk.setEmbeddingString(Arrays.toString(vector));
+            // chunk.setEmbedding(vector);
+            // chunk.setEmbeddingString(Arrays.toString(vector));
             hasChanges = true;
 
             // 更新 km_embedding 表 (SourceType=CONTENT)
@@ -134,6 +134,10 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
         lqw.eq(bo.getEnabled() != null, KmDocumentChunk::getEnabled, bo.getEnabled());
         lqw.eq(bo.getEmbeddingStatus() != null, KmDocumentChunk::getEmbeddingStatus, bo.getEmbeddingStatus());
         lqw.eq(bo.getQuestionStatus() != null, KmDocumentChunk::getQuestionStatus, bo.getQuestionStatus());
+        // 标题搜索
+        lqw.like(StrUtil.isNotBlank(bo.getTitle()), KmDocumentChunk::getTitle, bo.getTitle());
+        // 内容搜索
+        lqw.like(StrUtil.isNotBlank(bo.getContent()), KmDocumentChunk::getContent, bo.getContent());
         // 关键词搜索
         lqw.like(StrUtil.isNotBlank(bo.getKeyword()), KmDocumentChunk::getContent, bo.getKeyword());
         // 默认排序
@@ -162,8 +166,8 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
 
         // 生成向量
         float[] vector = embeddingModel.embed(bo.getContent()).content().vector();
-        chunk.setEmbedding(vector);
-        chunk.setEmbeddingString(Arrays.toString(vector));
+        // chunk.setEmbedding(vector);
+        // chunk.setEmbeddingString(Arrays.toString(vector));
 
         if (chunk.getKbId() == null && chunk.getDocumentId() != null) {
             KmDocument document = documentMapper.selectById(chunk.getDocumentId());
