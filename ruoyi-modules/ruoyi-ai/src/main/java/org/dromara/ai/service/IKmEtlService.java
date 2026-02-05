@@ -9,7 +9,24 @@ import java.util.List;
  * @author Mahone
  * @date 2026-01-28
  */
+import org.dromara.ai.domain.enums.EmbeddingOption;
+
+/**
+ * ETL处理服务接口
+ * 负责文档的解析、分块、向量化
+ *
+ * @author Mahone
+ * @date 2026-01-28
+ */
 public interface IKmEtlService {
+
+    /**
+     * 处理文档向量化 (异步)
+     *
+     * @param documentId 文档ID
+     * @param option     向量化选项
+     */
+    void processEmbeddingAsync(Long documentId, EmbeddingOption option);
 
     /**
      * 处理文档 (异步)

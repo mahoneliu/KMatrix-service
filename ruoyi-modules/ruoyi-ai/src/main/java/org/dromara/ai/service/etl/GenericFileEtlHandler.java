@@ -18,6 +18,7 @@ import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmEmbeddingMapper;
 import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
+import org.dromara.ai.util.StatusMetaUtils;
 import org.dromara.system.domain.vo.SysOssVo;
 import org.dromara.system.service.ISysOssService;
 import org.springframework.stereotype.Component;
@@ -186,6 +187,10 @@ public class GenericFileEtlHandler implements EtlHandler {
             metadata.put("chunkIndex", i);
             metadata.put("totalChunks", chunks.size());
             chunk.setMetadata(metadata);
+
+            chunk.setEmbeddingStatus(2); // 2 = 已生成
+            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_SUCCESS));
 
             chunkEntities.add(chunk);
 

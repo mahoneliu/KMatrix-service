@@ -55,7 +55,7 @@ CREATE TABLE km_document (
     oss_id BIGINT, -- OSS file ID
     file_type VARCHAR(50), -- PDF, TXT, DOCX
     file_size BIGINT,
-    status VARCHAR(50) DEFAULT 'PENDING', -- PENDING, PROCESSING, COMPLETED, ERROR
+    -- status VARCHAR(50) DEFAULT 'PENDING', -- PENDING, PROCESSING, COMPLETED, ERROR
     error_msg TEXT,
     token_count INT DEFAULT 0,
     chunk_count INT DEFAULT 0,

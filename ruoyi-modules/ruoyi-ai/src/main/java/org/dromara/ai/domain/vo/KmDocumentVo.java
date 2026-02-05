@@ -51,11 +51,6 @@ public class KmDocumentVo implements Serializable {
     private Long fileSize;
 
     /**
-     * 处理状态 (PENDING/PROCESSING/COMPLETED/ERROR)
-     */
-    private String status;
-
-    /**
      * 错误信息
      */
     private String errorMsg;

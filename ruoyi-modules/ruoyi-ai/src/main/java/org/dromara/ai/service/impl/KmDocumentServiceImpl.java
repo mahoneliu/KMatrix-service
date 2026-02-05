@@ -6,9 +6,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.KmEmbedding;
 import org.dromara.ai.domain.bo.KmDocumentBo;
+import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.domain.vo.KmDocumentVo;
+import org.dromara.ai.util.StatusMetaUtils;
+import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.service.IKmDocumentChunkService;
 import org.dromara.ai.service.IKmDocumentService;
@@ -29,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 文档服务实现
@@ -42,6 +48,8 @@ import java.util.List;
 public class KmDocumentServiceImpl implements IKmDocumentService {
 
     private final KmDocumentMapper documentMapper;
+    private final KmDatasetMapper datasetMapper;
+    private final org.dromara.ai.mapper.KmEmbeddingMapper embeddingMapper;
     private final ISysOssService ossService;
     private final IKmEtlService etlService;
     private final IKmDocumentChunkService chunkService;
@@ -67,20 +75,31 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             // 3. 上传文件到 OSS
             SysOssVo ossVo = ossService.upload(file);
 
+            // 3.5 获取知识库ID
+            KmDataset dataset = datasetMapper.selectById(datasetId);
+            if (dataset == null) {
+                throw new RuntimeException("数据集不存在");
+            }
+
             // 4. 创建文档记录
             KmDocument document = new KmDocument();
             document.setDatasetId(datasetId);
+            document.setKbId(dataset.getKbId()); // 设置知识库ID
             document.setOriginalFilename(file.getOriginalFilename());
             document.setOssId(ossVo.getOssId()); // 存储 OSS ID
             document.setFilePath(ossVo.getUrl()); // 存储访问 URL
             document.setFileType(FileUtil.extName(file.getOriginalFilename()));
             document.setFileSize(file.getSize());
-            document.setStatus("PENDING");
+            document.setFileSize(file.getSize());
+            document.setEmbeddingStatus(1); // 1 = 生成中
+            document.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_PENDING));
+            document.setHashCode(hash);
             document.setHashCode(hash);
 
             documentMapper.insert(document);
 
-            // 5. 异步触发 ETL 处理 (确保事务提交后再执行，避免异步线程查不到数据)
+            // 5. 异步触发 ETL 处理 (确保事务提交后再执行,避免异步线程查不到数据)
             Long docId = document.getId();
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -133,7 +152,13 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         // 更新状态为 PENDING
         KmDocument doc = new KmDocument();
         doc.setId(id);
-        doc.setStatus("PENDING");
+        doc.setEmbeddingStatus(1); // 1 = 生成中
+
+        // 更新状态元数据
+        KmDocument exist = documentMapper.selectById(id);
+        Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+        doc.setStatusMeta(
+                StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING));
         doc.setErrorMsg(null);
         documentMapper.updateById(doc);
 
@@ -148,14 +173,24 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KmDocumentVo createOnlineDocument(Long datasetId, String title, String content) {
+        // 0. 获取知识库ID
+        KmDataset dataset = datasetMapper.selectById(datasetId);
+        if (dataset == null) {
+            throw new RuntimeException("数据集不存在");
+        }
+
         // 1. 创建文档记录
         KmDocument document = new KmDocument();
         document.setDatasetId(datasetId);
+        document.setKbId(dataset.getKbId()); // 设置知识库ID
         document.setTitle(title);
         document.setContent(content);
         document.setOriginalFilename(title); // 使用 title 作为文件名
         document.setFileType("html");
-        document.setStatus("PENDING");
+        document.setFileType("html");
+        document.setEmbeddingStatus(1); // 1 = 生成中
+        document.setStatusMeta(
+                StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING));
 
         documentMapper.insert(document);
 
@@ -174,13 +209,23 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KmDocumentVo createWebLinkDocument(Long datasetId, String url) {
+        // 0. 获取知识库ID
+        KmDataset dataset = datasetMapper.selectById(datasetId);
+        if (dataset == null) {
+            throw new RuntimeException("数据集不存在");
+        }
+
         // 1. 创建文档记录
         KmDocument document = new KmDocument();
         document.setDatasetId(datasetId);
+        document.setKbId(dataset.getKbId()); // 设置知识库ID
         document.setUrl(url);
         document.setOriginalFilename(url); // 使用 URL 作为文件名
         document.setFileType("url");
-        document.setStatus("PENDING");
+        document.setFileType("url");
+        document.setEmbeddingStatus(1); // 1 = 生成中
+        document.setStatusMeta(
+                StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING));
 
         documentMapper.insert(document);
 
@@ -260,45 +305,51 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean batchEmbedding(List<Long> documentIds) {
+    public Boolean batchEmbedding(List<Long> documentIds, EmbeddingOption option) {
         if (documentIds == null || documentIds.isEmpty()) {
             return false;
         }
-        // 遍历每个文档，重新触发向量化流程
+        // 遍历每个文档,重新触发向量化流程
         for (Long documentId : documentIds) {
-            KmDocument doc = documentMapper.selectById(documentId);
-            if (doc == null) {
-                continue;
-            }
-            // 更新向量化状态为"生成中"
-            KmDocument update = new KmDocument();
-            update.setId(documentId);
-            update.setEmbeddingStatus(1); // 1 = 生成中
-            documentMapper.updateById(update);
-
-            // 获取文档下的所有切片并重新生成向量
-            List<KmDocumentChunkVo> chunks = chunkService.listByDocumentId(documentId);
-            if (chunks != null && !chunks.isEmpty()) {
-                List<String> contents = chunks.stream()
-                        .map(KmDocumentChunkVo::getContent)
-                        .filter(StringUtils::isNotBlank)
-                        .toList();
-                if (!contents.isEmpty()) {
-                    // 获取文档所属知识库ID（通过数据集）
-                    Long kbId = doc.getKbId();
-                    etlService.embedAndStore(documentId, kbId, contents);
-                }
-            }
-            // 更新向量化状态为"已生成"
-            update.setEmbeddingStatus(2); // 2 = 已生成
-            documentMapper.updateById(update);
+            embeddingDocument(documentId, option);
         }
         return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean batchGenerateQuestions(List<Long> documentIds, Long modelId) {
+    public Boolean embeddingDocument(Long documentId, EmbeddingOption option) {
+        KmDocument doc = documentMapper.selectById(documentId);
+        if (doc == null) {
+            return false;
+        }
+        // 更新向量化状态为"生成中"
+        KmDocument update = new KmDocument();
+        update.setId(documentId);
+        update.setEmbeddingStatus(1); // 1 = 生成中
+        update.setEmbeddingStatus(1); // 1 = 生成中
+
+        // 更新状态元数据
+        Map<String, Object> meta = doc.getStatusMeta();
+        update.setStatusMeta(
+                StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_STARTED));
+
+        documentMapper.updateById(update);
+
+        // 异步执行向量化 (事务提交后执行)
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                etlService.processEmbeddingAsync(documentId, option);
+            }
+        });
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean batchGenerateQuestions(List<Long> documentIds, Long modelId, String prompt, Double temperature,
+            Integer maxTokens) {
         if (documentIds == null || documentIds.isEmpty()) {
             return false;
         }
@@ -308,30 +359,23 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             KmDocument update = new KmDocument();
             update.setId(documentId);
             update.setQuestionStatus(1); // 1 = 生成中
+            update.setQuestionStatus(1); // 1 = 生成中
+
+            // 更新状态元数据
+            KmDocument exist = documentMapper.selectById(documentId);
+            Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+            update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_GENERATE_QUESTION,
+                    StatusMetaUtils.STATUS_STARTED));
+
             documentMapper.updateById(update);
 
-            try {
-                // 获取文档下的所有切片
-                List<KmDocumentChunkVo> chunks = chunkService.listByDocumentId(documentId);
-                if (chunks != null && !chunks.isEmpty()) {
-                    // 为每个切片生成问题
-                    for (KmDocumentChunkVo chunk : chunks) {
-                        try {
-                            questionService.generateQuestions(chunk.getId(), modelId);
-                        } catch (Exception e) {
-                            log.error("Failed to generate questions for chunk: {}", chunk.getId(), e);
-                        }
-                    }
+            // 异步生成问题 (事务提交后执行)
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    questionService.processGenerateQuestionsAsync(documentId, modelId, prompt, temperature, maxTokens);
                 }
-                // 更新问题生成状态为"已生成"
-                update.setQuestionStatus(2); // 2 = 已生成
-                documentMapper.updateById(update);
-            } catch (Exception e) {
-                log.error("Failed to generate questions for document: {}", documentId, e);
-                // 更新问题生成状态为"失败"
-                update.setQuestionStatus(3); // 3 = 失败
-                documentMapper.updateById(update);
-            }
+            });
         }
         return true;
     }

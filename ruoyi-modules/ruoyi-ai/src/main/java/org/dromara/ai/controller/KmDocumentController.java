@@ -2,8 +2,10 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.BatchEmbeddingRequest;
 import org.dromara.ai.domain.bo.BatchGenerateQuestionsRequest;
 import org.dromara.ai.domain.bo.KmDocumentBo;
+import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.domain.vo.KmDocumentVo;
 import org.dromara.ai.service.IKmDocumentService;
 import org.dromara.common.core.domain.R;
@@ -181,8 +183,21 @@ public class KmDocumentController extends BaseController {
      */
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/batchEmbedding")
-    public R<Void> batchEmbedding(@RequestBody List<Long> documentIds) {
-        return toAjax(documentService.batchEmbedding(documentIds));
+    public R<Void> batchEmbedding(@RequestBody BatchEmbeddingRequest request) {
+        return toAjax(documentService.batchEmbedding(
+                request.getDocumentIds(),
+                request.getOption() != null ? request.getOption() : EmbeddingOption.UNEMBEDDED_ONLY));
+    }
+
+    /**
+     * 单个文档向量化
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/embedding/{id:\\d+}")
+    public R<Void> embedding(
+            @NotNull(message = "主键不能为空") @PathVariable Long id,
+            @RequestParam(defaultValue = "UNEMBEDDED_ONLY") EmbeddingOption option) {
+        return toAjax(documentService.embeddingDocument(id, option));
     }
 
     /**
@@ -191,6 +206,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/batchGenerateQuestions")
     public R<Void> batchGenerateQuestions(@RequestBody BatchGenerateQuestionsRequest request) {
-        return toAjax(documentService.batchGenerateQuestions(request.getDocumentIds(), request.getModelId()));
+        return toAjax(documentService.batchGenerateQuestions(request.getDocumentIds(), request.getModelId(),
+                request.getPrompt(), request.getTemperature(), request.getMaxTokens()));
     }
 }

@@ -1,6 +1,7 @@
 package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmDocumentBo;
+import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.domain.vo.KmDocumentVo;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -133,16 +134,30 @@ public interface IKmDocumentService {
      * 批量向量化生成
      *
      * @param documentIds 文档ID列表
+     * @param option      向量化选项
      * @return 是否成功
      */
-    Boolean batchEmbedding(List<Long> documentIds);
+    Boolean batchEmbedding(List<Long> documentIds, EmbeddingOption option);
 
     /**
      * 批量问题生成
      *
      * @param documentIds 文档ID列表
      * @param modelId     模型ID（可选）
+     * @param prompt      提示词 (可选)
+     * @param temperature 温度 (可选)
+     * @param maxTokens   最大token (可选)
      * @return 是否成功
      */
-    Boolean batchGenerateQuestions(List<Long> documentIds, Long modelId);
+    Boolean batchGenerateQuestions(List<Long> documentIds, Long modelId, String prompt, Double temperature,
+            Integer maxTokens);
+
+    /**
+     * 单个文档向量化
+     *
+     * @param documentId 文档ID
+     * @param option     向量化选项
+     * @return 是否成功
+     */
+    Boolean embeddingDocument(Long documentId, EmbeddingOption option);
 }

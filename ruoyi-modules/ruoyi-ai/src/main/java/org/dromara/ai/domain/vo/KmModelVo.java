@@ -117,4 +117,9 @@ public class KmModelVo implements Serializable {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 是否为系统默认模型(0-否 1-是)
+     */
+    private Integer isDefault;
 }

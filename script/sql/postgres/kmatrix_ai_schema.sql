@@ -69,47 +69,25 @@ CREATE TABLE km_model (
     update_by       BIGINT          DEFAULT NULL,
     update_time     TIMESTAMP       DEFAULT NULL,
     del_flag        CHAR(1)         DEFAULT '0',
+    is_default      SMALLINT        DEFAULT 0,
     remark          VARCHAR(500)    DEFAULT NULL,
     PRIMARY KEY (model_id)
 );
 
 COMMENT ON TABLE km_model IS 'AI模型配置表';
+COMMENT ON COLUMN km_model.is_default IS '是否为系统默认模型(0-否 1-是)';
 
 -- ----------------------------
 -- 2. 知识库表
 -- ----------------------------
-DROP TABLE IF EXISTS km_knowledge CASCADE;
-CREATE TABLE km_knowledge (
-    knowledge_id    BIGINT          NOT NULL,
-    knowledge_name  VARCHAR(64)     NOT NULL,
-    description     VARCHAR(500)    DEFAULT '',
-    embed_model_id  BIGINT          DEFAULT NULL,
-    index_name      VARCHAR(64)     DEFAULT '',
-    permission      CHAR(1)         DEFAULT '1',
-    create_dept     BIGINT          DEFAULT NULL,
-    create_by       BIGINT          DEFAULT NULL,
-    create_time     TIMESTAMP       DEFAULT NULL,
-    update_by       BIGINT          DEFAULT NULL,
-    update_time     TIMESTAMP       DEFAULT NULL,
-    del_flag        CHAR(1)         DEFAULT '0',
-    remark          VARCHAR(500)    DEFAULT NULL,
-    PRIMARY KEY (knowledge_id)
-);
-
--- ----------------------------
--- 3. 知识库文档表
--- ----------------------------
--- DROP TABLE IF EXISTS km_document CASCADE;
--- CREATE TABLE km_document (
---     doc_id          BIGINT          NOT NULL,
+-- DROP TABLE IF EXISTS km_knowledge CASCADE;
+-- CREATE TABLE km_knowledge (
 --     knowledge_id    BIGINT          NOT NULL,
---     file_name       VARCHAR(128)    NOT NULL,
---     file_url        VARCHAR(500)    NOT NULL,
---     file_type       VARCHAR(10)     DEFAULT '',
---     file_size       BIGINT          DEFAULT 0,
---     char_count      INTEGER         DEFAULT 0,
---     status          CHAR(1)         DEFAULT '0',
---     error_msg       VARCHAR(1000)   DEFAULT '',
+--     knowledge_name  VARCHAR(64)     NOT NULL,
+--     description     VARCHAR(500)    DEFAULT '',
+--     embed_model_id  BIGINT          DEFAULT NULL,
+--     index_name      VARCHAR(64)     DEFAULT '',
+--     permission      CHAR(1)         DEFAULT '1',
 --     create_dept     BIGINT          DEFAULT NULL,
 --     create_by       BIGINT          DEFAULT NULL,
 --     create_time     TIMESTAMP       DEFAULT NULL,
@@ -117,62 +95,86 @@ CREATE TABLE km_knowledge (
 --     update_time     TIMESTAMP       DEFAULT NULL,
 --     del_flag        CHAR(1)         DEFAULT '0',
 --     remark          VARCHAR(500)    DEFAULT NULL,
---     PRIMARY KEY (doc_id)
+--     PRIMARY KEY (knowledge_id)
 -- );
--- CREATE INDEX idx_km_doc_kb_id ON km_document(knowledge_id);
 
--- ----------------------------
--- 3.1 文档分段表 (Paragraph) 并集成 pgvector
--- ----------------------------
-DROP TABLE IF EXISTS km_paragraph CASCADE;
-CREATE TABLE km_paragraph (
-    paragraph_id    BIGINT          NOT NULL,
-    doc_id          BIGINT          NOT NULL,
-    knowledge_id    BIGINT          NOT NULL,
-    content         TEXT            NOT NULL,
-    title           VARCHAR(255)    DEFAULT '',
-    status          CHAR(1)         DEFAULT '1',
-    create_by       BIGINT          DEFAULT NULL,
-    create_time     TIMESTAMP       DEFAULT NULL,
-    update_by       BIGINT          DEFAULT NULL,
-    update_time     TIMESTAMP       DEFAULT NULL,
-    embedding       vector(1536)    DEFAULT NULL, -- 向量字段
-    PRIMARY KEY (paragraph_id)
-);
-CREATE INDEX idx_km_para_doc_id ON km_paragraph(doc_id);
-CREATE INDEX idx_km_para_kb_id ON km_paragraph(knowledge_id);
--- HNSW 索引
-CREATE INDEX idx_km_para_embedding ON km_paragraph USING hnsw (embedding vector_cosine_ops);
+-- -- ----------------------------
+-- -- 3. 知识库文档表
+-- -- ----------------------------
+-- -- DROP TABLE IF EXISTS km_document CASCADE;
+-- -- CREATE TABLE km_document (
+-- --     doc_id          BIGINT          NOT NULL,
+-- --     knowledge_id    BIGINT          NOT NULL,
+-- --     file_name       VARCHAR(128)    NOT NULL,
+-- --     file_url        VARCHAR(500)    NOT NULL,
+-- --     file_type       VARCHAR(10)     DEFAULT '',
+-- --     file_size       BIGINT          DEFAULT 0,
+-- --     char_count      INTEGER         DEFAULT 0,
+-- --     status          CHAR(1)         DEFAULT '0',
+-- --     error_msg       VARCHAR(1000)   DEFAULT '',
+-- --     create_dept     BIGINT          DEFAULT NULL,
+-- --     create_by       BIGINT          DEFAULT NULL,
+-- --     create_time     TIMESTAMP       DEFAULT NULL,
+-- --     update_by       BIGINT          DEFAULT NULL,
+-- --     update_time     TIMESTAMP       DEFAULT NULL,
+-- --     del_flag        CHAR(1)         DEFAULT '0',
+-- --     remark          VARCHAR(500)    DEFAULT NULL,
+-- --     PRIMARY KEY (doc_id)
+-- -- );
+-- -- CREATE INDEX idx_km_doc_kb_id ON km_document(knowledge_id);
 
--- ----------------------------
--- 3.2 相关问题表 (Problem) 并集成 pgvector
--- ----------------------------
-DROP TABLE IF EXISTS km_problem CASCADE;
-CREATE TABLE km_problem (
-    problem_id      BIGINT          NOT NULL,
-    knowledge_id    BIGINT          NOT NULL,
-    content         VARCHAR(500)    NOT NULL,
-    hit_count       INTEGER         DEFAULT 0,
-    create_by       BIGINT          DEFAULT NULL,
-    create_time     TIMESTAMP       DEFAULT NULL,
-    embedding       vector(1536)    DEFAULT NULL, -- 问题向量
-    PRIMARY KEY (problem_id)
-);
-CREATE INDEX idx_km_prob_kb_id ON km_problem(knowledge_id);
-CREATE INDEX idx_km_prob_embedding ON km_problem USING hnsw (embedding vector_cosine_ops);
+-- -- ----------------------------
+-- -- 3.1 文档分段表 (Paragraph) 并集成 pgvector
+-- -- ----------------------------
+-- DROP TABLE IF EXISTS km_paragraph CASCADE;
+-- CREATE TABLE km_paragraph (
+--     paragraph_id    BIGINT          NOT NULL,
+--     doc_id          BIGINT          NOT NULL,
+--     knowledge_id    BIGINT          NOT NULL,
+--     content         TEXT            NOT NULL,
+--     title           VARCHAR(255)    DEFAULT '',
+--     status          CHAR(1)         DEFAULT '1',
+--     create_by       BIGINT          DEFAULT NULL,
+--     create_time     TIMESTAMP       DEFAULT NULL,
+--     update_by       BIGINT          DEFAULT NULL,
+--     update_time     TIMESTAMP       DEFAULT NULL,
+--     embedding       vector(1536)    DEFAULT NULL, -- 向量字段
+--     PRIMARY KEY (paragraph_id)
+-- );
+-- CREATE INDEX idx_km_para_doc_id ON km_paragraph(doc_id);
+-- CREATE INDEX idx_km_para_kb_id ON km_paragraph(knowledge_id);
+-- -- HNSW 索引
+-- CREATE INDEX idx_km_para_embedding ON km_paragraph USING hnsw (embedding vector_cosine_ops);
 
--- ----------------------------
--- 3.3 问题与分段关联表
--- ----------------------------
-DROP TABLE IF EXISTS km_problem_paragraph CASCADE;
-CREATE TABLE km_problem_paragraph (
-    id              BIGINT          NOT NULL,
-    problem_id      BIGINT          NOT NULL,
-    paragraph_id    BIGINT          NOT NULL,
-    doc_id          BIGINT          NOT NULL,
-    knowledge_id    BIGINT          NOT NULL,
-    PRIMARY KEY (id)
-);
+-- -- ----------------------------
+-- -- 3.2 相关问题表 (Problem) 并集成 pgvector
+-- -- ----------------------------
+-- DROP TABLE IF EXISTS km_problem CASCADE;
+-- CREATE TABLE km_problem (
+--     problem_id      BIGINT          NOT NULL,
+--     knowledge_id    BIGINT          NOT NULL,
+--     content         VARCHAR(500)    NOT NULL,
+--     hit_count       INTEGER         DEFAULT 0,
+--     create_by       BIGINT          DEFAULT NULL,
+--     create_time     TIMESTAMP       DEFAULT NULL,
+--     embedding       vector(1536)    DEFAULT NULL, -- 问题向量
+--     PRIMARY KEY (problem_id)
+-- );
+-- CREATE INDEX idx_km_prob_kb_id ON km_problem(knowledge_id);
+-- CREATE INDEX idx_km_prob_embedding ON km_problem USING hnsw (embedding vector_cosine_ops);
+
+-- -- ----------------------------
+-- -- 3.3 问题与分段关联表
+-- -- ----------------------------
+-- DROP TABLE IF EXISTS km_problem_paragraph CASCADE;
+-- CREATE TABLE km_problem_paragraph (
+--     id              BIGINT          NOT NULL,
+--     problem_id      BIGINT          NOT NULL,
+--     paragraph_id    BIGINT          NOT NULL,
+--     doc_id          BIGINT          NOT NULL,
+--     knowledge_id    BIGINT          NOT NULL,
+--     PRIMARY KEY (id)
+-- );
 
 -- ----------------------------
 -- 4. AI应用表 (整合 parameters, enable_execution_detail, public_access)

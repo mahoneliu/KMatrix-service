@@ -14,7 +14,10 @@ import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmQuestionService;
 import org.dromara.ai.util.ModelBuilder;
 import org.dromara.common.core.utils.MapstructUtils;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -22,6 +25,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import cn.hutool.json.JSONUtil;
+import cn.hutool.json.JSONObject;
+import java.util.Map;
+import org.dromara.ai.util.StatusMetaUtils;
 
 /**
  * 问题服务实现
@@ -44,6 +51,10 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final ModelBuilder modelBuilder;
+
+    @Autowired
+    @Lazy
+    private IKmQuestionService self;
 
     @Override
     public List<KmQuestionVo> listByChunkId(Long chunkId) {
@@ -120,55 +131,147 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public List<KmQuestionVo> generateQuestions(Long chunkId, Long modelId) {
+    public List<KmQuestionVo> generateQuestions(Long chunkId, Long modelId, String prompt, Double temperature,
+            Integer maxTokens) {
         KmDocumentChunk chunk = chunkMapper.selectById(chunkId);
         if (chunk == null) {
             throw new RuntimeException("Chunk not found");
         }
 
-        // Get Model
+        // 1. 获取模型
         KmModel model;
         if (modelId != null) {
             model = modelMapper.selectById(modelId);
-        } else {
-            // Pick first enabled model
-            List<KmModel> models = modelMapper.selectList(
-                    new LambdaQueryWrapper<KmModel>()
-                            .eq(KmModel::getStatus, "0")
-                            .last("LIMIT 1"));
-            if (CollUtil.isEmpty(models)) {
-                throw new RuntimeException("No available LLM models");
+            if (model == null) {
+                throw new RuntimeException("指定的模型不存在: " + modelId);
             }
-            model = models.get(0);
+        } else {
+            // 获取系统默认模型
+            List<KmModel> defaultModels = modelMapper.selectList(
+                    new LambdaQueryWrapper<KmModel>()
+                            .eq(KmModel::getModelType, "1") // 语言模型
+                            .eq(KmModel::getStatus, "0") // 启用状态
+                            .eq(KmModel::getIsDefault, 1) // 默认模型
+                            .last("LIMIT 1"));
+
+            if (CollUtil.isNotEmpty(defaultModels)) {
+                model = defaultModels.get(0);
+            } else {
+                // 如果没有默认模型,选择第一个启用的语言模型
+                List<KmModel> models = modelMapper.selectList(
+                        new LambdaQueryWrapper<KmModel>()
+                                .eq(KmModel::getModelType, "1")
+                                .eq(KmModel::getStatus, "0")
+                                .last("LIMIT 1"));
+                if (CollUtil.isEmpty(models)) {
+                    throw new RuntimeException("No available LLM models");
+                }
+                model = models.get(0);
+            }
         }
 
+        // 2. 从模型配置中读取默认参数(如果未传)
+        if (temperature == null || maxTokens == null) {
+            try {
+                if (StrUtil.isNotBlank(model.getConfig())) {
+                    JSONObject configObj = JSONUtil.parseObj(model.getConfig());
+                    if (temperature == null && configObj.containsKey("temperature")) {
+                        temperature = configObj.getDouble("temperature");
+                    }
+                    if (maxTokens == null && configObj.containsKey("maxTokens")) {
+                        maxTokens = configObj.getInt("maxTokens");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse model config, using default values", e);
+            }
+        }
+
+        // 设置默认值
+        if (temperature == null) {
+            temperature = 0.7;
+        }
+        if (maxTokens == null) {
+            maxTokens = 2048;
+        }
+
+        // 3. 获取供应商信息
         KmModelProvider provider = providerMapper.selectById(model.getProviderId());
         if (provider == null) {
             throw new RuntimeException("Model provider not found");
         }
 
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+        // 4. 构建聊天模型(使用传入的参数)
+        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature,
+                maxTokens);
 
-        // Prompt
-        String prompt = """
-                请根据以下参考文本，识别 3-5 个潜在的用户问题。
-                仅输出问题，每行一个。不要对它们进行编号。
+        // 5. 构建提示词
+        String finalPrompt;
+        if (StrUtil.isNotBlank(prompt)) {
+            // 使用传入的提示词,替换 {data} 占位符
+            finalPrompt = prompt.replace("{data}", chunk.getContent());
+        } else {
+            // 使用默认提示词
+            finalPrompt = """
+                    请根据以下参考文本，识别 3-5 个潜在的用户问题。
+                    仅输出问题，每行一个。不要对它们进行编号。
 
-                参考文本：
-                %s
-                """.formatted(chunk.getContent());
+                    参考文本：
+                    %s
+                    """.formatted(chunk.getContent());
+        }
 
-        String response = chatModel.generate(prompt);
-        List<String> lines = StrUtil.split(response, '\n');
+        // 6. 调用模型生成问题
+        String response = chatModel.generate(finalPrompt);
 
-        for (String line : lines) {
-            String qText = cleanQuestion(line);
-            if (StrUtil.isBlank(qText))
+        // 7. 解析响应
+        List<String> questions = parseQuestions(response);
+
+        // 8. 保存问题
+        for (String qText : questions) {
+            if (StrUtil.isBlank(qText)) {
                 continue;
-
+            }
             addQuestionInternal(chunkId, chunk.getKbId(), qText, "LLM");
         }
+
         return listByChunkId(chunkId);
+    }
+
+    /**
+     * 解析AI返回的问题列表
+     * 支持两种格式:
+     * 1. 每行一个问题
+     * 2. <question>问题内容</question> 标签格式
+     */
+    private List<String> parseQuestions(String response) {
+        List<String> questions = new ArrayList<>();
+
+        // 先尝试解析 <question> 标签
+        if (response.contains("<question>")) {
+            String[] parts = response.split("<question>");
+            for (String part : parts) {
+                if (part.contains("</question>")) {
+                    String question = part.substring(0, part.indexOf("</question>")).trim();
+                    if (StrUtil.isNotBlank(question)) {
+                        questions.add(question);
+                    }
+                }
+            }
+        }
+
+        // 如果没有找到标签格式,按行分割
+        if (questions.isEmpty()) {
+            List<String> lines = StrUtil.split(response, '\n');
+            for (String line : lines) {
+                String qText = cleanQuestion(line);
+                if (StrUtil.isNotBlank(qText)) {
+                    questions.add(qText);
+                }
+            }
+        }
+
+        return questions;
     }
 
     /**
@@ -261,13 +364,14 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean batchGenerateQuestions(List<Long> chunkIds, Long modelId) {
+    public Boolean batchGenerateQuestions(List<Long> chunkIds, Long modelId, String prompt, Double temperature,
+            Integer maxTokens) {
         if (CollUtil.isEmpty(chunkIds)) {
             return true;
         }
         for (Long chunkId : chunkIds) {
             try {
-                generateQuestions(chunkId, modelId);
+                generateQuestions(chunkId, modelId, prompt, temperature, maxTokens);
             } catch (Exception e) {
                 log.error("批量生成问题失败, chunkId={}", chunkId, e);
                 // 继续处理下一个，不中断
@@ -280,5 +384,65 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
         // Remove 1. 2. - 1、 etc
         return line.replaceAll("^[0-9\\.\\-\\s\\、]+", "").trim();
+    }
+
+    @Override
+    @Async
+    public void processGenerateQuestionsAsync(Long documentId, Long modelId, String prompt, Double temperature,
+            Integer maxTokens) {
+        // 更新问题生成状态为"生成中" already done by caller, but we can do handling logic here
+
+        try {
+            // 获取文档下的所有切片
+            List<KmDocumentChunk> chunks = chunkMapper.selectList(
+                    new LambdaQueryWrapper<KmDocumentChunk>()
+                            .eq(KmDocumentChunk::getDocumentId, documentId));
+
+            if (chunks != null && !chunks.isEmpty()) {
+                // 为每个切片生成问题
+                for (KmDocumentChunk chunk : chunks) {
+                    try {
+                        updateChunkQuestionStatus(chunk.getId(), 1, StatusMetaUtils.STATUS_STARTED);
+                        // 使用 self 调用事务方法
+                        self.generateQuestions(chunk.getId(), modelId, prompt, temperature, maxTokens);
+                        updateChunkQuestionStatus(chunk.getId(), 2, StatusMetaUtils.STATUS_SUCCESS);
+                    } catch (Exception e) {
+                        log.error("Failed to generate questions for chunk: {}", chunk.getId(), e);
+                        updateChunkQuestionStatus(chunk.getId(), 3, StatusMetaUtils.STATUS_FAILED);
+                    }
+                }
+            }
+            // 更新问题生成状态为"已生成"
+            updateDocumentQuestionStatus(documentId, 2, StatusMetaUtils.STATUS_SUCCESS);
+        } catch (Exception e) {
+            log.error("Failed to generate questions for document: {}", documentId, e);
+            // 更新问题生成状态为"失败"
+            updateDocumentQuestionStatus(documentId, 3, StatusMetaUtils.STATUS_FAILED);
+        }
+    }
+
+    private void updateDocumentQuestionStatus(Long documentId, Integer status, String metaStatus) {
+        KmDocument update = new KmDocument();
+        update.setId(documentId);
+        update.setQuestionStatus(status);
+
+        // 更新 meta
+        KmDocument exist = documentMapper.selectById(documentId);
+        Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+        update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_GENERATE_QUESTION, metaStatus));
+
+        documentMapper.updateById(update);
+    }
+
+    private void updateChunkQuestionStatus(Long chunkId, Integer status, String metaStatus) {
+        KmDocumentChunk update = new KmDocumentChunk();
+        update.setId(chunkId);
+        update.setQuestionStatus(status);
+
+        KmDocumentChunk exist = chunkMapper.selectById(chunkId);
+        Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+        update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_GENERATE_QUESTION, metaStatus));
+
+        chunkMapper.updateById(update);
     }
 }

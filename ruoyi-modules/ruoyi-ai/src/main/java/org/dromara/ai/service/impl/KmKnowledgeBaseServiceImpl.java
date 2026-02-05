@@ -239,14 +239,18 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         // 切片总数
         vo.setTotalChunks(chunkMapper.selectCount(null));
 
-        // 处理中文档数
+        // 处理中文档数 (向量化中 或 问题生成中)
         LambdaQueryWrapper<KmDocument> processingQuery = new LambdaQueryWrapper<>();
-        processingQuery.eq(KmDocument::getStatus, "PROCESSING");
+        processingQuery.and(w -> w.eq(KmDocument::getEmbeddingStatus, 1)
+                .or()
+                .eq(KmDocument::getQuestionStatus, 1));
         vo.setProcessingDocs(documentMapper.selectCount(processingQuery));
 
-        // 失败文档数
+        // 失败文档数 (向量化失败 或 问题生成失败)
         LambdaQueryWrapper<KmDocument> errorQuery = new LambdaQueryWrapper<>();
-        errorQuery.eq(KmDocument::getStatus, "ERROR");
+        errorQuery.and(w -> w.eq(KmDocument::getEmbeddingStatus, 3)
+                .or()
+                .eq(KmDocument::getQuestionStatus, 3));
         vo.setErrorDocs(documentMapper.selectCount(errorQuery));
 
         return vo;

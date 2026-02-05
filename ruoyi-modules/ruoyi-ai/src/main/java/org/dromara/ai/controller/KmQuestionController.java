@@ -122,7 +122,13 @@ public class KmQuestionController extends BaseController {
         Object modelIdObj = body.get("modelId");
         Long modelId = modelIdObj != null ? Long.valueOf(modelIdObj.toString()) : null;
 
-        return R.ok(questionService.generateQuestions(chunkId, modelId));
+        // 获取提示词和参数
+        String prompt = body.get("prompt") != null ? body.get("prompt").toString() : null;
+        Double temperature = body.get("temperature") != null ? Double.valueOf(body.get("temperature").toString())
+                : null;
+        Integer maxTokens = body.get("maxTokens") != null ? Integer.valueOf(body.get("maxTokens").toString()) : null;
+
+        return R.ok(questionService.generateQuestions(chunkId, modelId, prompt, temperature, maxTokens));
     }
 
     /**
@@ -143,6 +149,12 @@ public class KmQuestionController extends BaseController {
         Object modelIdObj = body.get("modelId");
         Long modelId = modelIdObj != null ? Long.valueOf(modelIdObj.toString()) : null;
 
-        return toAjax(questionService.batchGenerateQuestions(chunkIds, modelId));
+        // 获取提示词和参数
+        String prompt = body.get("prompt") != null ? body.get("prompt").toString() : null;
+        Double temperature = body.get("temperature") != null ? Double.valueOf(body.get("temperature").toString())
+                : null;
+        Integer maxTokens = body.get("maxTokens") != null ? Integer.valueOf(body.get("maxTokens").toString()) : null;
+
+        return toAjax(questionService.batchGenerateQuestions(chunkIds, modelId, prompt, temperature, maxTokens));
     }
 }

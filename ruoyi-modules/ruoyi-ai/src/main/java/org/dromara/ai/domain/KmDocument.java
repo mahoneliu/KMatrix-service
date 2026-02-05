@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName(value = "km_document")
+@TableName(value = "km_document", autoResultMap = true)
 public class KmDocument extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
@@ -59,11 +59,6 @@ public class KmDocument extends BaseEntity {
      * 文件大小 (字节)
      */
     private Long fileSize;
-
-    /**
-     * 处理状态 (PENDING/PROCESSING/COMPLETED/ERROR)
-     */
-    private String status;
 
     /**
      * 错误信息
@@ -124,6 +119,6 @@ public class KmDocument extends BaseEntity {
      * 状态追踪元数据 (JSON格式)
      * 包含 aggs 聚合统计和 state_time 状态时间记录
      */
-    @TableField(typeHandler = JacksonTypeHandler.class)
+    @TableField(typeHandler = org.dromara.ai.handler.UniversalJsonTypeHandler.class)
     private Map<String, Object> statusMeta;
 }

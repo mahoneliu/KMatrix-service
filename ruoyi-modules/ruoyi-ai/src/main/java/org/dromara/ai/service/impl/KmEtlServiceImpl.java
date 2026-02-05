@@ -12,9 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
+import org.dromara.ai.domain.enums.EmbeddingOption;
+import org.dromara.ai.util.StatusMetaUtils;
 import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
+import org.springframework.context.annotation.Lazy;
 import org.dromara.ai.service.IKmEtlService;
 import org.dromara.ai.service.etl.DatasetProcessType;
 import org.dromara.ai.service.etl.EtlHandler;
@@ -62,6 +65,10 @@ public class KmEtlServiceImpl implements IKmEtlService {
     private final KmQuestionMapper questionMapper;
     private final KmQuestionChunkMapMapper questionChunkMapMapper;
 
+    @Autowired
+    @Lazy
+    private IKmEtlService self;
+
     // 文档解析器 (Tika) - 保留用于兼容旧接口
     private final DocumentParser documentParser = new ApacheTikaDocumentParser();
 
@@ -100,12 +107,15 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
         try {
             // 更新状态为处理中
-            updateDocumentStatus(documentId, "PROCESSING", null);
+            updateDocumentStatus(documentId, null, 1, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_STARTED); // 1
+                                                                                                                       // =
+                                                                                                                       // 生成中
 
             // 获取数据集信息
             KmDataset dataset = datasetMapper.selectById(document.getDatasetId());
             if (dataset == null) {
-                updateDocumentStatus(documentId, "ERROR", "数据集不存在");
+                updateDocumentStatus(documentId, "数据集不存在", 3, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_FAILED); // 3 = 失败
                 return;
             }
 
@@ -123,7 +133,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
                             document.getOriginalFilename(),
                             dataset.getAllowedFileTypes());
                 } catch (Exception e) {
-                    updateDocumentStatus(documentId, "ERROR", e.getMessage());
+                    updateDocumentStatus(documentId, e.getMessage(), 3, StatusMetaUtils.TASK_EMBEDDING,
+                            StatusMetaUtils.STATUS_FAILED);
                     return;
                 }
             }
@@ -144,14 +155,95 @@ public class KmEtlServiceImpl implements IKmEtlService {
                 handler.process(document, dataset, kbId);
             }
 
+            log.info("Document processed successfully, updating status for docId: {}", documentId);
             // 更新文档状态
             updateDocumentStatusCompleted(documentId);
 
-            log.info("Document processing completed: {}", documentId);
+            log.info("Document processing completed flow finished: {}", documentId);
 
         } catch (Exception e) {
             log.error("Failed to process document: {}", documentId, e);
-            updateDocumentStatus(documentId, "ERROR", e.getMessage());
+            updateDocumentStatus(documentId, e.getMessage(), 3, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_FAILED);
+        } catch (Throwable t) {
+            log.error("Unexpected error in processDocumentAsync: {}", documentId, t);
+            updateDocumentStatus(documentId, t.getMessage(), 3, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_FAILED);
+        }
+    }
+
+    @Override
+    @Async
+    public void processEmbeddingAsync(Long documentId, EmbeddingOption option) {
+        KmDocument doc = documentMapper.selectById(documentId);
+        if (doc == null) {
+            return;
+        }
+
+        try {
+            // 获取文档下的所有切片
+            List<KmDocumentChunk> chunks = chunkMapper.selectList(
+                    new LambdaQueryWrapper<KmDocumentChunk>().eq(KmDocumentChunk::getDocumentId, documentId));
+
+            if (CollUtil.isEmpty(chunks)) {
+                updateDocumentStatus(documentId, null, 2, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_SUCCESS); // 2 = 已生成
+                return;
+            }
+
+            // 根据选项过滤分块
+            if (option == EmbeddingOption.UNEMBEDDED_ONLY) {
+                // 查询已向量化的分块ID
+                List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
+                List<Long> embeddedChunkIds = embeddingMapper.selectList(
+                        new LambdaQueryWrapper<KmEmbedding>()
+                                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.CONTENT)
+                                .in(KmEmbedding::getSourceId, chunkIds))
+                        .stream().map(KmEmbedding::getSourceId).toList();
+
+                // 过滤掉已向量化的分块
+                chunks = chunks.stream()
+                        .filter(chunk -> !embeddedChunkIds.contains(chunk.getId()))
+                        .toList();
+            }
+
+            // 如果没有需要向量化的分块,直接返回
+            if (chunks.isEmpty()) {
+                updateDocumentStatus(documentId, null, 2, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_SUCCESS); // 已生成
+                return;
+            }
+
+            // 提取分块内容
+            List<String> contents = chunks.stream()
+                    .map(KmDocumentChunk::getContent)
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
+
+            if (!contents.isEmpty()) {
+                // 获取文档所属知识库ID(通过数据集)
+                Long kbId = doc.getKbId();
+                if (kbId == null) {
+                    // 兜底:通过 datasetId 获取 kbId
+                    KmDataset dataset = datasetMapper.selectById(doc.getDatasetId());
+                    if (dataset == null) {
+                        throw new RuntimeException("数据集不存在");
+                    }
+                    kbId = dataset.getKbId();
+                    if (kbId == null) {
+                        throw new RuntimeException("知识库ID不存在");
+                    }
+                }
+                // 调用事务方法
+                self.embedAndStore(documentId, kbId, contents);
+            }
+
+            // 更新向量化状态为"已生成"
+            updateDocumentStatus(documentId, null, 2, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_SUCCESS);
+        } catch (Exception e) {
+            log.error("Failed to embedding document: {}", documentId, e);
+            // 更新向量化状态为"失败"
+            updateDocumentStatus(documentId, null, 3, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_FAILED);
         }
     }
 
@@ -188,14 +280,24 @@ public class KmEtlServiceImpl implements IKmEtlService {
     }
 
     private void updateDocumentStatusCompleted(Long documentId) {
+        log.info("Updating document status to COMPLETED for docId: {}", documentId);
         // 统计 chunk 数量
         int chunkCount = chunkMapper.countByDocumentId(documentId);
 
         KmDocument update = new KmDocument();
         update.setId(documentId);
-        update.setStatus("COMPLETED");
+
+        update.setEmbeddingStatus(2); // 2 = 已生成
+
+        // 更新 meta
+        KmDocument exist = documentMapper.selectById(documentId);
+        Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+        update.setStatusMeta(
+                StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_SUCCESS));
+
         update.setChunkCount(chunkCount);
-        documentMapper.updateById(update);
+        int rows = documentMapper.updateById(update);
+        log.info("Updated document status, rows affected: {}", rows);
     }
 
     @Override
@@ -271,6 +373,10 @@ public class KmEtlServiceImpl implements IKmEtlService {
             metadata.put("totalChunks", chunks.size());
             chunk.setMetadata(metadata);
 
+            chunk.setEmbeddingStatus(2); // 2 = 已生成
+            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_SUCCESS));
+
             chunkEntities.add(chunk);
 
             org.dromara.ai.domain.KmEmbedding emp = new org.dromara.ai.domain.KmEmbedding();
@@ -343,11 +449,25 @@ public class KmEtlServiceImpl implements IKmEtlService {
         chunkMapper.deleteByIds(chunkIds);
     }
 
-    private void updateDocumentStatus(Long documentId, String status, String errorMsg) {
+    /**
+     * 更新文档状态和元数据
+     */
+    private void updateDocumentStatus(Long documentId, String errorMsg, Integer embeddingStatus, String taskType,
+            String status) {
         KmDocument update = new KmDocument();
         update.setId(documentId);
-        update.setStatus(status);
         update.setErrorMsg(errorMsg);
+        if (embeddingStatus != null) {
+            update.setEmbeddingStatus(embeddingStatus);
+        }
+
+        // 更新 meta
+        if (taskType != null && status != null) {
+            KmDocument exist = documentMapper.selectById(documentId);
+            Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
+            update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, taskType, status));
+        }
+
         documentMapper.updateById(update);
     }
 }

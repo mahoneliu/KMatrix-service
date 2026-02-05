@@ -32,13 +32,25 @@ public class KmModelServiceImpl implements IKmModelService {
     private final KmModelMapper baseMapper;
     private final KmModelProviderMapper providerMapper;
 
-    @Override
-    public List<KmModelVo> queryList(KmModelBo bo) {
+    /**
+     * 构建查询条件包装器
+     *
+     * @param bo 查询条件对象
+     * @return LambdaQueryWrapper
+     */
+    private LambdaQueryWrapper<KmModel> buildQueryWrapper(KmModelBo bo) {
         LambdaQueryWrapper<KmModel> lqw = Wrappers.lambdaQuery();
         lqw.eq(bo.getProviderId() != null, KmModel::getProviderId, bo.getProviderId());
         lqw.like(StrUtil.isNotBlank(bo.getModelName()), KmModel::getModelName, bo.getModelName());
         lqw.eq(StrUtil.isNotBlank(bo.getModelType()), KmModel::getModelType, bo.getModelType());
         lqw.eq(StrUtil.isNotBlank(bo.getModelSource()), KmModel::getModelSource, bo.getModelSource());
+        lqw.eq(StrUtil.isNotBlank(bo.getStatus()), KmModel::getStatus, bo.getStatus());
+        return lqw;
+    }
+
+    @Override
+    public List<KmModelVo> queryList(KmModelBo bo) {
+        LambdaQueryWrapper<KmModel> lqw = buildQueryWrapper(bo);
         List<KmModelVo> list = baseMapper.selectVoList(lqw);
 
         // 填充供应商图标
@@ -137,5 +149,28 @@ public class KmModelServiceImpl implements IKmModelService {
 
         baseMapper.insert(copy);
         return copy.getModelId();
+    }
+
+    @Override
+    public Boolean setDefaultModel(Long modelId) {
+        // 1. 验证模型是否存在且为语言模型
+        KmModel model = baseMapper.selectById(modelId);
+        if (model == null) {
+            throw new org.dromara.common.core.exception.ServiceException("模型不存在");
+        }
+        if (!"1".equals(model.getModelType())) {
+            throw new org.dromara.common.core.exception.ServiceException("只能将语言模型设置为默认模型");
+        }
+
+        // 2. 清除当前默认模型
+        baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
+                .set(KmModel::getIsDefault, 0)
+                .eq(KmModel::getModelType, "1")
+                .eq(KmModel::getIsDefault, 1));
+
+        // 3. 设置新的默认模型
+        return baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
+                .set(KmModel::getIsDefault, 1)
+                .eq(KmModel::getModelId, modelId)) > 0;
     }
 }

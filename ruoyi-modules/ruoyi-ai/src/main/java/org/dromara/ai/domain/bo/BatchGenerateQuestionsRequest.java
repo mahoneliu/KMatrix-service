@@ -25,4 +25,19 @@ public class BatchGenerateQuestionsRequest implements Serializable {
      * 模型ID（可选）
      */
     private Long modelId;
+
+    /**
+     * 提示词模板 (可选)
+     */
+    private String prompt;
+
+    /**
+     * 温度参数 (可选)
+     */
+    private Double temperature;
+
+    /**
+     * 最大Token数 (可选)
+     */
+    private Integer maxTokens;
 }

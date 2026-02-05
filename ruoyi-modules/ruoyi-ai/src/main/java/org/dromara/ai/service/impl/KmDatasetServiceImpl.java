@@ -54,7 +54,7 @@ public class KmDatasetServiceImpl implements IKmDatasetService {
     public List<KmDatasetVo> queryListByKbId(Long kbId) {
         LambdaQueryWrapper<KmDataset> lqw = new LambdaQueryWrapper<>();
         lqw.eq(KmDataset::getKbId, kbId);
-        lqw.orderByDesc(KmDataset::getCreateTime);
+        lqw.orderByAsc(KmDataset::getCreateTime);
         return baseMapper.selectVoList(lqw);
     }
 

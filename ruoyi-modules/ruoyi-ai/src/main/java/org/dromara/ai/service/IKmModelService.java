@@ -49,4 +49,12 @@ public interface IKmModelService {
      * @return 新模型ID
      */
     Long copyModel(Long modelId);
+
+    /**
+     * 设置系统默认模型
+     *
+     * @param modelId 模型ID
+     * @return 是否成功
+     */
+    Boolean setDefaultModel(Long modelId);
 }

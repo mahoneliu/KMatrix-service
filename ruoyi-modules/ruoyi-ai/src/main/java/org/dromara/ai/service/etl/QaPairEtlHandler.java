@@ -18,6 +18,7 @@ import org.dromara.common.oss.factory.OssFactory;
 import org.dromara.system.domain.vo.SysOssVo;
 import org.dromara.system.service.ISysOssService;
 import org.springframework.stereotype.Component;
+import org.dromara.ai.util.StatusMetaUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
@@ -108,6 +109,10 @@ public class QaPairEtlHandler implements EtlHandler {
             chunk.setKbId(kbId);
             chunk.setContent(answer);
             chunk.setCreateTime(now);
+
+            chunk.setEmbeddingStatus(2); // 2 = 已生成
+            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_SUCCESS));
 
             // 元数据
             Map<String, Object> metadata = new HashMap<>();

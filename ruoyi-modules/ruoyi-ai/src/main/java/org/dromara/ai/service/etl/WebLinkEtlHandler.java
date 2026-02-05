@@ -14,6 +14,7 @@ import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmEmbedding;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmEmbeddingMapper;
+import org.dromara.ai.util.StatusMetaUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Component;
@@ -176,6 +177,10 @@ public class WebLinkEtlHandler implements EtlHandler {
             metadata.put("chunkIndex", i);
             metadata.put("totalChunks", chunks.size());
             chunk.setMetadata(metadata);
+
+            chunk.setEmbeddingStatus(2); // 2 = 已生成
+            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                    StatusMetaUtils.STATUS_SUCCESS));
 
             chunkEntities.add(chunk);
 
