@@ -11,7 +11,6 @@ import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmEmbedding;
 import org.dromara.ai.domain.KmQuestionChunkMap;
 import org.dromara.ai.domain.bo.KmDocumentChunkBo;
-import org.dromara.ai.domain.bo.KmDocumentChunkBo;
 import org.dromara.ai.domain.vo.KmDocumentChunkVo;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;

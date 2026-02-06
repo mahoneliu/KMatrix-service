@@ -39,4 +39,22 @@ public interface KmQuestionChunkMapMapper extends BaseMapper<KmQuestionChunkMap>
      */
     @Delete("DELETE FROM km_question_chunk_map WHERE chunk_id = #{chunkId}")
     int deleteByChunkId(@Param("chunkId") Long chunkId);
+
+    /**
+     * 批量查询问题的分段数量
+     * 
+     * @param questionIds 问题ID列表
+     * @return Map<问题ID, 分段数量>
+     */
+    @Select("<script>" +
+            "SELECT question_id, COUNT(*) as count " +
+            "FROM km_question_chunk_map " +
+            "WHERE question_id IN " +
+            "<foreach collection='questionIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach> " +
+            "GROUP BY question_id" +
+            "</script>")
+    @org.apache.ibatis.annotations.MapKey("question_id")
+    java.util.Map<Long, java.util.Map<String, Object>> countByQuestionIds(@Param("questionIds") List<Long> questionIds);
 }

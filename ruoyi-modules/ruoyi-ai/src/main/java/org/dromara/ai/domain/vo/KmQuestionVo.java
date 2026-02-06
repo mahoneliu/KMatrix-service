@@ -32,6 +32,7 @@ public class KmQuestionVo implements Serializable {
     /**
      * 所属知识库ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long kbId;
 
     /**
@@ -53,4 +54,14 @@ public class KmQuestionVo implements Serializable {
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 更新时间
+     */
+    private Date updateTime;
+
+    /**
+     * 关联分段数量
+     */
+    private Integer chunkCount;
 }

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.mapper.KmQuestionMapper">
+
+    <resultMap id="KmQuestionVoResult" type="org.dromara.ai.domain.vo.KmQuestionVo">
+        <id property="id" column="id"/>
+        <result property="kbId" column="kb_id"/>
+        <result property="content" column="content"/>
+        <result property="hitNum" column="hit_num"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="chunkCount" column="chunk_count"/>
+    </resultMap>
+
+    <select id="selectPageList" resultMap="KmQuestionVoResult">
+        SELECT
+            q.id, q.kb_id, q.content, q.hit_num, q.source_type, q.create_time, q.update_time,
+            COALESCE(COUNT(m.chunk_id), 0) as chunk_count
+        FROM km_question q
+        LEFT JOIN km_question_chunk_map m ON q.id = m.question_id
+        <where>
+            <if test="kbId != null">
+                AND q.kb_id = #{kbId}
+            </if>
+            <if test="content != null and content != ''">
+                AND q.content LIKE CONCAT('%', #{content}, '%')
+            </if>
+        </where>
+        GROUP BY q.id, q.kb_id, q.content, q.hit_num, q.source_type, q.create_time, q.update_time
+        ORDER BY q.create_time DESC
+    </select>
+
+    <select id="selectByDocumentId" resultType="org.dromara.ai.domain.KmQuestion">
+        SELECT DISTINCT q.*
+        FROM km_question q
+        INNER JOIN km_question_chunk_map m ON q.id = m.question_id
+        INNER JOIN km_document_chunk c ON m.chunk_id = c.id
+        WHERE c.document_id = #{documentId}
+        ORDER BY q.create_time DESC
+    </select>
+
+</mapper>

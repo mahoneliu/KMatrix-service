@@ -44,6 +44,14 @@ public interface IKmDocumentService {
     List<KmDocumentVo> listByDatasetId(Long datasetId);
 
     /**
+     * 查询知识库下的所有文档列表
+     *
+     * @param kbId 知识库ID
+     * @return 文档列表
+     */
+    List<KmDocumentVo> listByKbId(Long kbId);
+
+    /**
      * 查询文档详情
      *
      * @param id 文档ID

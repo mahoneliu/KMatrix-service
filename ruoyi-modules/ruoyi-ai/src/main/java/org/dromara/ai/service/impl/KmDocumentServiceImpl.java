@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
-import org.dromara.ai.domain.KmEmbedding;
 import org.dromara.ai.domain.bo.KmDocumentBo;
 import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.domain.vo.KmDocumentVo;
@@ -19,7 +18,6 @@ import org.dromara.ai.service.IKmDocumentChunkService;
 import org.dromara.ai.service.IKmDocumentService;
 import org.dromara.ai.service.IKmEtlService;
 import org.dromara.ai.service.IKmQuestionService;
-import org.dromara.ai.domain.vo.KmDocumentChunkVo;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -129,6 +127,14 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     public List<KmDocumentVo> listByDatasetId(Long datasetId) {
         LambdaQueryWrapper<KmDocument> lqw = new LambdaQueryWrapper<>();
         lqw.eq(KmDocument::getDatasetId, datasetId);
+        lqw.orderByDesc(KmDocument::getCreateTime);
+        return documentMapper.selectVoList(lqw);
+    }
+
+    @Override
+    public List<KmDocumentVo> listByKbId(Long kbId) {
+        LambdaQueryWrapper<KmDocument> lqw = new LambdaQueryWrapper<>();
+        lqw.eq(KmDocument::getKbId, kbId);
         lqw.orderByDesc(KmDocument::getCreateTime);
         return documentMapper.selectVoList(lqw);
     }

@@ -48,7 +48,12 @@ public interface IKmKnowledgeBaseService {
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
 
     /**
-     * 获取知识库统计信息
+     * 获取知识库统计信息 (Global)
      */
     KmStatisticsVo getStatistics();
+
+    /**
+     * 获取知识库统计信息 (Specific KB)
+     */
+    KmStatisticsVo getStatistics(Long kbId);
 }

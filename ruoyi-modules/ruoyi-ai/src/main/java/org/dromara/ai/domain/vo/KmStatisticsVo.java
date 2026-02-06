@@ -44,4 +44,9 @@ public class KmStatisticsVo implements Serializable {
      * 失败文档数
      */
     private Long errorDocs;
+
+    /**
+     * 问题总数
+     */
+    private Long questionCount;
 }

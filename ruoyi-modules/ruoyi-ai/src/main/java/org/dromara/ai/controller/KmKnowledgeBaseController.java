@@ -58,11 +58,19 @@ public class KmKnowledgeBaseController extends BaseController {
     }
 
     /**
-     * 获取知识库统计信息
+     * 获取知识库统计信息 (Global)
      */
     @GetMapping("/statistics")
     public R<KmStatisticsVo> getStatistics() {
         return R.ok(knowledgeBaseService.getStatistics());
+    }
+
+    /**
+     * 获取知识库统计信息 (Specific KB)
+     */
+    @GetMapping("/{id}/statistics")
+    public R<KmStatisticsVo> getStatistics(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+        return R.ok(knowledgeBaseService.getStatistics(id));
     }
 
     /**

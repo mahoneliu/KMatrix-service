@@ -221,7 +221,7 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     }
 
     /**
-     * 获取知识库统计信息
+     * 获取知识库统计信息 (Global)
      */
     @Override
     public KmStatisticsVo getStatistics() {
@@ -239,6 +239,9 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         // 切片总数
         vo.setTotalChunks(chunkMapper.selectCount(null));
 
+        // 问题总数
+        vo.setQuestionCount(questionMapper.selectCount(null));
+
         // 处理中文档数 (向量化中 或 问题生成中)
         LambdaQueryWrapper<KmDocument> processingQuery = new LambdaQueryWrapper<>();
         processingQuery.and(w -> w.eq(KmDocument::getEmbeddingStatus, 1)
@@ -251,6 +254,76 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         errorQuery.and(w -> w.eq(KmDocument::getEmbeddingStatus, 3)
                 .or()
                 .eq(KmDocument::getQuestionStatus, 3));
+        vo.setErrorDocs(documentMapper.selectCount(errorQuery));
+
+        return vo;
+    }
+
+    /**
+     * 获取知识库统计信息 (Specific KB)
+     */
+    @Override
+    public KmStatisticsVo getStatistics(Long kbId) {
+        KmStatisticsVo vo = new KmStatisticsVo();
+
+        // 知识库总数 (Not relevant for single KB stats, but keeping structure if needed for
+        // context, or just leaving as is is wrong for specific KB stats)
+        // Since we are changing the method signature to get stats for a specific KB, we
+        // should focus on that KB's stats.
+        // However, the previous getStatistics() without args seemed to be for global
+        // stats?
+        // Let's check if the previous one was used globally. If so, I should have
+        // overloaded it instead of replacing it.
+        // But the previous controller method was `/statistics` which implies global or
+        // current user/session context?
+        // Wait, the previous controller method was `getStatistics()` calling
+        // `getStatistics()`.
+        // The implementation showed `baseMapper.selectCount(null)` which counts ALL
+        // KBs.
+        // The user request is for "Knowledge Base Detail Page", so we need stats for
+        // ONE KB.
+        // The existing method seemed to be a dashboard global stat.
+        // I replaced the interface method, which is a breaking change for other callers
+        // if any.
+        // Let's assume for now I should repurpose it or add a new one.
+        // In the plan I said "Add an endpoint or update getStats".
+        // I replaced it in the interface.
+        // Ideally I should have added `getStatistics(Long kbId)` as a new method.
+        // But I already modified the interface to take `kbId`. If I did that, I broke
+        // the global stats call if any.
+        // Let's assume I am replacing it because the user only asked for this new
+        // feature and there might not be other users.
+        // Or better, I will implement it such that if kbId is null it returns global,
+        // if not it returns specific?
+        // No, the counts are different.
+        // For this task, I will implement the specific KB stats.
+
+        // 文档总数
+        vo.setTotalDocuments(
+                documentMapper.selectCount(new LambdaQueryWrapper<KmDocument>().eq(KmDocument::getKbId, kbId)));
+
+        // 切片总数
+        vo.setTotalChunks(
+                chunkMapper.selectCount(new LambdaQueryWrapper<KmDocumentChunk>().eq(KmDocumentChunk::getKbId, kbId)));
+
+        // 问题总数
+        vo.setQuestionCount(
+                questionMapper.selectCount(new LambdaQueryWrapper<KmQuestion>().eq(KmQuestion::getKbId, kbId)));
+
+        // 处理中文档数 (向量化中 或 问题生成中)
+        LambdaQueryWrapper<KmDocument> processingQuery = new LambdaQueryWrapper<>();
+        processingQuery.eq(KmDocument::getKbId, kbId)
+                .and(w -> w.eq(KmDocument::getEmbeddingStatus, 1)
+                        .or()
+                        .eq(KmDocument::getQuestionStatus, 1));
+        vo.setProcessingDocs(documentMapper.selectCount(processingQuery));
+
+        // 失败文档数 (向量化失败 或 问题生成失败)
+        LambdaQueryWrapper<KmDocument> errorQuery = new LambdaQueryWrapper<>();
+        errorQuery.eq(KmDocument::getKbId, kbId)
+                .and(w -> w.eq(KmDocument::getEmbeddingStatus, 3)
+                        .or()
+                        .eq(KmDocument::getQuestionStatus, 3));
         vo.setErrorDocs(documentMapper.selectCount(errorQuery));
 
         return vo;

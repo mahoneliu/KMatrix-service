@@ -66,6 +66,15 @@ public class KmDocumentController extends BaseController {
     }
 
     /**
+     * 查询知识库下的所有文档列表
+     */
+    @GetMapping("/listByKb/{kbId}")
+    public R<List<KmDocumentVo>> listByKb(
+            @NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
+        return R.ok(documentService.listByKbId(kbId));
+    }
+
+    /**
      * 分页查询文档列表
      */
     @GetMapping("/list")

@@ -2,7 +2,13 @@ package org.dromara.ai.service;
 
 import org.dromara.ai.domain.vo.KmQuestionVo;
 
+import org.dromara.ai.domain.bo.KmQuestionBo;
+import org.dromara.ai.domain.vo.KmQuestionVo;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * 问题服务接口
@@ -27,6 +33,11 @@ public interface IKmQuestionService {
          * @return 问题列表
          */
         List<KmQuestionVo> listByDocumentId(Long documentId);
+
+        /**
+         * 分页查询问题列表
+         */
+        TableDataInfo<KmQuestionVo> pageList(KmQuestionBo bo, PageQuery pageQuery);
 
         /**
          * 手动添加问题
@@ -90,4 +101,55 @@ public interface IKmQuestionService {
          */
         void processGenerateQuestionsAsync(Long documentId, Long modelId, String prompt, Double temperature,
                         Integer maxTokens);
+
+        /**
+         * 查询知识库下的所有问题
+         *
+         * @param kbId 知识库ID
+         * @return 问题列表（包含关联分段数量）
+         */
+        List<KmQuestionVo> listByKbId(Long kbId);
+
+        /**
+         * 更新问题内容
+         *
+         * @param id      问题ID
+         * @param content 新的问题内容
+         * @return 是否成功
+         */
+        Boolean updateQuestion(Long id, String content);
+
+        /**
+         * 批量删除问题
+         *
+         * @param ids 问题ID列表
+         * @return 是否成功
+         */
+        Boolean batchDelete(List<Long> ids);
+
+        /**
+         * 批量添加问题到知识库（不关联特定分块）
+         *
+         * @param kbId     知识库ID
+         * @param contents 问题内容列表
+         * @return 是否成功
+         */
+        Boolean batchAddToKb(Long kbId, List<String> contents);
+
+        /**
+         * 获取问题关联的分段列表
+         *
+         * @param questionId 问题ID
+         * @return 分段列表（包含文档标题）
+         */
+        List<Map<String, Object>> getLinkedChunks(Long questionId);
+
+        /**
+         * 批量关联问题到分段
+         *
+         * @param questionId 问题ID
+         * @param chunkIds   分段ID列表
+         * @return 是否成功
+         */
+        Boolean batchLinkToChunks(Long questionId, List<Long> chunkIds);
 }

@@ -217,4 +217,23 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
                         "</foreach>" +
                         "</script>")
         List<Map<String, Object>> selectByIds(@Param("ids") List<Long> ids);
+
+        /**
+         * 根据分块ID列表查询分块及文档信息 (优化性能，避免N+1查询)
+         * 
+         * @param chunkIds 分块ID列表
+         * @return 包含分块和文档信息的Map列表
+         */
+        @Select("<script>" +
+                        "SELECT " +
+                        "  c.id, c.title, c.content, c.document_id, " +
+                        "  d.original_filename as document_title " +
+                        "FROM km_document_chunk c " +
+                        "LEFT JOIN km_document d ON c.document_id = d.id " +
+                        "WHERE c.id IN " +
+                        "<foreach collection='chunkIds' item='id' open='(' separator=',' close=')'>" +
+                        "#{id}" +
+                        "</foreach>" +
+                        "</script>")
+        List<Map<String, Object>> selectChunksWithDocument(@Param("chunkIds") List<Long> chunkIds);
 }

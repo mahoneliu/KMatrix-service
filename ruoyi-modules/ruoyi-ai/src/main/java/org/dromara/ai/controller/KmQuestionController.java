@@ -2,11 +2,15 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.KmQuestionBo;
 import org.dromara.ai.domain.vo.KmQuestionVo;
 import org.dromara.ai.service.IKmQuestionService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +31,14 @@ import java.util.Map;
 public class KmQuestionController extends BaseController {
 
     private final IKmQuestionService questionService;
+
+    /**
+     * 分页查询问题列表
+     */
+    @GetMapping("/list")
+    public TableDataInfo<KmQuestionVo> list(KmQuestionBo bo, PageQuery pageQuery) {
+        return questionService.pageList(bo, pageQuery);
+    }
 
     /**
      * 查询切片关联的问题列表
@@ -156,5 +168,89 @@ public class KmQuestionController extends BaseController {
         Integer maxTokens = body.get("maxTokens") != null ? Integer.valueOf(body.get("maxTokens").toString()) : null;
 
         return toAjax(questionService.batchGenerateQuestions(chunkIds, modelId, prompt, temperature, maxTokens));
+    }
+
+    /**
+     * 查询知识库下的所有问题
+     */
+    @GetMapping("/listByKb/{kbId}")
+    public R<List<KmQuestionVo>> listByKb(@NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
+        return R.ok(questionService.listByKbId(kbId));
+    }
+
+    /**
+     * 更新问题内容
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}")
+    public R<Void> update(@NotNull(message = "问题ID不能为空") @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Object contentObj = body.get("content");
+        if (contentObj == null) {
+            return R.fail("问题内容不能为空");
+        }
+        String content = contentObj.toString();
+        return toAjax(questionService.updateQuestion(id, content));
+    }
+
+    /**
+     * 批量删除问题
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.DELETE)
+    @DeleteMapping("/batch")
+    public R<Void> batchRemove(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return R.fail("问题ID列表不能为空");
+        }
+        return toAjax(questionService.batchDelete(ids));
+    }
+
+    /**
+     * 批量添加问题到知识库
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.INSERT)
+    @PostMapping("/batchAdd")
+    public R<Void> batchAdd(@RequestBody Map<String, Object> body) {
+        Object kbIdObj = body.get("kbId");
+        Object contentsObj = body.get("contents");
+
+        if (kbIdObj == null || contentsObj == null) {
+            return R.fail("参数不完整");
+        }
+
+        Long kbId = Long.valueOf(kbIdObj.toString());
+        @SuppressWarnings("unchecked")
+        List<String> contents = (List<String>) contentsObj;
+
+        return toAjax(questionService.batchAddToKb(kbId, contents));
+    }
+
+    /**
+     * 获取问题关联的分段列表
+     */
+    @GetMapping("/{id}/chunks")
+    public R<List<Map<String, Object>>> getLinkedChunks(@NotNull(message = "问题ID不能为空") @PathVariable Long id) {
+        return R.ok(questionService.getLinkedChunks(id));
+    }
+
+    /**
+     * 批量关联问题到分段
+     */
+    @Log(title = "知识库问题", businessType = BusinessType.INSERT)
+    @PostMapping("/batchLink")
+    public R<Void> batchLink(@RequestBody Map<String, Object> body) {
+        Object questionIdObj = body.get("questionId");
+        Object chunkIdsObj = body.get("chunkIds");
+
+        if (questionIdObj == null || chunkIdsObj == null) {
+            return R.fail("参数不完整");
+        }
+
+        Long questionId = Long.valueOf(questionIdObj.toString());
+        @SuppressWarnings("unchecked")
+        List<Number> chunkIdNumbers = (List<Number>) chunkIdsObj;
+        List<Long> chunkIds = chunkIdNumbers.stream().map(Number::longValue).toList();
+
+        return toAjax(questionService.batchLinkToChunks(questionId, chunkIds));
     }
 }

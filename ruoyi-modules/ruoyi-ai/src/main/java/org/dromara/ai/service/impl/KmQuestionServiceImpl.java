@@ -4,12 +4,16 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.*;
+import org.dromara.ai.domain.bo.KmQuestionBo;
 import org.dromara.ai.domain.vo.KmQuestionVo;
+import org.dromara.common.mybatis.core.page.PageQuery;
+import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmQuestionService;
 import org.dromara.ai.util.ModelBuilder;
@@ -75,36 +79,21 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
     @Override
     public List<KmQuestionVo> listByDocumentId(Long documentId) {
-        // 1. Get all chunks for the document
-        List<KmDocumentChunk> chunks = chunkMapper.selectList(
-                new LambdaQueryWrapper<KmDocumentChunk>()
-                        .select(KmDocumentChunk::getId)
-                        .eq(KmDocumentChunk::getDocumentId, documentId));
-
-        if (CollUtil.isEmpty(chunks)) {
-            return new ArrayList<>();
-        }
-
-        List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
-
-        // 2. Get all question IDs mapped to these chunks
-        List<KmQuestionChunkMap> maps = chunkMapMapper.selectList(
-                new LambdaQueryWrapper<KmQuestionChunkMap>()
-                        .in(KmQuestionChunkMap::getChunkId, chunkIds));
-
-        if (CollUtil.isEmpty(maps)) {
-            return new ArrayList<>();
-        }
-
-        List<Long> questionIds = maps.stream().map(KmQuestionChunkMap::getQuestionId).distinct().toList();
-
-        // 3. Get questions
-        if (CollUtil.isEmpty(questionIds)) {
-            return new ArrayList<>();
-        }
-
-        List<KmQuestion> questions = baseMapper.selectBatchIds(questionIds);
+        // 单次JOIN查询获取文档关联的所有问题（优化：3次查询→1次查询）
+        List<KmQuestion> questions = baseMapper.selectByDocumentId(documentId);
         return MapstructUtils.convert(questions, KmQuestionVo.class);
+    }
+
+    @Override
+    public TableDataInfo<KmQuestionVo> pageList(KmQuestionBo bo, PageQuery pageQuery) {
+        // 使用 MyBatis-Plus 分页查询,直接传递参数
+        Page<KmQuestionVo> page = baseMapper.selectPageList(
+                pageQuery.build(),
+                bo.getKbId(),
+                bo.getContent());
+
+        // 使用 TableDataInfo.build 简化返回
+        return TableDataInfo.build(page);
     }
 
     @Override
@@ -444,5 +433,203 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_GENERATE_QUESTION, metaStatus));
 
         chunkMapper.updateById(update);
+    }
+
+    @Override
+    public List<KmQuestionVo> listByKbId(Long kbId) {
+        List<KmQuestion> questions = baseMapper.selectList(
+                new LambdaQueryWrapper<KmQuestion>()
+                        .eq(KmQuestion::getKbId, kbId)
+                        .orderByDesc(KmQuestion::getCreateTime));
+
+        List<KmQuestionVo> result = MapstructUtils.convert(questions, KmQuestionVo.class);
+
+        if (CollUtil.isEmpty(result)) {
+            return new ArrayList<>();
+        }
+
+        // 批量查询所有问题的分段数量（优化：避免N+1查询）
+        List<Long> questionIds = result.stream().map(KmQuestionVo::getId).toList();
+        java.util.Map<Long, java.util.Map<String, Object>> countMap = chunkMapMapper.countByQuestionIds(questionIds);
+
+        // 设置分段数量
+        for (KmQuestionVo vo : result) {
+            java.util.Map<String, Object> countData = countMap.get(vo.getId());
+            Integer count = countData != null ? ((Number) countData.get("count")).intValue() : 0;
+            vo.setChunkCount(count);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateQuestion(Long id, String content) {
+        KmQuestion question = baseMapper.selectById(id);
+        if (question == null) {
+            throw new RuntimeException("问题不存在: " + id);
+        }
+
+        // 1. 更新问题内容
+        KmQuestion update = new KmQuestion();
+        update.setId(id);
+        update.setContent(content.length() > 500 ? content.substring(0, 500) : content);
+        baseMapper.updateById(update);
+
+        // 2. 更新向量嵌入
+        try {
+            // 删除旧的嵌入
+            embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                    .eq(KmEmbedding::getSourceId, id)
+                    .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+
+            // 创建新的嵌入
+            float[] vector = embeddingModel.embed(content).content().vector();
+            KmEmbedding embedding = new KmEmbedding();
+            embedding.setKbId(question.getKbId());
+            embedding.setSourceId(id);
+            embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
+            embedding.setEmbedding(vector);
+            embedding.setEmbeddingString(Arrays.toString(vector));
+            embedding.setTextContent(content);
+            embedding.setCreateTime(LocalDateTime.now());
+            embeddingMapper.insertOne(embedding);
+        } catch (Exception e) {
+            log.error("Failed to update question embedding: {}", content, e);
+            throw new RuntimeException("问题向量更新失败", e);
+        }
+
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean batchDelete(List<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return true;
+        }
+
+        for (Long id : ids) {
+            try {
+                deleteById(id);
+            } catch (Exception e) {
+                log.error("批量删除问题失败, id={}", id, e);
+                // 继续处理下一个
+            }
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean batchAddToKb(Long kbId, List<String> contents) {
+        if (CollUtil.isEmpty(contents)) {
+            return true;
+        }
+
+        for (String content : contents) {
+            if (StrUtil.isBlank(content)) {
+                continue;
+            }
+
+            try {
+                // 创建独立问题（不关联特定分块）
+                KmQuestion q = new KmQuestion();
+                q.setId(IdUtil.getSnowflakeNextId());
+                q.setKbId(kbId);
+                q.setContent(content.length() > 500 ? content.substring(0, 500) : content);
+                q.setHitNum(0);
+                q.setSourceType("MANUAL");
+                q.setCreateTime(new Date());
+                baseMapper.insert(q);
+
+                // 创建向量嵌入
+                float[] vector = embeddingModel.embed(content).content().vector();
+                KmEmbedding embedding = new KmEmbedding();
+                embedding.setKbId(kbId);
+                embedding.setSourceId(q.getId());
+                embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
+                embedding.setEmbedding(vector);
+                embedding.setEmbeddingString(Arrays.toString(vector));
+                embedding.setTextContent(content);
+                embedding.setCreateTime(LocalDateTime.now());
+                embeddingMapper.insertOne(embedding);
+            } catch (Exception e) {
+                log.error("批量添加问题失败, content={}", content, e);
+                // 继续处理下一个
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public List<Map<String, Object>> getLinkedChunks(Long questionId) {
+        // 1. 查询问题关联的分块ID列表
+        List<Long> chunkIds = chunkMapMapper.selectChunkIdsByQuestionId(questionId);
+
+        if (CollUtil.isEmpty(chunkIds)) {
+            return new ArrayList<>();
+        }
+
+        // 2. 一次性查询分块及文档信息（优化：通过 LEFT JOIN 避免N+1查询）
+        List<Map<String, Object>> result = chunkMapper.selectChunksWithDocument(chunkIds);
+
+        // 3. 规范化字段名
+        for (Map<String, Object> item : result) {
+            item.put("chunkId", item.get("id"));
+            item.put("documentTitle", item.get("document_title"));
+            item.put("documentId", item.get("document_id"));
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean batchLinkToChunks(Long questionId, List<Long> chunkIds) {
+        if (CollUtil.isEmpty(chunkIds)) {
+            return true;
+        }
+
+        // 验证问题是否存在
+        KmQuestion question = baseMapper.selectById(questionId);
+        if (question == null) {
+            throw new RuntimeException("问题不存在: " + questionId);
+        }
+
+        int successCount = 0;
+        for (Long chunkId : chunkIds) {
+            try {
+                // 检查分块是否存在
+                KmDocumentChunk chunk = chunkMapper.selectById(chunkId);
+                if (chunk == null) {
+                    log.warn("分块不存在，跳过关联: chunkId={}", chunkId);
+                    continue;
+                }
+
+                // 检查是否已关联
+                Long count = chunkMapMapper.selectCount(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                        .eq(KmQuestionChunkMap::getChunkId, chunkId)
+                        .eq(KmQuestionChunkMap::getQuestionId, questionId));
+
+                if (count > 0) {
+                    log.debug("问题已关联到分块，跳过: questionId={}, chunkId={}", questionId, chunkId);
+                    continue;
+                }
+
+                // 创建关联
+                KmQuestionChunkMap map = new KmQuestionChunkMap();
+                map.setQuestionId(questionId);
+                map.setChunkId(chunkId);
+                chunkMapMapper.insert(map);
+                successCount++;
+            } catch (Exception e) {
+                log.error("关联问题到分块失败: questionId={}, chunkId={}", questionId, chunkId, e);
+                // 继续处理下一个
+            }
+        }
+
+        log.info("批量关联完成: questionId={}, 成功关联数={}/{}", questionId, successCount, chunkIds.size());
+        return true;
     }
 }
