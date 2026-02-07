@@ -2,15 +2,18 @@ package org.dromara.ai.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmEmbedding;
+import org.dromara.ai.domain.KmQuestionChunkMap;
 
 import org.dromara.ai.domain.bo.KmRetrievalBo;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmRetrievalService;
@@ -59,47 +62,26 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         }
 
         int topK = bo.getTopK() != null ? bo.getTopK() : 5;
-        double threshold = bo.getThreshold() != null ? bo.getThreshold() : 0.5;
+        double threshold = bo.getThreshold() != null ? bo.getThreshold() : 0.0; // Debug: default to 0.0
         String mode = bo.getMode() != null ? bo.getMode() : "VECTOR";
 
-        // 是否使用多源检索 (默认启用，可通过参数关闭)
-        boolean useMultiSource = bo.getEnableMultiSource() == null || bo.getEnableMultiSource();
+        log.info("Search Params: query={}, kbIds={}, topK={}, threshold={}, mode={}",
+                bo.getQuery(), kbIds, topK, threshold, mode);
 
         List<KmRetrievalResultVo> results;
 
-        if (useMultiSource) {
-            // 使用多源检索 (搜索 km_embedding 表，包括 Content + Question + Title)
-            switch (mode.toUpperCase()) {
-                case "KEYWORD":
-                    results = multiSourceKeywordSearch(bo.getQuery(), kbIds, topK);
-                    break;
-                case "HYBRID":
-                    results = multiSourceHybridSearch(bo.getQuery(), kbIds, topK, threshold);
-                    break;
-                case "VECTOR":
-                default:
-                    results = multiSourceVectorSearch(bo.getQuery(), kbIds, topK, threshold);
-                    break;
-            }
-        } else {
-            // 降级到旧版检索 (直接查询 km_document_chunk 表)
-            List<Long> datasetIds = resolveDatasetIds(bo.getKbIds(), bo.getDatasetIds());
-            switch (mode.toUpperCase()) {
-                case "KEYWORD":
-                    if (Boolean.TRUE.equals(bo.getEnableHighlight())) {
-                        results = keywordSearchWithHighlight(bo.getQuery(), datasetIds, topK);
-                    } else {
-                        results = keywordSearch(bo.getQuery(), datasetIds, topK);
-                    }
-                    break;
-                case "HYBRID":
-                    results = hybridSearch(bo.getQuery(), datasetIds, topK, threshold);
-                    break;
-                case "VECTOR":
-                default:
-                    results = vectorSearch(bo.getQuery(), datasetIds, topK, threshold);
-                    break;
-            }
+        // 执行多源检索 (搜索 km_embedding 表，包括 Content + Question + Title)
+        switch (mode.toUpperCase()) {
+            case "KEYWORD":
+                results = multiSourceKeywordSearch(bo.getQuery(), kbIds, topK);
+                break;
+            case "HYBRID":
+                results = multiSourceHybridSearch(bo.getQuery(), kbIds, topK, threshold);
+                break;
+            case "VECTOR":
+            default:
+                results = multiSourceVectorSearch(bo.getQuery(), kbIds, topK, threshold);
+                break;
         }
 
         // 如果启用 Rerank
@@ -107,86 +89,9 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
             results = rerankService.rerank(bo.getQuery(), results, topK);
         }
 
+        log.info("Search Results: count={}", results != null ? results.size() : 0);
+
         return results;
-    }
-
-    @Override
-    public List<KmRetrievalResultVo> vectorSearch(String query, List<Long> datasetIds, int topK, double threshold) {
-        // 生成查询向量
-        float[] queryEmbedding = embeddingModel.embed(query).content().vector();
-        String vectorStr = floatArrayToString(queryEmbedding);
-
-        // 执行向量搜索
-        List<Map<String, Object>> rows = chunkMapper.vectorSearch(vectorStr, datasetIds, topK * 2);
-
-        // 转换结果并过滤低分
-        return convertAndFilter(rows, threshold);
-    }
-
-    @Override
-    public List<KmRetrievalResultVo> keywordSearch(String query, List<Long> datasetIds, int topK) {
-        if (StrUtil.isBlank(query)) {
-            return Collections.emptyList();
-        }
-        // pg_jieba 会自动进行中英文分词
-        List<Map<String, Object>> rows = chunkMapper.keywordSearch(query, datasetIds, topK);
-        return convertToResultList(rows);
-    }
-
-    /**
-     * 关键词检索 (带高亮)
-     */
-    public List<KmRetrievalResultVo> keywordSearchWithHighlight(String query, List<Long> datasetIds, int topK) {
-        if (StrUtil.isBlank(query)) {
-            return Collections.emptyList();
-        }
-        List<Map<String, Object>> rows = chunkMapper.keywordSearchWithHighlight(query, datasetIds, topK);
-        return convertToResultListWithHighlight(rows);
-    }
-
-    @Override
-    public List<KmRetrievalResultVo> hybridSearch(String query, List<Long> datasetIds, int topK, double threshold) {
-        // 1. 同时执行向量检索和关键词检索
-        List<KmRetrievalResultVo> vectorResults = vectorSearch(query, datasetIds, topK * 2, 0); // 不过滤
-        List<KmRetrievalResultVo> keywordResults = keywordSearch(query, datasetIds, topK * 2);
-
-        // 2. RRF 融合
-        Map<Long, Double> rrfScores = new HashMap<>();
-        Map<Long, KmRetrievalResultVo> chunkMap = new HashMap<>();
-
-        // 向量结果排名
-        for (int i = 0; i < vectorResults.size(); i++) {
-            KmRetrievalResultVo r = vectorResults.get(i);
-            double rrfScore = 1.0 / (RRF_K + i + 1);
-            rrfScores.merge(r.getChunkId(), rrfScore, Double::sum);
-            chunkMap.putIfAbsent(r.getChunkId(), r);
-        }
-
-        // 关键词结果排名
-        for (int i = 0; i < keywordResults.size(); i++) {
-            KmRetrievalResultVo r = keywordResults.get(i);
-            double rrfScore = 1.0 / (RRF_K + i + 1);
-            rrfScores.merge(r.getChunkId(), rrfScore, Double::sum);
-            chunkMap.putIfAbsent(r.getChunkId(), r);
-        }
-
-        // 3. 按 RRF 分数排序
-        List<KmRetrievalResultVo> results = rrfScores.entrySet().stream()
-                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
-                .limit(topK)
-                .map(e -> {
-                    KmRetrievalResultVo vo = chunkMap.get(e.getKey());
-                    vo.setScore(e.getValue()); // 使用 RRF 融合分数
-                    return vo;
-                })
-                .collect(Collectors.toList());
-
-        // 4. 过滤低分结果 (归一化后)
-        double maxScore = results.isEmpty() ? 1 : results.get(0).getScore();
-        return results.stream()
-                .peek(r -> r.setScore(r.getScore() / maxScore)) // 归一化
-                .filter(r -> r.getScore() >= threshold)
-                .collect(Collectors.toList());
     }
 
     /**
@@ -220,6 +125,9 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     /**
      * 处理 Embedding 检索结果 (转换、关联 Chunk、去重、排序)
      */
+    /**
+     * 处理 Embedding 检索结果 (转换、关联 Chunk、去重、排序)
+     */
     private List<KmRetrievalResultVo> processEmbeddingResults(List<Map<String, Object>> embeddingResults, int topK) {
         if (CollUtil.isEmpty(embeddingResults)) {
             return Collections.emptyList();
@@ -230,31 +138,58 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         Map<Long, Double> chunkScores = new HashMap<>();
         Map<Long, String> chunkHighlights = new HashMap<>();
 
+        // 存储标题命中的文档ID
+        Set<Long> titleDocIds = new HashSet<>();
+        Map<Long, Double> titleDocScores = new HashMap<>();
+
         for (Map<String, Object> row : embeddingResults) {
             Long sourceId = ((Number) row.get("source_id")).longValue();
             Integer sourceType = ((Number) row.get("source_type")).intValue();
             Double score = ((Number) row.get("score")).doubleValue();
             String highlight = (String) row.get("highlight");
 
-            if (sourceType == KmEmbedding.SourceType.CONTENT || sourceType == KmEmbedding.SourceType.TITLE) {
-                // Content/Title 类型：sourceId 就是 chunkId
+            if (sourceType == KmEmbedding.SourceType.CONTENT) {
+                // Content 类型：sourceId 就是 chunkId
                 chunkIds.add(sourceId);
                 chunkScores.merge(sourceId, score, Math::max);
                 // 优先保存 Content 的高亮
-                if (sourceType == KmEmbedding.SourceType.CONTENT && highlight != null) {
+                if (highlight != null) {
                     chunkHighlights.put(sourceId, highlight);
                 }
+            } else if (sourceType == KmEmbedding.SourceType.TITLE) {
+                // Title 类型：sourceId 是 documentId
+                titleDocIds.add(sourceId);
+                titleDocScores.merge(sourceId, score, Math::max);
             } else if (sourceType == KmEmbedding.SourceType.QUESTION) {
-                // Question 类型：需要通过 km_question_chunk_map 查找关联的 chunkId
-                // TODO: 考虑批量查询优化
-                List<Long> relatedChunkIds = questionChunkMapMapper.selectChunkIdsByQuestionId(sourceId);
-                for (Long chunkId : relatedChunkIds) {
-                    chunkIds.add(chunkId);
+                // Question 类型：sourceId 是关联记录ID (question_chunk_map.id)
+                // 需要通过 km_question_chunk_map 查找关联的 chunkId 和 questionId
+                KmQuestionChunkMap mapRecord = questionChunkMapMapper.selectById(sourceId);
+                if (mapRecord != null) {
+                    chunkIds.add(mapRecord.getChunkId());
                     // 问题匹配可能比内容匹配更重要，这里取最高分
-                    chunkScores.merge(chunkId, score, Math::max);
+                    chunkScores.merge(mapRecord.getChunkId(), score, Math::max);
+                    // 更新问题命中次数
+                    questionMapper.incrementHitNum(mapRecord.getQuestionId());
                 }
-                // 更新问题命中次数
-                questionMapper.incrementHitNum(sourceId);
+            }
+        }
+
+        // 处理标题命中的文档，获取其第一个切片作为代表
+        if (CollUtil.isNotEmpty(titleDocIds)) {
+            for (Long docId : titleDocIds) {
+                // 获取该文档的第一个切片(按ID排序)
+                List<KmDocumentChunk> chunks = chunkMapper.selectList(
+                        new LambdaQueryWrapper<KmDocumentChunk>()
+                                .select(KmDocumentChunk::getId)
+                                .eq(KmDocumentChunk::getDocumentId, docId)
+                                .orderByAsc(KmDocumentChunk::getId)
+                                .last("LIMIT 1"));
+
+                if (CollUtil.isNotEmpty(chunks)) {
+                    Long chunkId = chunks.get(0).getId();
+                    chunkIds.add(chunkId);
+                    chunkScores.merge(chunkId, titleDocScores.get(docId), Math::max);
+                }
             }
         }
 
@@ -387,25 +322,6 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     }
 
     /**
-     * 解析数据集ID (如果传入知识库ID，则查询其下所有数据集)
-     */
-    private List<Long> resolveDatasetIds(List<Long> kbIds, List<Long> datasetIds) {
-        Set<Long> result = new HashSet<>();
-
-        if (CollUtil.isNotEmpty(datasetIds)) {
-            result.addAll(datasetIds);
-        }
-
-        if (CollUtil.isNotEmpty(kbIds)) {
-            List<KmDataset> datasets = datasetMapper.selectList(
-                    new LambdaQueryWrapper<KmDataset>().in(KmDataset::getKbId, kbIds));
-            datasets.forEach(d -> result.add(d.getId()));
-        }
-
-        return new ArrayList<>(result);
-    }
-
-    /**
      * 将 float[] 转换为 PostgreSQL vector 字符串格式
      */
     private String floatArrayToString(float[] arr) {
@@ -419,81 +335,4 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         return sb.toString();
     }
 
-    /**
-     * 转换查询结果为 VO 列表
-     */
-    private List<KmRetrievalResultVo> convertToResultList(List<Map<String, Object>> rows) {
-        if (CollUtil.isEmpty(rows)) {
-            return Collections.emptyList();
-        }
-
-        // 获取文档名称映射
-        Set<Long> docIds = rows.stream()
-                .map(r -> ((Number) r.get("document_id")).longValue())
-                .collect(Collectors.toSet());
-
-        Map<Long, String> docNameMap = new HashMap<>();
-        if (!docIds.isEmpty()) {
-            List<KmDocument> docs = documentMapper.selectByIds(docIds);
-            docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
-        }
-
-        return rows.stream()
-                .map(row -> {
-                    KmRetrievalResultVo vo = new KmRetrievalResultVo();
-                    vo.setChunkId(((Number) row.get("chunk_id")).longValue());
-                    vo.setDocumentId(((Number) row.get("document_id")).longValue());
-                    vo.setContent((String) row.get("content"));
-                    vo.setTitle((String) row.get("title"));
-                    vo.setMetadata(row.get("metadata"));
-                    vo.setScore(row.get("score") != null ? ((Number) row.get("score")).doubleValue() : 0);
-                    vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
-                    return vo;
-                })
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 转换并过滤低分结果
-     */
-    private List<KmRetrievalResultVo> convertAndFilter(List<Map<String, Object>> rows, double threshold) {
-        return convertToResultList(rows).stream()
-                .filter(r -> r.getScore() >= threshold)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 转换查询结果为 VO 列表 (含高亮)
-     */
-    private List<KmRetrievalResultVo> convertToResultListWithHighlight(List<Map<String, Object>> rows) {
-        if (CollUtil.isEmpty(rows)) {
-            return Collections.emptyList();
-        }
-
-        // 获取文档名称映射
-        Set<Long> docIds = rows.stream()
-                .map(r -> ((Number) r.get("document_id")).longValue())
-                .collect(Collectors.toSet());
-
-        Map<Long, String> docNameMap = new HashMap<>();
-        if (!docIds.isEmpty()) {
-            List<KmDocument> docs = documentMapper.selectByIds(docIds);
-            docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
-        }
-
-        return rows.stream()
-                .map(row -> {
-                    KmRetrievalResultVo vo = new KmRetrievalResultVo();
-                    vo.setChunkId(((Number) row.get("chunk_id")).longValue());
-                    vo.setDocumentId(((Number) row.get("document_id")).longValue());
-                    vo.setContent((String) row.get("content"));
-                    vo.setMetadata(row.get("metadata"));
-                    vo.setScore(row.get("score") != null ? ((Number) row.get("score")).doubleValue() : 0);
-                    vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
-                    // 高亮字段
-                    vo.setHighlight((String) row.get("highlight"));
-                    return vo;
-                })
-                .collect(Collectors.toList());
-    }
 }

@@ -105,16 +105,21 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteById(Long id) {
-        // 1. Delete Embedding
-        embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
-                .eq(KmEmbedding::getSourceId, id)
-                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+        // 1. 查询问题的所有关联记录ID
+        List<Long> mapIds = chunkMapMapper.selectIdsByQuestionIds(Arrays.asList(id));
 
-        // 2. Delete Map
+        // 2. 删除对应的embedding记录（通过map.id）
+        if (CollUtil.isNotEmpty(mapIds)) {
+            embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                    .in(KmEmbedding::getSourceId, mapIds)
+                    .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+        }
+
+        // 3. Delete Map
         chunkMapMapper.delete(new LambdaQueryWrapper<KmQuestionChunkMap>()
                 .eq(KmQuestionChunkMap::getQuestionId, id));
 
-        // 3. Delete Question
+        // 4. Delete Question
         return baseMapper.deleteById(id) > 0;
     }
 
@@ -302,18 +307,19 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         q.setCreateTime(new Date());
         baseMapper.insert(q);
 
-        // 2. Map
+        // 2. Map - 显式生成ID，用于embedding
         KmQuestionChunkMap map = new KmQuestionChunkMap();
+        map.setId(IdUtil.getSnowflakeNextId());
         map.setQuestionId(q.getId());
         map.setChunkId(chunkId);
         chunkMapMapper.insert(map);
 
-        // 3. Embedding
+        // 3. Embedding - 使用关联记录ID作为source_id
         try {
             float[] vector = embeddingModel.embed(content).content().vector();
             KmEmbedding embedding = new KmEmbedding();
             embedding.setKbId(kbId);
-            embedding.setSourceId(q.getId());
+            embedding.setSourceId(map.getId()); // 使用关联记录ID
             embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
             embedding.setEmbedding(vector);
             embedding.setEmbeddingString(Arrays.toString(vector));
@@ -328,6 +334,7 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean linkQuestion(Long chunkId, Long questionId) {
         // Check if mapping already exists
         Long count = chunkMapMapper.selectCount(new LambdaQueryWrapper<KmQuestionChunkMap>()
@@ -338,14 +345,59 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
             return true;
         }
 
+        // 获取问题信息
+        KmQuestion question = baseMapper.selectById(questionId);
+        if (question == null) {
+            throw new RuntimeException("问题不存在: " + questionId);
+        }
+
+        // 创建关联记录
         KmQuestionChunkMap map = new KmQuestionChunkMap();
+        map.setId(IdUtil.getSnowflakeNextId());
         map.setQuestionId(questionId);
         map.setChunkId(chunkId);
-        return chunkMapMapper.insert(map) > 0;
+        chunkMapMapper.insert(map);
+
+        // 创建对应的embedding记录
+        try {
+            float[] vector = embeddingModel.embed(question.getContent()).content().vector();
+            KmEmbedding embedding = new KmEmbedding();
+            embedding.setKbId(question.getKbId());
+            embedding.setSourceId(map.getId()); // 使用关联记录ID
+            embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
+            embedding.setEmbedding(vector);
+            embedding.setEmbeddingString(Arrays.toString(vector));
+            embedding.setTextContent(question.getContent());
+            embedding.setCreateTime(LocalDateTime.now());
+            embeddingMapper.insertOne(embedding);
+        } catch (Exception e) {
+            log.error("Failed to create embedding for question link: questionId={}, chunkId={}", questionId, chunkId,
+                    e);
+            throw new RuntimeException("创建问题关联向量失败", e);
+        }
+
+        return true;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean unlinkQuestion(Long chunkId, Long questionId) {
+        // 查询要删除的关联记录ID
+        List<KmQuestionChunkMap> maps = chunkMapMapper.selectList(new LambdaQueryWrapper<KmQuestionChunkMap>()
+                .eq(KmQuestionChunkMap::getChunkId, chunkId)
+                .eq(KmQuestionChunkMap::getQuestionId, questionId));
+
+        if (CollUtil.isEmpty(maps)) {
+            return true;
+        }
+
+        // 删除对应的embedding记录
+        List<Long> mapIds = maps.stream().map(KmQuestionChunkMap::getId).toList();
+        embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                .in(KmEmbedding::getSourceId, mapIds)
+                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+
+        // 删除关联记录
         return chunkMapMapper.delete(new LambdaQueryWrapper<KmQuestionChunkMap>()
                 .eq(KmQuestionChunkMap::getChunkId, chunkId)
                 .eq(KmQuestionChunkMap::getQuestionId, questionId)) > 0;
@@ -476,27 +528,36 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         update.setContent(content.length() > 500 ? content.substring(0, 500) : content);
         baseMapper.updateById(update);
 
-        // 2. 更新向量嵌入
-        try {
-            // 删除旧的嵌入
-            embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
-                    .eq(KmEmbedding::getSourceId, id)
-                    .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+        // 2. 查询该问题的所有关联记录ID
+        List<Long> mapIds = chunkMapMapper.selectIdsByQuestionIds(Arrays.asList(id));
 
-            // 创建新的嵌入
-            float[] vector = embeddingModel.embed(content).content().vector();
-            KmEmbedding embedding = new KmEmbedding();
-            embedding.setKbId(question.getKbId());
-            embedding.setSourceId(id);
-            embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
-            embedding.setEmbedding(vector);
-            embedding.setEmbeddingString(Arrays.toString(vector));
-            embedding.setTextContent(content);
-            embedding.setCreateTime(LocalDateTime.now());
-            embeddingMapper.insertOne(embedding);
-        } catch (Exception e) {
-            log.error("Failed to update question embedding: {}", content, e);
-            throw new RuntimeException("问题向量更新失败", e);
+        // 3. 更新向量嵌入（为每个关联创建一个向量）
+        if (CollUtil.isNotEmpty(mapIds)) {
+            try {
+                // 删除旧的嵌入（通过map.id）
+                embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                        .in(KmEmbedding::getSourceId, mapIds)
+                        .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
+
+                // 为每个关联创建新的嵌入
+                float[] vector = embeddingModel.embed(content).content().vector();
+                String vectorStr = Arrays.toString(vector);
+
+                for (Long mapId : mapIds) {
+                    KmEmbedding embedding = new KmEmbedding();
+                    embedding.setKbId(question.getKbId());
+                    embedding.setSourceId(mapId); // 使用关联记录ID
+                    embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
+                    embedding.setEmbedding(vector);
+                    embedding.setEmbeddingString(vectorStr);
+                    embedding.setTextContent(content);
+                    embedding.setCreateTime(LocalDateTime.now());
+                    embeddingMapper.insertOne(embedding);
+                }
+            } catch (Exception e) {
+                log.error("Failed to update question embedding: {}", content, e);
+                throw new RuntimeException("问题向量更新失败", e);
+            }
         }
 
         return true;
@@ -543,17 +604,8 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
                 q.setCreateTime(new Date());
                 baseMapper.insert(q);
 
-                // 创建向量嵌入
-                float[] vector = embeddingModel.embed(content).content().vector();
-                KmEmbedding embedding = new KmEmbedding();
-                embedding.setKbId(kbId);
-                embedding.setSourceId(q.getId());
-                embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
-                embedding.setEmbedding(vector);
-                embedding.setEmbeddingString(Arrays.toString(vector));
-                embedding.setTextContent(content);
-                embedding.setCreateTime(LocalDateTime.now());
-                embeddingMapper.insertOne(embedding);
+                // 不创建向量嵌入（没有关联分块的问题不向量化）
+                log.debug("创建独立问题（无分块关联），不创建向量: questionId={}", q.getId());
             } catch (Exception e) {
                 log.error("批量添加问题失败, content={}", content, e);
                 // 继续处理下一个
@@ -597,6 +649,10 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
             throw new RuntimeException("问题不存在: " + questionId);
         }
 
+        // 预先计算向量（避免重复计算）
+        float[] vector = null;
+        String vectorStr = null;
+
         int successCount = 0;
         for (Long chunkId : chunkIds) {
             try {
@@ -619,9 +675,27 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
                 // 创建关联
                 KmQuestionChunkMap map = new KmQuestionChunkMap();
+                map.setId(IdUtil.getSnowflakeNextId());
                 map.setQuestionId(questionId);
                 map.setChunkId(chunkId);
                 chunkMapMapper.insert(map);
+
+                // 创建对应的embedding记录
+                if (vector == null) {
+                    vector = embeddingModel.embed(question.getContent()).content().vector();
+                    vectorStr = Arrays.toString(vector);
+                }
+
+                KmEmbedding embedding = new KmEmbedding();
+                embedding.setKbId(question.getKbId());
+                embedding.setSourceId(map.getId()); // 使用关联记录ID
+                embedding.setSourceType(KmEmbedding.SourceType.QUESTION);
+                embedding.setEmbedding(vector);
+                embedding.setEmbeddingString(vectorStr);
+                embedding.setTextContent(question.getContent());
+                embedding.setCreateTime(LocalDateTime.now());
+                embeddingMapper.insertOne(embedding);
+
                 successCount++;
             } catch (Exception e) {
                 log.error("关联问题到分块失败: questionId={}, chunkId={}", questionId, chunkId, e);

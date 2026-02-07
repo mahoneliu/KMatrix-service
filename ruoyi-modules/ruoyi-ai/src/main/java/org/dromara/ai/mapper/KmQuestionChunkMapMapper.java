@@ -57,4 +57,43 @@ public interface KmQuestionChunkMapMapper extends BaseMapper<KmQuestionChunkMap>
             "</script>")
     @org.apache.ibatis.annotations.MapKey("question_id")
     java.util.Map<Long, java.util.Map<String, Object>> countByQuestionIds(@Param("questionIds") List<Long> questionIds);
+
+    /**
+     * 根据分块ID列表查询关联记录ID列表
+     * 用于删除分块时获取对应的embedding记录
+     */
+    @Select("<script>" +
+            "SELECT id FROM km_question_chunk_map " +
+            "WHERE chunk_id IN " +
+            "<foreach collection='chunkIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<Long> selectIdsByChunkIds(@Param("chunkIds") List<Long> chunkIds);
+
+    /**
+     * 根据关联记录ID列表批量查询
+     * 用于检索时获取完整的关联信息
+     */
+    @Select("<script>" +
+            "SELECT id, question_id, chunk_id FROM km_question_chunk_map " +
+            "WHERE id IN " +
+            "<foreach collection='ids' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<KmQuestionChunkMap> selectMapsByIds(@Param("ids") List<Long> ids);
+
+    /**
+     * 根据问题ID列表查询关联记录ID列表
+     * 用于删除问题时获取对应的embedding记录
+     */
+    @Select("<script>" +
+            "SELECT id FROM km_question_chunk_map " +
+            "WHERE question_id IN " +
+            "<foreach collection='questionIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            "</script>")
+    List<Long> selectIdsByQuestionIds(@Param("questionIds") List<Long> questionIds);
 }

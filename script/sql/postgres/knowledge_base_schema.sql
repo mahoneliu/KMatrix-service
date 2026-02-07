@@ -55,7 +55,6 @@ CREATE TABLE km_document (
     oss_id BIGINT, -- OSS file ID
     file_type VARCHAR(50), -- PDF, TXT, DOCX
     file_size BIGINT,
-    -- status VARCHAR(50) DEFAULT 'PENDING', -- PENDING, PROCESSING, COMPLETED, ERROR
     error_msg TEXT,
     token_count INT DEFAULT 0,
     chunk_count INT DEFAULT 0,
@@ -78,21 +77,10 @@ CREATE TABLE km_document_chunk (
     document_id BIGINT NOT NULL,
     content TEXT,
     metadata JSONB, -- {page: 1, source: "xyz.pdf"}
-    -- embedding vector(384), -- use all-minilm-l6-v2 dim
-    -- Generated column for full-text search (pre-computed tsvector)
-    content_search_vector tsvector GENERATED ALWAYS AS (to_tsvector('jiebacfg', content)) STORED,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_chunk_document_id ON km_document_chunk(document_id);
--- GIN Index for fast full-text search
-CREATE INDEX idx_chunk_search_vector ON km_document_chunk USING GIN (content_search_vector);
-
--- HNSW Index for fast similarity search
--- Note: This might take time on large data. For init, it's fine.
--- 针对 384 维向量的余弦相似度索引（下面优化sql）
--- CREATE INDEX idx_chunk_embedding ON km_document_chunk USING hnsw (embedding vector_cosine_ops);
--- CREATE INDEX idx_chunk_embedding ON km_document_chunk USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
 COMMENT ON TABLE km_document_chunk IS '文档向量切片表';
 

@@ -88,6 +88,7 @@ public class KmRerankServiceImpl implements IKmRerankService {
         if (initialized && scoringModel != null) {
             return rerankWithModel(query, results, topK);
         } else {
+            log.warn("ONNX model file not found: {}, using keyword-based fallback reranking...", modelPath);
             return rerankWithKeywords(query, results, topK);
         }
     }
@@ -98,7 +99,7 @@ public class KmRerankServiceImpl implements IKmRerankService {
     }
 
     /**
-     * 使用 ONNX 模型进行重排序 (预留接口)
+     * 使用 ONNX 模型进行重排序
      */
     private List<KmRetrievalResultVo> rerankWithModel(String query, List<KmRetrievalResultVo> results, int topK) {
         try {

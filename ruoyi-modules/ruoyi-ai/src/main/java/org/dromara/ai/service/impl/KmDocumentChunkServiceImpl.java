@@ -79,8 +79,6 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
             chunk.setContent(content);
             // 更新向量
             float[] vector = embeddingModel.embed(content).content().vector();
-            // chunk.setEmbedding(vector);
-            // chunk.setEmbeddingString(Arrays.toString(vector));
             hasChanges = true;
 
             // 更新 km_embedding 表 (SourceType=CONTENT)
@@ -165,8 +163,6 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
 
         // 生成向量
         float[] vector = embeddingModel.embed(bo.getContent()).content().vector();
-        // chunk.setEmbedding(vector);
-        // chunk.setEmbeddingString(Arrays.toString(vector));
 
         if (chunk.getKbId() == null && chunk.getDocumentId() != null) {
             KmDocument document = documentMapper.selectById(chunk.getDocumentId());

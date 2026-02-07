@@ -4,9 +4,13 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.BatchEmbeddingRequest;
 import org.dromara.ai.domain.bo.BatchGenerateQuestionsRequest;
+import org.dromara.ai.domain.bo.ChunkPreviewBo;
+import org.dromara.ai.domain.bo.ChunkSubmitBo;
 import org.dromara.ai.domain.bo.KmDocumentBo;
 import org.dromara.ai.domain.enums.EmbeddingOption;
+import org.dromara.ai.domain.vo.ChunkPreviewVo;
 import org.dromara.ai.domain.vo.KmDocumentVo;
+import org.dromara.ai.domain.vo.TempFileVo;
 import org.dromara.ai.service.IKmDocumentService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
@@ -102,11 +106,12 @@ public class KmDocumentController extends BaseController {
     /**
      * 重新处理文档 (重新触发ETL)
      */
-    @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
-    @PostMapping("/reprocess/{id:\\d+}")
-    public R<Void> reprocess(@NotNull(message = "主键不能为空") @PathVariable Long id) {
-        return toAjax(documentService.reprocessDocument(id));
-    }
+    // @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
+    // @PostMapping("/reprocess/{id:\\d+}")
+    // public R<Void> reprocess(@NotNull(message = "主键不能为空") @PathVariable Long id)
+    // {
+    // return toAjax(documentService.reprocessEmbeddingDocument(id));
+    // }
 
     /**
      * 创建在线文档
@@ -217,5 +222,33 @@ public class KmDocumentController extends BaseController {
     public R<Void> batchGenerateQuestions(@RequestBody BatchGenerateQuestionsRequest request) {
         return toAjax(documentService.batchGenerateQuestions(request.getDocumentIds(), request.getModelId(),
                 request.getPrompt(), request.getTemperature(), request.getMaxTokens()));
+    }
+
+    /**
+     * 上传临时文件 (分块预览流程第一步)
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/uploadTemp")
+    public R<TempFileVo> uploadTemp(
+            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @RequestParam("file") MultipartFile file) {
+        return R.ok(documentService.uploadTempFile(datasetId, file));
+    }
+
+    /**
+     * 预览分块 (分块预览流程第二步)
+     */
+    @PostMapping("/previewChunks")
+    public R<List<ChunkPreviewVo>> previewChunks(@RequestBody ChunkPreviewBo bo) {
+        return R.ok(documentService.previewChunks(bo));
+    }
+
+    /**
+     * 提交分块并入库 (分块预览流程第三步)
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/submitChunks")
+    public R<KmDocumentVo> submitChunks(@RequestBody ChunkSubmitBo bo) {
+        return R.ok(documentService.submitChunks(bo));
     }
 }

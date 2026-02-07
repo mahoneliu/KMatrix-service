@@ -12,12 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
+import org.dromara.ai.domain.bo.ChunkResult;
 import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.util.StatusMetaUtils;
 import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
 import org.springframework.context.annotation.Lazy;
+import org.dromara.ai.service.IKmEmbeddingService;
 import org.dromara.ai.service.IKmEtlService;
 import org.dromara.ai.service.etl.DatasetProcessType;
 import org.dromara.ai.service.etl.EtlHandler;
@@ -26,6 +28,7 @@ import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
 import org.dromara.ai.domain.KmQuestionChunkMap;
 import org.dromara.ai.domain.KmEmbedding;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
@@ -64,6 +67,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
     private final List<EtlHandler> etlHandlers;
     private final KmQuestionMapper questionMapper;
     private final KmQuestionChunkMapMapper questionChunkMapMapper;
+    private final IKmEmbeddingService embeddingService;
 
     @Autowired
     @Lazy
@@ -82,7 +86,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
             EmbeddingModel embeddingModel,
             List<EtlHandler> etlHandlers,
             KmQuestionMapper questionMapper,
-            KmQuestionChunkMapMapper questionChunkMapMapper) {
+            KmQuestionChunkMapMapper questionChunkMapMapper,
+            IKmEmbeddingService embeddingService) {
         this.documentMapper = documentMapper;
         this.chunkMapper = chunkMapper;
         this.embeddingMapper = embeddingMapper;
@@ -92,11 +97,12 @@ public class KmEtlServiceImpl implements IKmEtlService {
         this.etlHandlers = etlHandlers;
         this.questionMapper = questionMapper;
         this.questionChunkMapMapper = questionChunkMapMapper;
+        this.embeddingService = embeddingService;
     }
 
     @Override
     @Async
-    public void processDocumentAsync(Long documentId) {
+    public void processDocumentAsync(Long documentId, List<ChunkResult> chunks) {
         log.info("Start processing document: {}", documentId);
 
         KmDocument document = documentMapper.selectById(documentId);
@@ -107,52 +113,118 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
         try {
             // 更新状态为处理中
-            updateDocumentStatus(documentId, null, 1, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_STARTED); // 1
-                                                                                                                       // =
-                                                                                                                       // 生成中
+            updateDocumentStatus(documentId, null, 1, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_STARTED);
 
             // 获取数据集信息
             KmDataset dataset = datasetMapper.selectById(document.getDatasetId());
             if (dataset == null) {
                 updateDocumentStatus(documentId, "数据集不存在", 3, StatusMetaUtils.TASK_EMBEDDING,
-                        StatusMetaUtils.STATUS_FAILED); // 3 = 失败
+                        StatusMetaUtils.STATUS_FAILED);
                 return;
             }
+            if (chunks != null && !chunks.isEmpty()) {
+                // 自定义分块:直接向量化
+                log.info("Processing document {} with {} custom chunks", documentId, chunks.size());
+                embeddingService.embedAndStoreChunks(documentId, dataset.getKbId(), chunks);
 
-            // 获取知识库ID
-            Long kbId = dataset.getKbId();
-            if (kbId == null) {
-                kbId = document.getKbId();
-            }
+                // 为文档标题生成向量（第一个chunk的title）
+                String title = chunks.stream()
+                        .map(ChunkResult::getTitle)
+                        .filter(t -> t != null && !t.isBlank())
+                        .findFirst()
+                        .orElse(null);
 
-            // 文件格式校验
-            if (StringUtils.isNotBlank(dataset.getAllowedFileTypes())
-                    && StringUtils.isNotBlank(document.getOriginalFilename())) {
-                try {
-                    org.dromara.ai.util.FileTypeValidator.validate(
-                            document.getOriginalFilename(),
-                            dataset.getAllowedFileTypes());
-                } catch (Exception e) {
-                    updateDocumentStatus(documentId, e.getMessage(), 3, StatusMetaUtils.TASK_EMBEDDING,
-                            StatusMetaUtils.STATUS_FAILED);
-                    return;
+                if (title == null) {
+                    title = document.getTitle();
                 }
-            }
+                if (title == null && document.getOriginalFilename() != null) {
+                    title = cn.hutool.core.io.FileUtil.mainName(document.getOriginalFilename());
+                }
 
-            // 根据数据集处理类型选择 Handler
-            String processType = dataset.getProcessType();
-            if (processType == null) {
-                processType = DatasetProcessType.GENERIC_FILE;
-            }
+                if (title != null) {
+                    embeddingService.embedTitleForDocument(documentId, dataset.getKbId(), title);
+                }
 
-            EtlHandler handler = findHandler(processType);
-            if (handler == null) {
-                // 兜底使用旧逻辑
-                log.warn("No handler found for processType: {}, using legacy logic", processType);
-                processLegacy(document, kbId);
+                // 更新文档状态为已完成
+                KmDocument doc = new KmDocument();
+                doc.setId(documentId);
+                doc.setEmbeddingStatus(2); // 2 = 已完成
+                doc.setChunkCount(chunks.size());
+                doc.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_SUCCESS));
+                documentMapper.updateById(doc);
+
+                log.info("Custom chunk processing completed for document {}", documentId);
             } else {
-                // 使用 Handler 处理
-                handler.process(document, dataset, kbId);
+
+                // 获取知识库ID
+                Long kbId = dataset.getKbId();
+                if (kbId == null) {
+                    kbId = document.getKbId();
+                }
+
+                // 文件格式校验
+                if (StringUtils.isNotBlank(dataset.getAllowedFileTypes())
+                        && StringUtils.isNotBlank(document.getOriginalFilename())) {
+                    try {
+                        org.dromara.ai.util.FileTypeValidator.validate(
+                                document.getOriginalFilename(),
+                                dataset.getAllowedFileTypes());
+                    } catch (Exception e) {
+                        updateDocumentStatus(documentId, e.getMessage(), 3, StatusMetaUtils.TASK_EMBEDDING,
+                                StatusMetaUtils.STATUS_FAILED);
+                        return;
+                    }
+                }
+
+                // 根据数据集处理类型选择 Handler
+                String processType = dataset.getProcessType();
+                if (processType == null) {
+                    processType = DatasetProcessType.GENERIC_FILE;
+                }
+
+                EtlHandler handler = findHandler(processType);
+                List<ChunkResult> innerChunks;
+
+                if (handler == null) {
+                    // 兜底使用旧逻辑
+                    log.warn("No handler found for processType: {}, using legacy logic", processType);
+                    processLegacy(document, kbId);
+                } else {
+                    // 使用 Handler 处理，返回分块列表
+                    innerChunks = handler.process(document, dataset);
+
+                    if (CollUtil.isEmpty(innerChunks)) {
+                        throw new RuntimeException("文档分块结果为空");
+                    }
+
+                    // 根据处理类型选择向量化方法
+                    if (DatasetProcessType.QA_PAIR.equals(processType)) {
+                        // QA对特殊处理
+                        embeddingService.embedAndStoreQaChunks(documentId, kbId, innerChunks);
+                    } else {
+                        // 通用分块处理
+                        embeddingService.embedAndStoreChunks(documentId, kbId, innerChunks);
+
+                        // 为文档标题生成向量（第一个chunk的title）
+                        String title = innerChunks.stream()
+                                .map(ChunkResult::getTitle)
+                                .filter(t -> t != null && !t.isBlank())
+                                .findFirst()
+                                .orElse(null);
+
+                        if (title == null) {
+                            title = document.getTitle();
+                        }
+                        if (title == null && document.getOriginalFilename() != null) {
+                            title = cn.hutool.core.io.FileUtil.mainName(document.getOriginalFilename());
+                        }
+
+                        if (title != null) {
+                            embeddingService.embedTitleForDocument(documentId, kbId, title);
+                        }
+                    }
+                }
             }
 
             log.info("Document processed successfully, updating status for docId: {}", documentId);
@@ -364,8 +436,6 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunk.setDocumentId(documentId);
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
-            // chunk.setEmbedding(embedding);
-            // chunk.setEmbeddingString(java.util.Arrays.toString(embedding));
             chunk.setCreateTime(now);
 
             Map<String, Object> metadata = new HashMap<>();
@@ -393,19 +463,6 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
         chunkMapper.insertBatch(chunkEntities);
 
-        // for (KmDocumentChunk chunk : chunkEntities) {
-        // org.dromara.ai.domain.KmEmbedding emp = new
-        // org.dromara.ai.domain.KmEmbedding();
-        // emp.setId(IdUtil.getSnowflakeNextId());
-        // emp.setKbId(chunk.getKbId());
-        // emp.setSourceId(chunk.getId());
-        // emp.setSourceType(org.dromara.ai.domain.KmEmbedding.SourceType.CONTENT);
-        // emp.setEmbedding(chunk.getEmbedding());
-        // emp.setEmbeddingString(chunk.getEmbeddingString());
-        // emp.setTextContent(chunk.getContent());
-        // emp.setCreateTime(now);
-        // embeddings.add(emp);
-        // }
         embeddingMapper.insertBatch(embeddings);
     }
 
@@ -426,21 +483,53 @@ public class KmEtlServiceImpl implements IKmEtlService {
                 .in(KmEmbedding::getSourceId, chunkIds)
                 .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.CONTENT));
 
-        // 3. Find associated questions
+        // 3. 处理问题关联
         List<KmQuestionChunkMap> maps = questionChunkMapMapper.selectList(new LambdaQueryWrapper<KmQuestionChunkMap>()
                 .in(KmQuestionChunkMap::getChunkId, chunkIds));
 
         if (CollUtil.isNotEmpty(maps)) {
-            List<Long> qIds = maps.stream().map(KmQuestionChunkMap::getQuestionId).toList();
+            // 获取关联记录ID列表，用于删除embedding
+            List<Long> mapIds = maps.stream().map(KmQuestionChunkMap::getId).toList();
 
-            // Delete questions and their embeddings
+            // 删除问题的embedding记录（通过map.id）
             embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
-                    .in(KmEmbedding::getSourceId, qIds)
+                    .in(KmEmbedding::getSourceId, mapIds)
                     .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.QUESTION));
 
-            questionMapper.deleteByIds(qIds);
+            // 获取涉及的所有问题 ID
+            List<Long> qIds = maps.stream().map(KmQuestionChunkMap::getQuestionId).distinct().toList();
 
-            // Delete maps
+            // 统计每个问题在本次删除中涉及的关联数量
+            Map<Long, Long> linksToDeleteCount = maps.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(KmQuestionChunkMap::getQuestionId,
+                            java.util.stream.Collectors.counting()));
+
+            // 查询这些问题在数据库中的总关联数量
+            QueryWrapper<KmQuestionChunkMap> query = new QueryWrapper<>();
+            query.select("question_id", "count(*) as cnt")
+                    .in("question_id", qIds)
+                    .groupBy("question_id");
+            List<Map<String, Object>> dbCounts = questionChunkMapMapper.selectMaps(query);
+
+            List<Long> questionsToDelete = new ArrayList<>();
+            for (Map<String, Object> map : dbCounts) {
+                Long qId = (Long) map.get("question_id");
+                Long totalInDb = ((Number) map.get("cnt")).longValue();
+                Long toDelete = linksToDeleteCount.getOrDefault(qId, 0L);
+
+                // 如果该问题的所有关联都在本次删除范围内,则该问题将变成孤立问题,需要删除
+                if (totalInDb.equals(toDelete)) {
+                    questionsToDelete.add(qId);
+                }
+            }
+
+            if (CollUtil.isNotEmpty(questionsToDelete)) {
+                log.info("Deleting isolated questions: {}", questionsToDelete);
+                // Delete questions (其embedding已经在上面删除了)
+                questionMapper.deleteByIds(questionsToDelete);
+            }
+
+            // 删除关联记录
             questionChunkMapMapper.delete(new LambdaQueryWrapper<KmQuestionChunkMap>()
                     .in(KmQuestionChunkMap::getChunkId, chunkIds));
         }

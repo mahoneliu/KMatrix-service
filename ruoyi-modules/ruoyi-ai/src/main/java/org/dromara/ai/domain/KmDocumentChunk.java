@@ -11,7 +11,6 @@ import java.util.Map;
 
 /**
  * 文档切片对象 km_document_chunk
- * 注意: PGvector类型需要自定义TypeHandler
  *
  * @author Mahone
  * @date 2026-01-28
@@ -58,20 +57,6 @@ public class KmDocumentChunk {
      */
     @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> metadata;
-
-    /**
-     * 向量嵌入 (pgvector类型)
-     * 注意：此字段在插入时由 embeddingString 字段处理
-     */
-    // @TableField(exist = false)
-    // private float[] embedding;
-
-    /**
-     * 向量嵌入字符串形式 (用于SQL插入)
-     * 格式: [1.0,2.0,3.0]
-     */
-    // @TableField(exist = false)
-    // private String embeddingString;
 
     /**
      * 创建时间

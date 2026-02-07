@@ -116,9 +116,15 @@ public class KmDocument extends BaseEntity {
     private Integer questionStatus;
 
     /**
+     * 存储类型 (1=OSS, 2=本地文件)
+     */
+    private Integer storeType;
+
+    /**
      * 状态追踪元数据 (JSON格式)
      * 包含 aggs 聚合统计和 state_time 状态时间记录
      */
     @TableField(typeHandler = org.dromara.ai.handler.UniversalJsonTypeHandler.class)
     private Map<String, Object> statusMeta;
+
 }

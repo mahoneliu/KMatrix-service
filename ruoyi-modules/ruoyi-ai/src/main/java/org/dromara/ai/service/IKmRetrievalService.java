@@ -30,26 +30,5 @@ public interface IKmRetrievalService {
      * @param threshold  相似度阈值
      * @return 检索结果
      */
-    List<KmRetrievalResultVo> vectorSearch(String query, List<Long> datasetIds, int topK, double threshold);
 
-    /**
-     * 关键词检索 (全文搜索)
-     *
-     * @param query      查询文本
-     * @param datasetIds 数据集ID列表
-     * @param topK       返回数量
-     * @return 检索结果
-     */
-    List<KmRetrievalResultVo> keywordSearch(String query, List<Long> datasetIds, int topK);
-
-    /**
-     * 混合检索 (向量 + 关键词 + RRF 融合)
-     *
-     * @param query      查询文本
-     * @param datasetIds 数据集ID列表
-     * @param topK       返回数量
-     * @param threshold  相似度阈值
-     * @return 检索结果
-     */
-    List<KmRetrievalResultVo> hybridSearch(String query, List<Long> datasetIds, int topK, double threshold);
 }

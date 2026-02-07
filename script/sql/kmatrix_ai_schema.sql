@@ -109,53 +109,52 @@ CREATE TABLE `km_document_chunk` (
   `document_id` bigint(20) NOT NULL COMMENT '文档ID',
   `content` longtext COMMENT '切片内容',
   `metadata` json DEFAULT NULL COMMENT '元数据',
-  `embedding` json DEFAULT NULL COMMENT '向量数据(暂用JSON存储)',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`),
   KEY `idx_doc_id` (`document_id`),
   FULLTEXT KEY `idx_content_fts` (`content`) WITH PARSER ngram
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档向量切片表';
 
-DROP TABLE IF EXISTS `km_paragraph`;
-CREATE TABLE `km_paragraph` (
-  `paragraph_id` bigint(20) NOT NULL COMMENT '分段ID',
-  `doc_id` bigint(20) NOT NULL COMMENT '所属文档ID',
-  `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
-  `content` longtext NOT NULL COMMENT '分段内容',
-  `title` varchar(255) DEFAULT '' COMMENT '分段标题',
-  `status` char(1) DEFAULT '1' COMMENT '状态（1启用 0禁用）',
-  `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_by` bigint(20) DEFAULT NULL COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (`paragraph_id`),
-  KEY `idx_doc_id` (`doc_id`),
-  KEY `idx_kb_id` (`knowledge_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档分段表';
+-- DROP TABLE IF EXISTS `km_paragraph`;
+-- CREATE TABLE `km_paragraph` (
+--   `paragraph_id` bigint(20) NOT NULL COMMENT '分段ID',
+--   `doc_id` bigint(20) NOT NULL COMMENT '所属文档ID',
+--   `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
+--   `content` longtext NOT NULL COMMENT '分段内容',
+--   `title` varchar(255) DEFAULT '' COMMENT '分段标题',
+--   `status` char(1) DEFAULT '1' COMMENT '状态（1启用 0禁用）',
+--   `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
+--   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+--   `update_by` bigint(20) DEFAULT NULL COMMENT '更新者',
+--   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+--   PRIMARY KEY (`paragraph_id`),
+--   KEY `idx_doc_id` (`doc_id`),
+--   KEY `idx_kb_id` (`knowledge_id`)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档分段表';
 
-DROP TABLE IF EXISTS `km_problem`;
-CREATE TABLE `km_problem` (
-  `problem_id` bigint(20) NOT NULL COMMENT '问题ID',
-  `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
-  `content` varchar(500) NOT NULL COMMENT '问题内容',
-  `hit_count` int(11) DEFAULT '0' COMMENT '命中次数',
-  `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  PRIMARY KEY (`problem_id`),
-  KEY `idx_kb_id` (`knowledge_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库相关问题表';
+-- DROP TABLE IF EXISTS `km_problem`;
+-- CREATE TABLE `km_problem` (
+--   `problem_id` bigint(20) NOT NULL COMMENT '问题ID',
+--   `knowledge_id` bigint(20) NOT NULL COMMENT '所属知识库ID',
+--   `content` varchar(500) NOT NULL COMMENT '问题内容',
+--   `hit_count` int(11) DEFAULT '0' COMMENT '命中次数',
+--   `create_by` bigint(20) DEFAULT NULL COMMENT '创建者',
+--   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+--   PRIMARY KEY (`problem_id`),
+--   KEY `idx_kb_id` (`knowledge_id`)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识库相关问题表';
 
-DROP TABLE IF EXISTS `km_problem_paragraph`;
-CREATE TABLE `km_problem_paragraph` (
-  `id` bigint(20) NOT NULL COMMENT '主键',
-  `problem_id` bigint(20) NOT NULL COMMENT '问题ID',
-  `paragraph_id` bigint(20) NOT NULL COMMENT '分段ID',
-  `doc_id` bigint(20) NOT NULL COMMENT '文档ID',
-  `knowledge_id` bigint(20) NOT NULL COMMENT '知识库ID',
-  PRIMARY KEY (`id`),
-  KEY `idx_problem` (`problem_id`),
-  KEY `idx_paragraph` (`paragraph_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='问题与分段关联表';
+-- DROP TABLE IF EXISTS `km_problem_paragraph`;
+-- CREATE TABLE `km_problem_paragraph` (
+--   `id` bigint(20) NOT NULL COMMENT '主键',
+--   `problem_id` bigint(20) NOT NULL COMMENT '问题ID',
+--   `paragraph_id` bigint(20) NOT NULL COMMENT '分段ID',
+--   `doc_id` bigint(20) NOT NULL COMMENT '文档ID',
+--   `knowledge_id` bigint(20) NOT NULL COMMENT '知识库ID',
+--   PRIMARY KEY (`id`),
+--   KEY `idx_problem` (`problem_id`),
+--   KEY `idx_paragraph` (`paragraph_id`)
+-- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='问题与分段关联表';
 
 -- ----------------------------
 -- 4. AI应用与访问控制 (含增量字段)

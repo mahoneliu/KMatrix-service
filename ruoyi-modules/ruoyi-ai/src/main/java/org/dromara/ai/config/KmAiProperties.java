@@ -20,4 +20,25 @@ public class KmAiProperties {
      */
     private boolean logChat = false;
 
+    /**
+     * 文件存储配置
+     */
+    private FileStore fileStore = new FileStore();
+
+    /**
+     * 文件存储配置
+     */
+    @Data
+    public static class FileStore {
+        /**
+         * 存储类型: 1-OSS, 2-本地文件
+         */
+        private Integer type = 1;
+
+        /**
+         * 本地文件存储路径(仅当 type=2 时生效)
+         */
+        private String localPath = "./uploads";
+    }
+
 }

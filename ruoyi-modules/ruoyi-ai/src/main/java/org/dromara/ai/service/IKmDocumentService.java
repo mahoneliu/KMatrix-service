@@ -27,6 +27,16 @@ public interface IKmDocumentService {
     KmDocumentVo uploadDocument(Long datasetId, MultipartFile file);
 
     /**
+     * 上传文档到数据集(带自定义分块)
+     *
+     * @param datasetId 数据集ID
+     * @param file      文件
+     * @param chunks    自定义分块列表
+     * @return 文档信息
+     */
+    KmDocumentVo uploadDocument(Long datasetId, MultipartFile file, List<org.dromara.ai.domain.bo.ChunkResult> chunks);
+
+    /**
      * 批量上传文档到数据集
      *
      * @param datasetId 数据集ID
@@ -68,12 +78,12 @@ public interface IKmDocumentService {
     Boolean deleteById(Long id);
 
     /**
-     * 重新处理文档 (触发ETL)
+     * 重新向量化文档 (触发ETL)
      *
      * @param id 文档ID
      * @return 是否成功
      */
-    Boolean reprocessDocument(Long id);
+    // Boolean reprocessEmbeddingDocument(Long id);
 
     /**
      * 创建在线文档
@@ -168,4 +178,29 @@ public interface IKmDocumentService {
      * @return 是否成功
      */
     Boolean embeddingDocument(Long documentId, EmbeddingOption option);
+
+    /**
+     * 上传临时文件 (分块预览流程第一步)
+     *
+     * @param datasetId 数据集ID
+     * @param file      文件
+     * @return 临时文件信息
+     */
+    org.dromara.ai.domain.vo.TempFileVo uploadTempFile(Long datasetId, MultipartFile file);
+
+    /**
+     * 分块预览 (分块预览流程第二步)
+     *
+     * @param bo 分块预览请求
+     * @return 分块预览结果列表
+     */
+    List<org.dromara.ai.domain.vo.ChunkPreviewVo> previewChunks(org.dromara.ai.domain.bo.ChunkPreviewBo bo);
+
+    /**
+     * 提交分块并入库 (分块预览流程第三步)
+     *
+     * @param bo 分块提交请求
+     * @return 文档信息
+     */
+    KmDocumentVo submitChunks(org.dromara.ai.domain.bo.ChunkSubmitBo bo);
 }

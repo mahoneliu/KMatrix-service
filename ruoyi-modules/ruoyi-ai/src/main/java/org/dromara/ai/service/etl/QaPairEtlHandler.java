@@ -1,29 +1,24 @@
 package org.dromara.ai.service.etl;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.domain.*;
-import org.dromara.ai.mapper.KmDocumentChunkMapper;
-import org.dromara.ai.mapper.KmEmbeddingMapper;
-import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
-import org.dromara.ai.mapper.KmQuestionMapper;
+import org.dromara.ai.domain.KmDataset;
+import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.bo.ChunkResult;
+import org.dromara.ai.domain.enums.FileStoreType;
+import org.dromara.ai.service.ILocalFileService;
 import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
 import org.dromara.system.domain.vo.SysOssVo;
 import org.dromara.system.service.ISysOssService;
 import org.springframework.stereotype.Component;
-import org.dromara.ai.util.StatusMetaUtils;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.*;
 
 /**
@@ -31,12 +26,12 @@ import java.util.*;
  * 处理 Excel、CSV 格式的问答对文件
  *
  * 处理逻辑:
- * 1. 解析文件，识别"问题"、"答案"、"标题"列
+ * 1. 解析文件，识别"问题"、"答案"列
  * 2. 每行数据视为一个 QA 对
- * 3. "答案"存入 km_document_chunk 的 content
- * 4. "问题"列支持换行符分隔多个相似问题，存入 km_question
- * 5. 问题与答案通过 km_question_chunk_map 关联
- * 6. 问题和答案都生成向量，存入 km_embedding
+ * 3. "答案"作为chunk的content返回
+ * 4. "问题"存入metadata的questions字段（支持多个问题）
+ * 
+ * 职责简化：仅负责文件解析和分块，问题-答案关联和向量化由上层服务处理
  *
  * @author Mahone
  * @date 2026-02-01
@@ -46,12 +41,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class QaPairEtlHandler implements EtlHandler {
 
-    private final KmDocumentChunkMapper chunkMapper;
-    private final KmQuestionMapper questionMapper;
-    private final KmQuestionChunkMapMapper questionChunkMapMapper;
-    private final KmEmbeddingMapper embeddingMapper;
     private final ISysOssService ossService;
-    private final EmbeddingModel embeddingModel;
+    private final ILocalFileService localFileService;
 
     @Override
     public String getProcessType() {
@@ -59,8 +50,7 @@ public class QaPairEtlHandler implements EtlHandler {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void process(KmDocument document, KmDataset dataset, Long kbId) {
+    public List<ChunkResult> process(KmDocument document, KmDataset dataset) {
         log.info("QaPairEtlHandler processing document: {}", document.getId());
 
         // 1. 读取 Excel/CSV 文件 (返回原始行数据，包括可能的表头)
@@ -78,12 +68,7 @@ public class QaPairEtlHandler implements EtlHandler {
         }
 
         // 3. 处理每行数据 (第一列=问题，第二列=答案)
-        List<KmDocumentChunk> chunks = new ArrayList<>();
-        List<KmQuestion> questions = new ArrayList<>();
-        List<KmQuestionChunkMap> questionChunkMaps = new ArrayList<>();
-        List<KmEmbedding> embeddings = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        Date nowDate = new Date();
+        List<ChunkResult> results = new ArrayList<>();
 
         for (int rowIndex = startIndex; rowIndex < rawRows.size(); rowIndex++) {
             List<String> row = rawRows.get(rowIndex);
@@ -101,112 +86,40 @@ public class QaPairEtlHandler implements EtlHandler {
                 continue;
             }
 
-            // 创建 Chunk (Answer)
-            Long chunkId = IdUtil.getSnowflakeNextId();
-            KmDocumentChunk chunk = new KmDocumentChunk();
-            chunk.setId(chunkId);
-            chunk.setDocumentId(document.getId());
-            chunk.setKbId(kbId);
-            chunk.setContent(answer);
-            chunk.setCreateTime(now);
+            // 处理问题 (支持换行符分隔多个问题)
+            List<String> questions = new ArrayList<>();
+            String title = null;
+            if (StrUtil.isNotBlank(questionText)) {
+                String[] questionLines = questionText.split("[\r\n]+");
+                for (String q : questionLines) {
+                    q = q.trim();
+                    if (StrUtil.isNotBlank(q)) {
+                        questions.add(q.length() > 500 ? q.substring(0, 500) : q);
+                        if (title == null) {
+                            // 第一个问题作为标题
+                            title = q.length() > 255 ? q.substring(0, 255) : q;
+                        }
+                    }
+                }
+            }
 
-            chunk.setEmbeddingStatus(2); // 2 = 已生成
-            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
-                    StatusMetaUtils.STATUS_SUCCESS));
-
-            // 元数据
+            // 构建元数据
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("rowIndex", rowIndex);
             metadata.put("source", "QA_PAIR");
-            chunk.setMetadata(metadata);
+            metadata.put("questions", questions); // 问题列表存入metadata
 
-            // 生成答案向量
-            float[] answerVector = embeddingModel.embed(answer).content().vector();
-            // chunk.setEmbedding(answerVector);
-            // chunk.setEmbeddingString(Arrays.toString(answerVector));
-
-            chunks.add(chunk);
-
-            // 创建 Embedding (Content)
-            KmEmbedding contentEmbedding = new KmEmbedding();
-            contentEmbedding.setId(IdUtil.getSnowflakeNextId());
-            contentEmbedding.setKbId(kbId);
-            contentEmbedding.setSourceId(chunkId);
-            contentEmbedding.setSourceType(KmEmbedding.SourceType.CONTENT);
-            contentEmbedding.setEmbedding(answerVector);
-            contentEmbedding.setEmbeddingString(Arrays.toString(answerVector));
-            contentEmbedding.setTextContent(answer);
-            contentEmbedding.setCreateTime(now);
-            embeddings.add(contentEmbedding);
-
-            // 处理问题 (支持换行符分隔多个问题)
-            if (StrUtil.isNotBlank(questionText)) {
-                String[] questionLines = questionText.split("[\r\n]+");
-                // QA 模式下将第一个问题设为标题 (截取前255字符)
-                if (StrUtil.isNotBlank(questionLines[0])) {
-                    chunk.setTitle(
-                            questionLines[0].length() > 255 ? questionLines[0].substring(0, 255) : questionLines[0]);
-                }
-                for (String q : questionLines) {
-                    q = q.trim();
-                    if (StrUtil.isBlank(q))
-                        continue;
-
-                    Long questionId = IdUtil.getSnowflakeNextId();
-                    KmQuestion question = new KmQuestion();
-                    question.setId(questionId);
-                    question.setKbId(kbId);
-                    question.setContent(q.length() > 500 ? q.substring(0, 500) : q);
-                    question.setHitNum(0);
-                    question.setSourceType("IMPORT");
-                    // BaseEntity uses java.util.Date
-                    question.setCreateTime(nowDate);
-                    questions.add(question);
-
-                    // 创建关联
-                    KmQuestionChunkMap map = new KmQuestionChunkMap();
-                    map.setId(IdUtil.getSnowflakeNextId());
-                    map.setQuestionId(questionId);
-                    map.setChunkId(chunkId);
-                    questionChunkMaps.add(map);
-
-                    // 生成问题向量
-                    float[] questionVector = embeddingModel.embed(q).content().vector();
-                    KmEmbedding questionEmbedding = new KmEmbedding();
-                    questionEmbedding.setId(IdUtil.getSnowflakeNextId());
-                    questionEmbedding.setKbId(kbId);
-                    questionEmbedding.setSourceId(questionId);
-                    questionEmbedding.setSourceType(KmEmbedding.SourceType.QUESTION);
-                    questionEmbedding.setEmbedding(questionVector);
-                    questionEmbedding.setEmbeddingString(Arrays.toString(questionVector));
-                    questionEmbedding.setTextContent(q);
-                    questionEmbedding.setCreateTime(now);
-                    embeddings.add(questionEmbedding);
-                }
-            }
+            results.add(ChunkResult.builder()
+                    .content(answer)
+                    .title(title)
+                    .metadata(metadata)
+                    .build());
         }
 
-        // 4. 批量保存
-        if (CollUtil.isNotEmpty(chunks)) {
-            chunkMapper.insertBatch(chunks);
-        }
-        if (CollUtil.isNotEmpty(questions)) {
-            // 使用 MyBatis-Plus 批量插入
-            for (KmQuestion question : questions) {
-                questionMapper.insert(question);
-            }
-        }
-        if (CollUtil.isNotEmpty(questionChunkMaps)) {
-            for (KmQuestionChunkMap map : questionChunkMaps) {
-                questionChunkMapMapper.insert(map);
-            }
-        }
-        if (CollUtil.isNotEmpty(embeddings)) {
-            embeddingMapper.insertBatch(embeddings);
-        }
+        log.info("QaPairEtlHandler completed: documentId={}, chunks={}",
+                document.getId(), results.size());
 
-        log.info("QaPairEtlHandler completed: documentId={}, chunks={}, questions={}, embeddings={}",
-                document.getId(), chunks.size(), questions.size(), embeddings.size());
+        return results;
     }
 
     /**
@@ -214,6 +127,31 @@ public class QaPairEtlHandler implements EtlHandler {
      */
     private List<List<String>> readExcelFileAsRows(KmDocument document) {
         try {
+            // 根据存储类型获取文件流
+            InputStream is = getDocumentInputStream(document);
+
+            try (is) {
+                String fileType = document.getFileType();
+                if ("csv".equalsIgnoreCase(fileType)) {
+                    return readCsvAsRows(is);
+                } else {
+                    return readExcelAsRows(is);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to read QA file: {}", document.getId(), e);
+            throw new RuntimeException("QA 文件读取失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 根据文档存储类型获取输入流
+     */
+    private InputStream getDocumentInputStream(KmDocument document) throws IOException {
+        FileStoreType storeType = FileStoreType.fromValue(document.getStoreType());
+
+        if (storeType.isOss()) {
+            // 从 OSS 读取
             Long ossId = document.getOssId();
             if (ossId == null) {
                 throw new RuntimeException("Document OSS ID is null");
@@ -225,17 +163,19 @@ public class QaPairEtlHandler implements EtlHandler {
             }
 
             OssClient storage = OssFactory.instance(ossVo.getService());
-            try (InputStream is = storage.getObjectContent(ossVo.getFileName())) {
-                String fileType = document.getFileType();
-                if ("csv".equalsIgnoreCase(fileType)) {
-                    return readCsvAsRows(is);
-                } else {
-                    return readExcelAsRows(is);
-                }
+            return storage.getObjectContent(ossVo.getFileName());
+
+        } else if (storeType.isLocal()) {
+            // 从本地文件系统读取
+            String filePath = document.getFilePath();
+            if (filePath == null) {
+                throw new RuntimeException("Document file path is null");
             }
-        } catch (Exception e) {
-            log.error("Failed to read QA file: {}", document.getId(), e);
-            throw new RuntimeException("QA 文件读取失败: " + e.getMessage());
+
+            return localFileService.getFileStream(filePath);
+
+        } else {
+            throw new RuntimeException("Unsupported store type: " + storeType);
         }
     }
 

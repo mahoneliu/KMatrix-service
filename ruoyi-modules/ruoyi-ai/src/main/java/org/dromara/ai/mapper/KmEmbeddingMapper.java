@@ -37,8 +37,8 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
         /**
          * 单条插入向量
          */
-        @Insert("INSERT INTO km_embedding (kb_id, source_id, source_type, embedding, text_content, create_time) " +
-                        "VALUES (#{kbId}, #{sourceId}, #{sourceType}, #{embeddingString}::vector, #{textContent}, #{createTime})")
+        @Insert("INSERT INTO km_embedding (id, kb_id, source_id, source_type, embedding, text_content, create_time) " +
+                        "VALUES (#{id}, #{kbId}, #{sourceId}, #{sourceType}, #{embeddingString}::vector, #{textContent}, #{createTime})")
         int insertOne(KmEmbedding embedding);
 
         /**

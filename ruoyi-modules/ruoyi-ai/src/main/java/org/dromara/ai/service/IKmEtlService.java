@@ -2,6 +2,7 @@ package org.dromara.ai.service;
 
 import java.util.List;
 
+import org.dromara.ai.domain.bo.ChunkResult;
 /**
  * ETL处理服务接口
  * 负责文档的解析、分块、向量化
@@ -34,7 +35,7 @@ public interface IKmEtlService {
      *
      * @param documentId 文档ID
      */
-    void processDocumentAsync(Long documentId);
+    void processDocumentAsync(Long documentId, List<ChunkResult> chunks);
 
     /**
      * 解析文档内容
