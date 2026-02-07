@@ -3,6 +3,7 @@ package org.dromara.ai.domain.vo;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 检索结果VO
@@ -59,4 +60,14 @@ public class KmRetrievalResultVo implements Serializable {
      * 高亮后的内容片段 (HTML，仅启用高亮时返回)
      */
     private String highlight;
+
+    /**
+     * 匹配的问题列表 (仅当切片是通过关联问题命中时)
+     */
+    private List<String> matchedQuestions;
+
+    /**
+     * 匹配来源类型列表 (CONTENT, TITLE, QUESTION)
+     */
+    private List<String> sourceTypes;
 }

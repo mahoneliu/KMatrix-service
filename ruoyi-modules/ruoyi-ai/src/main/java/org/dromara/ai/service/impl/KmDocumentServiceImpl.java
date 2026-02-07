@@ -503,6 +503,16 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<TempFileVo> uploadTempFiles(Long datasetId, MultipartFile[] files) {
+        List<TempFileVo> results = new ArrayList<>();
+        for (MultipartFile file : files) {
+            results.add(tempFileService.saveTempFile(datasetId, file));
+        }
+        return results;
+    }
+
+    @Override
     public List<ChunkPreviewVo> previewChunks(ChunkPreviewBo bo) {
         try {
             // 1. 获取临时文件路径
@@ -551,6 +561,36 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             log.error("Failed to preview chunks", e);
             throw new RuntimeException("分块预览失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public Map<Long, List<ChunkPreviewVo>> batchPreviewChunks(org.dromara.ai.domain.bo.BatchChunkPreviewBo bo) {
+        Map<Long, List<ChunkPreviewVo>> resultMap = new java.util.HashMap<>();
+
+        for (Long tempFileId : bo.getTempFileIds()) {
+            try {
+                // 为每个文件创建单独的预览请求
+                ChunkPreviewBo singleBo = new ChunkPreviewBo();
+                singleBo.setTempFileId(tempFileId);
+                singleBo.setChunkStrategy(bo.getChunkStrategy());
+                singleBo.setSeparators(bo.getSeparators());
+                singleBo.setChunkSize(bo.getChunkSize());
+                singleBo.setOverlap(bo.getOverlap());
+
+                // 调用单文件预览方法
+                List<ChunkPreviewVo> chunks = previewChunks(singleBo);
+                resultMap.put(tempFileId, chunks);
+
+                log.info("Batch preview: generated {} chunks for tempFileId: {}", chunks.size(), tempFileId);
+            } catch (Exception e) {
+                log.error("Failed to preview chunks for tempFileId: {}", tempFileId, e);
+                // 单个文件失败不影响其他文件,记录空列表
+                resultMap.put(tempFileId, new ArrayList<>());
+            }
+        }
+
+        log.info("Batch preview completed for {} files", bo.getTempFileIds().size());
+        return resultMap;
     }
 
     /**

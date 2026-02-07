@@ -2,6 +2,7 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.domain.bo.BatchChunkPreviewBo;
 import org.dromara.ai.domain.bo.BatchEmbeddingRequest;
 import org.dromara.ai.domain.bo.BatchGenerateQuestionsRequest;
 import org.dromara.ai.domain.bo.ChunkPreviewBo;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 文档管理
@@ -236,11 +238,30 @@ public class KmDocumentController extends BaseController {
     }
 
     /**
+     * 批量上传临时文件 (分块预览流程第一步 - 批量版本)
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/uploadTempBatch")
+    public R<List<TempFileVo>> uploadTempBatch(
+            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @RequestParam("files") MultipartFile[] files) {
+        return R.ok(documentService.uploadTempFiles(datasetId, files));
+    }
+
+    /**
      * 预览分块 (分块预览流程第二步)
      */
     @PostMapping("/previewChunks")
     public R<List<ChunkPreviewVo>> previewChunks(@RequestBody ChunkPreviewBo bo) {
         return R.ok(documentService.previewChunks(bo));
+    }
+
+    /**
+     * 批量预览分块 (分块预览流程第二步 - 批量版本)
+     */
+    @PostMapping("/batchPreviewChunks")
+    public R<Map<Long, List<ChunkPreviewVo>>> batchPreviewChunks(@RequestBody BatchChunkPreviewBo bo) {
+        return R.ok(documentService.batchPreviewChunks(bo));
     }
 
     /**

@@ -2,7 +2,6 @@ package org.dromara.ai.controller;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmQuestionBo;
 import org.dromara.ai.domain.vo.KmQuestionVo;
 import org.dromara.ai.service.IKmQuestionService;

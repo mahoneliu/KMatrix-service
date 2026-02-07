@@ -189,6 +189,15 @@ public interface IKmDocumentService {
     org.dromara.ai.domain.vo.TempFileVo uploadTempFile(Long datasetId, MultipartFile file);
 
     /**
+     * 批量上传临时文件 (分块预览流程第一步 - 批量版本)
+     *
+     * @param datasetId 数据集ID
+     * @param files     文件列表
+     * @return 临时文件信息列表
+     */
+    List<org.dromara.ai.domain.vo.TempFileVo> uploadTempFiles(Long datasetId, MultipartFile[] files);
+
+    /**
      * 分块预览 (分块预览流程第二步)
      *
      * @param bo 分块预览请求
@@ -197,10 +206,20 @@ public interface IKmDocumentService {
     List<org.dromara.ai.domain.vo.ChunkPreviewVo> previewChunks(org.dromara.ai.domain.bo.ChunkPreviewBo bo);
 
     /**
+     * 批量分块预览 (分块预览流程第二步 - 批量版本)
+     *
+     * @param bo 批量分块预览请求
+     * @return 临时文件ID -> 分块预览结果列表的映射
+     */
+    java.util.Map<Long, List<org.dromara.ai.domain.vo.ChunkPreviewVo>> batchPreviewChunks(
+            org.dromara.ai.domain.bo.BatchChunkPreviewBo bo);
+
+    /**
      * 提交分块并入库 (分块预览流程第三步)
      *
      * @param bo 分块提交请求
      * @return 文档信息
      */
     KmDocumentVo submitChunks(org.dromara.ai.domain.bo.ChunkSubmitBo bo);
+
 }

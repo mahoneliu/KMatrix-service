@@ -10,6 +10,7 @@ import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmEmbedding;
+import org.dromara.ai.domain.KmQuestion;
 import org.dromara.ai.domain.KmQuestionChunkMap;
 
 import org.dromara.ai.domain.bo.KmRetrievalBo;
@@ -142,6 +143,13 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         Set<Long> titleDocIds = new HashSet<>();
         Map<Long, Double> titleDocScores = new HashMap<>();
 
+        // 存储问题命中关联 (ChunkId -> List<QuestionId>)
+        Map<Long, List<Long>> chunkQuestionMap = new HashMap<>();
+        Set<Long> questionIds = new HashSet<>();
+
+        // 存储切片命中来源类型 (ChunkId -> List<SourceType>)
+        Map<Long, List<String>> chunkSourceTypes = new HashMap<>();
+
         for (Map<String, Object> row : embeddingResults) {
             Long sourceId = ((Number) row.get("source_id")).longValue();
             Integer sourceType = ((Number) row.get("source_type")).intValue();
@@ -156,6 +164,9 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                 if (highlight != null) {
                     chunkHighlights.put(sourceId, highlight);
                 }
+                // 记录来源类型
+                chunkSourceTypes.computeIfAbsent(sourceId, k -> new ArrayList<>()).add("CONTENT");
+
             } else if (sourceType == KmEmbedding.SourceType.TITLE) {
                 // Title 类型：sourceId 是 documentId
                 titleDocIds.add(sourceId);
@@ -170,7 +181,21 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                     chunkScores.merge(mapRecord.getChunkId(), score, Math::max);
                     // 更新问题命中次数
                     questionMapper.incrementHitNum(mapRecord.getQuestionId());
+                    // 记录问题ID与切片的关联
+                    chunkQuestionMap.computeIfAbsent(mapRecord.getChunkId(), k -> new ArrayList<>())
+                            .add(mapRecord.getQuestionId());
+                    questionIds.add(mapRecord.getQuestionId());
+
+                    // 记录来源类型
+                    chunkSourceTypes.computeIfAbsent(mapRecord.getChunkId(), k -> new ArrayList<>())
+                            .add("QUESTION");
                 }
+            }
+
+            // 确保不重复添加
+            List<String> types = chunkSourceTypes.getOrDefault(sourceId, new ArrayList<>());
+            if (types != null && !types.isEmpty()) {
+                // do not add default type if matched by question
             }
         }
 
@@ -189,6 +214,8 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                     Long chunkId = chunks.get(0).getId();
                     chunkIds.add(chunkId);
                     chunkScores.merge(chunkId, titleDocScores.get(docId), Math::max);
+                    // 记录来源类型
+                    chunkSourceTypes.computeIfAbsent(chunkId, k -> new ArrayList<>()).add("TITLE");
                 }
             }
         }
@@ -211,6 +238,28 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
             docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
         }
 
+        // 获取关联的问题内容
+        Map<Long, List<String>> chunkMatchedQuestions = new HashMap<>();
+
+        if (CollUtil.isNotEmpty(questionIds)) {
+            List<KmQuestion> questions = questionMapper.selectByIds(questionIds);
+            Map<Long, String> questionContentMap = questions.stream()
+                    .collect(Collectors.toMap(KmQuestion::getId, KmQuestion::getContent));
+
+            // 构建 chunkId -> List<QuestionContent> 的映射
+            for (Map.Entry<Long, List<Long>> entry : chunkQuestionMap.entrySet()) {
+                Long chunkId = entry.getKey();
+                List<Long> qIds = entry.getValue();
+                List<String> qContents = qIds.stream()
+                        .map(questionContentMap::get)
+                        .filter(StrUtil::isNotBlank)
+                        .collect(Collectors.toList());
+                if (CollUtil.isNotEmpty(qContents)) {
+                    chunkMatchedQuestions.put(chunkId, qContents);
+                }
+            }
+        }
+
         // 构建结果并按分数排序
         return chunkRows.stream()
                 .map(row -> {
@@ -224,6 +273,8 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                     vo.setScore(chunkScores.getOrDefault(chunkId, 0.0));
                     vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
                     vo.setHighlight(chunkHighlights.get(chunkId));
+                    vo.setMatchedQuestions(chunkMatchedQuestions.get(chunkId));
+                    vo.setSourceTypes(chunkSourceTypes.get(chunkId));
                     return vo;
                 })
                 .sorted(Comparator.comparingDouble(KmRetrievalResultVo::getScore).reversed())
@@ -285,7 +336,30 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
             KmRetrievalResultVo r = keywordResults.get(i);
             double rrfScore = 1.0 / (RRF_K + i + 1);
             rrfScores.merge(r.getChunkId(), rrfScore, Double::sum);
-            chunkMap.putIfAbsent(r.getChunkId(), r);
+
+            if (chunkMap.containsKey(r.getChunkId())) {
+                KmRetrievalResultVo existing = chunkMap.get(r.getChunkId());
+                // Merge matched questions
+                if (existing.getMatchedQuestions() == null) {
+                    existing.setMatchedQuestions(r.getMatchedQuestions());
+                } else if (CollUtil.isNotEmpty(r.getMatchedQuestions())) {
+                    // Add non-duplicate questions
+                    Set<String> questions = new LinkedHashSet<>(existing.getMatchedQuestions());
+                    questions.addAll(r.getMatchedQuestions());
+                    existing.setMatchedQuestions(new ArrayList<>(questions));
+                }
+
+                // Merge source types
+                if (existing.getSourceTypes() == null) {
+                    existing.setSourceTypes(r.getSourceTypes());
+                } else if (CollUtil.isNotEmpty(r.getSourceTypes())) {
+                    Set<String> types = new LinkedHashSet<>(existing.getSourceTypes());
+                    types.addAll(r.getSourceTypes());
+                    existing.setSourceTypes(new ArrayList<>(types));
+                }
+            } else {
+                chunkMap.put(r.getChunkId(), r);
+            }
         }
 
         // 4. 按 RRF 分数排序
