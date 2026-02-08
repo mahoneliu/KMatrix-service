@@ -7,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.workflow.nodes.condition.ConditionBranch;
 import org.dromara.ai.workflow.nodes.condition.ConditionEvaluator;
 import org.dromara.ai.workflow.nodes.condition.ConditionGroup;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 @Slf4j
 @Component("CONDITION")
 @RequiredArgsConstructor
-public class ConditionNode implements WorkflowNode {
+public class ConditionNode extends AbstractWorkflowNode {
 
     public static final String KEY_MATCHED_BRANCH = "matchedBranch";
     public static final String KEY_BRANCH_INDEX = "branchIndex";

@@ -99,7 +99,7 @@ public class WorkflowConfig {
     /**
      * 首选引擎类型
      */
-    private org.dromara.ai.workflow.engine.WorkflowEngineType preferredEngine;
+    // private org.dromara.ai.workflow.engine.WorkflowEngineType preferredEngine;
 
     /**
      * 判断是否包含循环

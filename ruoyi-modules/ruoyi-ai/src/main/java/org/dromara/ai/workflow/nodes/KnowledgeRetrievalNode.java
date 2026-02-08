@@ -7,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.bo.KmRetrievalBo;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.service.IKmRetrievalService;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.nodes.nodeUtils.SseHelper;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 @Component("KNOWLEDGE_RETRIEVAL")
-public class KnowledgeRetrievalNode implements WorkflowNode {
+public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
 
     private final IKmRetrievalService retrievalService;
 
@@ -43,11 +43,7 @@ public class KnowledgeRetrievalNode implements WorkflowNode {
         // 1. 获取查询文本
         String query = (String) context.getInput("query");
         if (StrUtil.isBlank(query)) {
-            // 尝试从 inputMessage 获取（兼容 LLM_CHAT 节点的输入）
-            query = (String) context.getInput("inputMessage");
-        }
-        if (StrUtil.isBlank(query)) {
-            throw new RuntimeException("查询文本不能为空 (query 或 inputMessage)");
+            throw new RuntimeException("查询文本不能为空 (query)");
         }
 
         // 2. 获取配置参数

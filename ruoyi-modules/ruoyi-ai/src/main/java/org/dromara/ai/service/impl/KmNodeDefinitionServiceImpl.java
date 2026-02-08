@@ -63,6 +63,28 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         }
     }
 
+    /**
+     * 获取所有节点类型定义
+     * 使用缓存避免重复读取文件
+     *
+     * @return 节点类型定义列表
+     */
+    @Override
+    @Cacheable(value = "workflow:nodeDefinition", key = "#type", unless = "#result == null")
+    public KmNodeDefinitionVo getNodeDefinitionByType(String type) {
+        try {
+            // 从数据库查询所有启用的节点定义
+            LambdaQueryWrapper<KmNodeDefinition> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(KmNodeDefinition::getIsEnabled, "1")
+                    .eq(KmNodeDefinition::getNodeType, type);
+            KmNodeDefinitionVo result = nodeDefinitionMapper.selectVoOne(queryWrapper);
+            return result;
+        } catch (Exception e) {
+            log.error("获取节点定义配置失败", e);
+            throw new ServiceException("获取节点定义配置失败: " + e.getMessage());
+        }
+    }
+
     // ========== 节点定义管理方法实现 ==========
 
     /**

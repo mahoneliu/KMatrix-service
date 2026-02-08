@@ -12,12 +12,16 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.system.domain.bo.SysDictDataBo;
+import org.dromara.system.domain.vo.SysDictDataVo;
+import org.dromara.system.service.ISysDictDataService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 工作流模板Controller
@@ -32,6 +36,7 @@ import java.util.Map;
 public class KmWorkflowTemplateController extends BaseController {
 
     private final IKmWorkflowTemplateService templateService;
+    private final ISysDictDataService dictDataService;
 
     /**
      * 查询工作流模板列表
@@ -43,15 +48,22 @@ public class KmWorkflowTemplateController extends BaseController {
     }
 
     /**
-     * 获取模板分类列表
+     * 获取模板分类列表(从字典中动态获取)
      */
     @GetMapping("/categories")
     public R<List<Map<String, String>>> getCategories() {
-        List<Map<String, String>> categories = List.of(
-                Map.of("value", "knowledge_qa", "label", "知识问答"),
-                Map.of("value", "customer_service", "label", "客服"),
-                Map.of("value", "marketing", "label", "营销"),
-                Map.of("value", "custom", "label", "自定义"));
+        // 从字典中查询工作流模板分类
+        SysDictDataBo queryBo = new SysDictDataBo();
+        queryBo.setDictType("km_workflow_template_category");
+        List<SysDictDataVo> dictDataList = dictDataService.selectDictDataList(queryBo);
+
+        // 转换为前端需要的格式
+        List<Map<String, String>> categories = dictDataList.stream()
+                .map(dict -> Map.of(
+                        "value", dict.getDictValue(),
+                        "label", dict.getDictLabel()))
+                .collect(Collectors.toList());
+
         return R.ok(categories);
     }
 

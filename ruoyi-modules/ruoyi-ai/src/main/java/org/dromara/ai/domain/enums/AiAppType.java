@@ -12,13 +12,13 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum AiAppType {
     /**
-     * 对话
+     * 固定模板
      */
-    CHAT("1", "对话"),
+    FIXED_TEMPLATE("1", "固定模板"),
     /**
-     * 工作流
+     * 自定义工作流
      */
-    WORKFLOW("2", "工作流"),
+    CUSTOM_WORKFLOW("2", "自定义工作流"),
     /**
      * 智能体
      */

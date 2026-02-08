@@ -9,6 +9,7 @@ import org.dromara.ai.domain.KmApp;
 import org.dromara.ai.domain.KmAppKnowledge;
 import org.dromara.ai.domain.KmAppVersion;
 import org.dromara.ai.domain.bo.KmAppBo;
+import org.dromara.ai.domain.enums.AiAppType;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.config.AppSnapshot;
 import org.dromara.ai.mapper.KmAppKnowledgeMapper;
@@ -209,7 +210,7 @@ public class KmAppServiceImpl implements IKmAppService {
         }
 
         // 如果是工作流类型应用,校验工作流配置
-        if ("2".equals(app.getAppType()) && StringUtils.isNotBlank(app.getDslData())) {
+        if (AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType()) && StringUtils.isNotBlank(app.getDslData())) {
             WorkflowConfig config = JsonUtils.parseObject(app.getDslData(), WorkflowConfig.class);
             config.validate();
         }
@@ -362,5 +363,17 @@ public class KmAppServiceImpl implements IKmAppService {
             return cn.hutool.core.date.DateUtil.offsetDay(now, -90);
         }
         return null; // 全部
+    }
+
+    /**
+     * 获取应用发布历史
+     */
+    @Override
+    public List<org.dromara.ai.domain.vo.KmAppVersionVo> getPublishHistory(Long appId) {
+        List<KmAppVersion> versions = versionMapper.selectList(
+                new LambdaQueryWrapper<KmAppVersion>()
+                        .eq(KmAppVersion::getAppId, appId)
+                        .orderByDesc(KmAppVersion::getVersion));
+        return MapstructUtils.convert(versions, org.dromara.ai.domain.vo.KmAppVersionVo.class);
     }
 }

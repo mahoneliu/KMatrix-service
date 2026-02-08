@@ -17,6 +17,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -124,5 +125,14 @@ public class KmAppController extends BaseController {
     public R<KmAppStatisticsVo> getStatistics(@PathVariable Long appId,
             @RequestParam(defaultValue = "7d") String period) {
         return R.ok(appService.getAppStatistics(appId, period));
+    }
+
+    /**
+     * 获取应用发布历史
+     */
+    @SaCheckPermission("ai:app:query")
+    @GetMapping("/{appId}/publish-history")
+    public R<List<org.dromara.ai.domain.vo.KmAppVersionVo>> getPublishHistory(@PathVariable Long appId) {
+        return R.ok(appService.getPublishHistory(appId));
     }
 }

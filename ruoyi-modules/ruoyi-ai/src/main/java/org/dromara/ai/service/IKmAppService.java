@@ -80,4 +80,12 @@ public interface IKmAppService {
      * @return 统计数据
      */
     org.dromara.ai.domain.vo.KmAppStatisticsVo getAppStatistics(Long appId, String period);
+
+    /**
+     * 获取应用发布历史
+     *
+     * @param appId 应用ID
+     * @return 发布历史列表
+     */
+    List<org.dromara.ai.domain.vo.KmAppVersionVo> getPublishHistory(Long appId);
 }

@@ -26,10 +26,10 @@ public interface WorkflowEngine {
     /**
      * 获取引擎类型
      */
-    WorkflowEngineType getEngineType();
+    // WorkflowEngineType getEngineType();
 
     /**
      * 判断是否支持该工作流配置
      */
-    boolean supports(WorkflowConfig config);
+    // boolean supports(WorkflowConfig config);
 }

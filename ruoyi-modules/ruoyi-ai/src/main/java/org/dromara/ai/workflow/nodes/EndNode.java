@@ -3,9 +3,10 @@ package org.dromara.ai.workflow.nodes;
 import lombok.extern.slf4j.Slf4j;
 
 import org.dromara.ai.domain.enums.SseEventType;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
+import org.dromara.ai.workflow.nodes.nodeUtils.WorkflowParamConverter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -18,7 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @Slf4j
 @Component("END")
-public class EndNode implements WorkflowNode {
+public class EndNode extends AbstractWorkflowNode {
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -27,19 +28,17 @@ public class EndNode implements WorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 获取最终响应
-        String finalResponse = (String) context.getInput("finalResponse");
-        if (finalResponse == null) {
-            finalResponse = (String) context.getGlobalValue("finalResponse");
-        }
+        // String finalResponse =
+        // WorkflowParamConverter.asString(context.getInput("finalResponse"));
+        // if (finalResponse == null) {
+        // finalResponse =
+        // WorkflowParamConverter.asString(context.getGlobalValue("finalResponse"));
+        // }
 
         // 从配置获取指定回复内容
-        String extraResponse = (String) context.getConfig("customResponse");
-        if (extraResponse != null) {
-            extraResponse = fillTextWithParamPattern(extraResponse, context);
-        }
-        // 合并最终响应
-        if (extraResponse != null) {
-            finalResponse += "\n" + extraResponse;
+        String finalResponse = (String) context.getConfig("customResponse");
+        if (finalResponse == null) {
+            finalResponse = (String) context.getInput("finalResponse");
         }
 
         // 仅保存到输出（不发送SSE事件）

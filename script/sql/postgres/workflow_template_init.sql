@@ -57,7 +57,7 @@ INSERT INTO km_workflow_template (
         "nodeType": "START",
         "nodeLabel": "开始",
         "nodeIcon": "mdi:play-circle",
-        "nodeColor": "#1E6021FF",
+        "nodeColor": "#4d4e4dff",
         "description": "工作流的入口节点",
         "status": "idle",
         "config": {
@@ -79,7 +79,7 @@ INSERT INTO km_workflow_template (
         "nodeType": "KNOWLEDGE_RETRIEVAL",
         "nodeLabel": "知识检索",
         "nodeIcon": "mdi:book-search",
-        "nodeColor": "#30B50FFF",
+        "nodeColor": "#d39e23ff",
         "description": "从知识库中检索相关文档片段",
         "status": "idle",
         "config": {
@@ -108,20 +108,21 @@ INSERT INTO km_workflow_template (
       "data": {
         "id": "llm_chat_1",
         "nodeType": "LLM_CHAT",
-        "nodeLabel": "两只熊对话",
+        "nodeLabel": "大模型对话",
         "nodeIcon": "mdi:robot",
-        "nodeColor": "#3b82f6",
+        "nodeColor": "#b427ebff",
         "description": "调用大语言模型进行对话",
         "status": "idle",
         "config": {
           "temperature": 0.7,
-          "systemPrompt": "你是一个智能助手，请根据提供的上下文信息(Context)回答用户的问题。如果上下文中没有相关信息，请如实告知用户。",
+          "systemPrompt": "你是一个智能助手，请根据提供的上下文信息回答用户的问题。如果上下文中没有相关信息，请如实告知用户。",
+          "userPrompt": "已知信息：${context}\n问题：${userInput}",
           "historyEnabled": true,
           "historyCount": 10
         },
         "paramBindings": [
           {
-            "paramKey": "inputMessage",
+            "paramKey": "userInput",
             "sourceKey": "start",
             "sourceType": "node",
             "sourceParam": "userInput"

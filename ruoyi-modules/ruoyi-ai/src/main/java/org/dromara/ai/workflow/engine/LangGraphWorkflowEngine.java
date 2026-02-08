@@ -75,16 +75,16 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         }
     }
 
-    @Override
-    public WorkflowEngineType getEngineType() {
-        return WorkflowEngineType.LANGGRAPH;
-    }
+    // @Override
+    // public WorkflowEngineType getEngineType() {
+    // return WorkflowEngineType.LANGGRAPH;
+    // }
 
-    @Override
-    public boolean supports(WorkflowConfig config) {
-        // 不实现自动选择，仅支持显式指定
-        return false;
-    }
+    // @Override
+    // public boolean supports(WorkflowConfig config) {
+    // // 不实现自动选择，仅支持显式指定
+    // return false;
+    // }
 
     /**
      * 构建 StateGraph
@@ -298,8 +298,11 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             WorkflowNode node = nodeFactory.createNode(nodeConfig.getType());
             nodeName = StringUtil.isNullOrEmpty(nodeName) ? node.getNodeName() : nodeName;
 
-            // 准备输入参数
-            Map<String, Object> inputs = VariableResolver.resolveInputs(nodeConfig.getInputs(), state);
+            // 获取节点的输入参数定义（用于类型转换）
+            java.util.List<org.dromara.ai.domain.vo.config.ParamDefinition> inputParamDefs = node.getInputParamDefs();
+
+            // 准备输入参数（带类型转换）
+            Map<String, Object> inputs = VariableResolver.resolveInputs(nodeConfig.getInputs(), state, inputParamDefs);
 
             // 准备节点配置（也需要进行变量替换，因为 LLM 的 systemPrompt 等在 config 中）
             Map<String, Object> resolvedConfig = VariableResolver.resolveInputs(nodeConfig.getConfig(), state);

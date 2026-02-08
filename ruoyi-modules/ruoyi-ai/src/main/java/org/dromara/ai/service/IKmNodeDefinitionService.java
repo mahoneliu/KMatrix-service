@@ -16,6 +16,13 @@ import java.util.List;
 public interface IKmNodeDefinitionService {
 
     /**
+     * 根据节点类型获取节点定义
+     *
+     * @return 节点类型定义列表
+     */
+    KmNodeDefinitionVo getNodeDefinitionByType(String type);
+
+    /**
      * 获取所有节点类型定义
      *
      * @return 节点类型定义列表

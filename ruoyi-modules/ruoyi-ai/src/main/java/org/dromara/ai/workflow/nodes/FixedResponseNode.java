@@ -2,11 +2,9 @@ package org.dromara.ai.workflow.nodes;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Map;
-
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -19,7 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @Slf4j
 @Component("FIXED_RESPONSE")
-public class FixedResponseNode implements WorkflowNode {
+public class FixedResponseNode extends AbstractWorkflowNode {
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -35,8 +33,6 @@ public class FixedResponseNode implements WorkflowNode {
 
         if (response == null) {
             response = "抱歉，未配置回复内容";
-        } else {
-            response = fillTextWithParamPattern(response, context);
         }
 
         // 发送消息事件

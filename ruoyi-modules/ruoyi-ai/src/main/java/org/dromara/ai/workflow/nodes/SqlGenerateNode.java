@@ -14,9 +14,9 @@ import org.dromara.ai.mapper.KmDatabaseMetaMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.nodes.nodeUtils.SchemaBuilder;
 import org.dromara.ai.workflow.nodes.nodeUtils.SqlGenerator;
 import org.dromara.ai.workflow.nodes.nodeUtils.SqlValidator;
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 @Component("SQL_GENERATE")
-public class SqlGenerateNode implements WorkflowNode {
+public class SqlGenerateNode extends AbstractWorkflowNode {
 
     private final KmDataSourceMapper dataSourceMapper;
     private final KmDatabaseMetaMapper databaseMetaMapper;

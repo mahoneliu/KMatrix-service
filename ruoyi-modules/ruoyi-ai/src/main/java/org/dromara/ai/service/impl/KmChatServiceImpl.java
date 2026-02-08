@@ -20,6 +20,7 @@ import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.bo.KmChatSendBo;
+import org.dromara.ai.domain.enums.AiAppType;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
@@ -157,7 +158,7 @@ public class KmChatServiceImpl implements IKmChatService {
                 boolean isNewSession = (bo.getSessionId() == null);
 
                 // 5. 检查应用类型
-                if ("2".equals(app.getAppType())) {
+                if (AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType())) {
                     // 工作流类型应用
                     log.info("使用工作流处理对话, appId={}, isNewSession={}", app.getAppId(), isNewSession);
                     try {
@@ -201,85 +202,87 @@ public class KmChatServiceImpl implements IKmChatService {
                 }
 
                 // 基础对话类型 - 先保存用户消息
-                saveMessage(sessionId, "user", bo.getMessage(), userId);
-                KmModel model = loadModel(app.getModelId());
-                KmModelProvider provider = loadProvider(model.getProviderId());
+                // saveMessage(sessionId, "user", bo.getMessage(), userId);
+                // KmModel model = loadModel(app.getModelId());
+                // KmModelProvider provider = loadProvider(model.getProviderId());
 
-                // 4. 构建对话上下文
-                List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
+                // // 4. 构建对话上下文
+                // List<ChatMessage> messages = buildChatMessages(sessionId,
+                // app.getModelSetting(), bo.getMessage());
 
-                // 5. 构建流式模型并生成响应
-                StreamingChatLanguageModel streamingModel = modelBuilder.buildStreamingChatModel(model,
-                        provider.getProviderKey());
+                // // 5. 构建流式模型并生成响应
+                // StreamingChatLanguageModel streamingModel =
+                // modelBuilder.buildStreamingChatModel(model,
+                // provider.getProviderKey());
 
-                // 使用Token级流式处理
-                streamingModel.generate(messages,
-                        new StreamingResponseHandler<AiMessage>() {
-                            @Override
-                            public void onNext(String token) {
-                                try {
-                                    fullResponse.append(token);
-                                    emitter.send(SseEmitter.event().data(token));
-                                } catch (IOException e) {
-                                    log.error("发送SSE数据失败", e);
-                                }
-                            }
+                // // 使用Token级流式处理
+                // streamingModel.generate(messages,
+                // new StreamingResponseHandler<AiMessage>() {
+                // @Override
+                // public void onNext(String token) {
+                // try {
+                // fullResponse.append(token);
+                // emitter.send(SseEmitter.event().data(token));
+                // } catch (IOException e) {
+                // log.error("发送SSE数据失败", e);
+                // }
+                // }
 
-                            @Override
-                            public void onComplete(Response<AiMessage> response) {
-                                try {
-                                    // 保存AI响应
-                                    String aiResponse = fullResponse.toString();
-                                    if (StrUtil.isNotBlank(aiResponse)) {
-                                        saveMessage(sessionId, "assistant", aiResponse, effectiveUserId);
-                                    }
+                // @Override
+                // public void onComplete(Response<AiMessage> response) {
+                // try {
+                // // 保存AI响应
+                // String aiResponse = fullResponse.toString();
+                // if (StrUtil.isNotBlank(aiResponse)) {
+                // saveMessage(sessionId, "assistant", aiResponse, effectiveUserId);
+                // }
 
-                                    // 记录token使用情况
-                                    TokenUsage tokenUsage = response.tokenUsage();
-                                    if (tokenUsage != null) {
-                                        log.info("Token使用: input={}, output={}, total={}",
-                                                tokenUsage.inputTokenCount(),
-                                                tokenUsage.outputTokenCount(),
-                                                tokenUsage.totalTokenCount());
-                                    }
+                // // 记录token使用情况
+                // TokenUsage tokenUsage = response.tokenUsage();
+                // if (tokenUsage != null) {
+                // log.info("Token使用: input={}, output={}, total={}",
+                // tokenUsage.inputTokenCount(),
+                // tokenUsage.outputTokenCount(),
+                // tokenUsage.totalTokenCount());
+                // }
 
-                                    // 异步生成会话标题(仅在首次对话时)
-                                    CompletableFuture.runAsync(() -> {
-                                        try {
-                                            // 检查是否是首次对话(消息数量为2:一问一答)
-                                            long messageCount = messageMapper.selectCount(
-                                                    new LambdaQueryWrapper<KmChatMessage>()
-                                                            .eq(KmChatMessage::getSessionId, sessionId));
-                                            if (messageCount == 2) {
-                                                generateSessionTitle(sessionId, bo.getMessage(), aiResponse, model,
-                                                        provider.getProviderKey());
-                                            }
-                                        } catch (Exception e) {
-                                            log.warn("异步生成标题失败", e);
-                                        }
-                                    });
+                // // 异步生成会话标题(仅在首次对话时)
+                // CompletableFuture.runAsync(() -> {
+                // try {
+                // // 检查是否是首次对话(消息数量为2:一问一答)
+                // long messageCount = messageMapper.selectCount(
+                // new LambdaQueryWrapper<KmChatMessage>()
+                // .eq(KmChatMessage::getSessionId, sessionId));
+                // if (messageCount == 2) {
+                // generateSessionTitle(sessionId, bo.getMessage(), aiResponse, model,
+                // provider.getProviderKey());
+                // }
+                // } catch (Exception e) {
+                // log.warn("异步生成标题失败", e);
+                // }
+                // });
 
-                                    // 发送完成信号,携带sessionId供前端保存
-                                    emitter.send(SseEmitter.event().name("done").data(sessionId.toString()));
-                                    emitter.complete();
-                                } catch (IOException e) {
-                                    log.error("完成SSE流失败", e);
-                                    emitter.completeWithError(e);
-                                }
-                            }
+                // // 发送完成信号,携带sessionId供前端保存
+                // emitter.send(SseEmitter.event().name("done").data(sessionId.toString()));
+                // emitter.complete();
+                // } catch (IOException e) {
+                // log.error("完成SSE流失败", e);
+                // emitter.completeWithError(e);
+                // }
+                // }
 
-                            @Override
-                            public void onError(Throwable error) {
-                                log.error("AI生成失败", error);
-                                try {
-                                    emitter.send(
-                                            SseEmitter.event().name("error").data("AI生成失败: " + error.getMessage()));
-                                } catch (IOException e) {
-                                    log.error("发送错误消息失败", e);
-                                }
-                                emitter.completeWithError(error);
-                            }
-                        });
+                // @Override
+                // public void onError(Throwable error) {
+                // log.error("AI生成失败", error);
+                // try {
+                // emitter.send(
+                // SseEmitter.event().name("error").data("AI生成失败: " + error.getMessage()));
+                // } catch (IOException e) {
+                // log.error("发送错误消息失败", e);
+                // }
+                // emitter.completeWithError(error);
+                // }
+                // });
 
             } catch (Exception e) {
                 log.error("流式对话处理失败", e);
@@ -438,7 +441,7 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 如果是工作流类型应用,从最新发布版本加载 DSL
-        if ("2".equals(app.getAppType())) {
+        if (AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType())) {
             // 检查应用发布状态
             if (!"1".equals(app.getStatus())) {
                 throw new ServiceException("该应用尚未发布,请先在工作流编辑器中发布后再使用");

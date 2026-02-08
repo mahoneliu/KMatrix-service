@@ -3,7 +3,10 @@ package org.dromara.ai.workflow.nodes.nodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.workflow.core.WorkflowState;
 
+import org.dromara.ai.domain.vo.config.ParamDefinition;
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,6 +67,31 @@ public class VariableResolver {
         }
 
         return inputs;
+    }
+
+    /**
+     * 解析输入参数（带类型转换）
+     * 根据参数定义自动进行类型转换
+     *
+     * @param inputDefs 输入参数定义
+     * @param state     工作流状态
+     * @param paramDefs 参数类型定义列表
+     * @return 解析后并完成类型转换的参数 Map
+     */
+    public static Map<String, Object> resolveInputs(
+            Map<String, Object> inputDefs,
+            WorkflowState state,
+            List<ParamDefinition> paramDefs) {
+
+        // 先进行变量解析
+        Map<String, Object> resolved = resolveInputs(inputDefs, state);
+
+        // 如果有参数定义，进行类型转换
+        if (paramDefs != null && !paramDefs.isEmpty()) {
+            return ParamTypeConverter.convertInputs(resolved, paramDefs);
+        }
+
+        return resolved;
     }
 
     /**

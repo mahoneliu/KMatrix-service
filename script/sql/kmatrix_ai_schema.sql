@@ -165,7 +165,7 @@ CREATE TABLE `km_app` (
   `app_name` varchar(64) NOT NULL COMMENT '应用名称',
   `description` varchar(500) DEFAULT '' COMMENT '应用描述',
   `icon` varchar(255) DEFAULT '' COMMENT '应用图标',
-  `app_type` char(1) DEFAULT '1' COMMENT '应用类型（1基础对话 2工作流）',
+  `app_type` char(1) DEFAULT '1' COMMENT '应用类型（1固定模板 2自定义工作流）',
   `status` char(1) DEFAULT '0' COMMENT '状态（0草稿 1发布）',
   `prologue` varchar(1000) DEFAULT '' COMMENT '开场白',
   `model_setting` json DEFAULT NULL COMMENT '模型配置(JSON)',
@@ -416,7 +416,7 @@ INSERT INTO `kmatrix`.`km_node_definition`(`node_def_id`, `node_type`, `node_lab
 (1, 'APP_INFO', '基础信息', 'mdi:information', '#486191F0', 'basic', '应用的基础信息配置', '1', '1', '0', '0', '[]', '[]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-14 16:33:01', NULL),
 (2, 'START', '开始', 'mdi:play-circle', '#1E6021FF', 'basic', '工作流的入口节点', '1', '1', '0', '0', '[]', '[{"key":"userInput","label":"用户输入","type":"string","required":true,"defaultValue":null,"description":"用户的输入内容"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-18 20:37:29', NULL),
 (3, 'END', '结束', 'mdi:stop-circle', '#9875BFFF', 'basic', '工作流的结束节点，可以把各节点的输出参数引用进来，组合成最终回复消息作为工作流最终输出', '1', '1', '1', '0', '[{"key":"finalResponse","label":"最终回复","type":"string","required":true,"description":"返回给用户的最终回复内容"}]', '[]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-16 23:31:07', NULL),
-(4, 'LLM_CHAT', 'LLM 对话', 'mdi:robot', '#3b82f6', 'ai', '调用大语言模型进行对话', '0', '1', '1', '1', '[{"key":"inputMessage","label":"输入消息","type":"string","required":true,"defaultValue":null,"description":"传递给 LLM 的输入消息"}]', '[{"key":"response","label":"AI 回复","type":"string","required":true,"defaultValue":null,"description":"LLM 生成的回复内容"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-18 15:23:23', NULL),
+(4, 'LLM_CHAT', 'LLM 对话', 'mdi:robot', '#3b82f6', 'ai', '调用大语言模型进行对话', '0', '1', '1', '1', '[{"key":"userInput","label":"输入消息","type":"string","required":true,"defaultValue":null,"description":"传递给 LLM 的输入消息"}]', '[{"key":"response","label":"AI 回复","type":"string","required":true,"defaultValue":null,"description":"LLM 生成的回复内容"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-18 15:23:23', NULL),
 (5, 'INTENT_CLASSIFIER', '意图分类', 'mdi:sitemap', '#F9AA7FFF', 'ai', '识别用户输入的意图并分类', '0', '1', '0', '0', '[{"key":"instruction","label":"文本指令","type":"string","required":true,"description":"需要分类的指令"}]', '[{"key":"intent","label":"匹配的意图","type":"string","required":true,"description":"识别出的意图名称"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-16 23:33:03', NULL),
 (6, 'CONDITION', '条件判断', 'mdi:source-branch', '#958365FF', 'logic', '根据条件表达式进行分支判断', '0', '1', '0', '0', '[{"key":"matchedBranch","label":"匹配的分支","type":"string","required":false,"description":"用于条件判断的值"}]', '[{"key":"matchedBranch","label":"匹配的分支","type":"string","required":true,"description":"满足条件的分支名称"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-15 16:59:54', NULL),
 (7, 'FIXED_RESPONSE', '指定回复', 'mdi:message-text', '#7A7170FF', 'action', '返回预设的固定文本内容', '0', '1', '1', '0', '[]', '[{"key":"response","label":"回复内容","type":"string","required":true,"defaultValue":null,"description":"固定的回复文本"}]', 1, NULL, NULL, NULL, '2026-01-07 15:24:03', 1, '2026-01-24 02:47:10', NULL),
@@ -594,7 +594,7 @@ INSERT INTO km_workflow_template (
         },
         "paramBindings": [
           {
-            "paramKey": "inputMessage",
+            "paramKey": "userInput",
             "sourceKey": "start",
             "sourceType": "node",
             "sourceParam": "userInput"

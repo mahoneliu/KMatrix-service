@@ -18,12 +18,12 @@ import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
+import org.dromara.ai.workflow.nodes.nodeUtils.WorkflowParamConverter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 @RequiredArgsConstructor
 @Component("LLM_CHAT")
-public class LlmChatNode implements WorkflowNode {
+public class LlmChatNode extends AbstractWorkflowNode {
 
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
@@ -76,6 +76,12 @@ public class LlmChatNode implements WorkflowNode {
             systemPrompt = context.getConfigAsString("systemPrompt");
         }
 
+        // userPrompt支持从inputs动态获取,也支持从config静态配置
+        String userPrompt = (String) context.getInput("userPrompt");
+        if (userPrompt == null) {
+            userPrompt = context.getConfigAsString("userPrompt");
+        }
+
         // 加载模型
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
@@ -87,19 +93,22 @@ public class LlmChatNode implements WorkflowNode {
             throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
         }
 
-        String inputMessage = (String) context.getInput("inputMessage");
-        if (inputMessage == null) {
-            throw new RuntimeException("inputMessage不能为空");
+        String userInput = (String) context.getInput("userInput");
+        if (userInput == null) {
+            throw new RuntimeException("userInput不能为空");
         }
+        String chatContext = (String) context.getInput("chatContext");
 
         // 获取会话ID用于加载历史对话
         Long sessionId = context.getSessionId();
 
         // 构建消息列表（包含历史对话）
-        List<ChatMessage> messages = buildMessages(inputMessage, systemPrompt, sessionId, historyEnabled, historyLimit);
+        List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
+                historyLimit, chatContext);
 
-        log.info("LLM_CHAT节点 - 历史对话: enabled={}, limit={}, sessionId={}, 消息总数={}",
-                historyEnabled, historyLimit, sessionId, messages.size());
+        log.info(
+                "LLM_CHAT节点 - : userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}",
+                userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId, messages.size());
 
         // 使用流式模型（带参数）
         StreamingChatLanguageModel streamingModel = modelBuilder
@@ -193,15 +202,16 @@ public class LlmChatNode implements WorkflowNode {
     /**
      * 构建消息列表（包含历史对话）
      *
-     * @param inputMessage   当前用户输入
+     * @param userInput      当前用户输入
      * @param systemPrompt   系统提示词
+     * @param userPrompt     用户提示词(配置的具体问题)
      * @param sessionId      会话ID
      * @param historyEnabled 是否启用历史对话
      * @param historyLimit   历史消息条数限制
      * @return 完整的消息列表
      */
-    private List<ChatMessage> buildMessages(String inputMessage, String systemPrompt,
-            Long sessionId, Boolean historyEnabled, Integer historyLimit) {
+    private List<ChatMessage> buildMessages(String userInput, String systemPrompt, String userPrompt,
+            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext) {
         List<ChatMessage> messages = new ArrayList<>();
 
         // 1. 添加系统提示
@@ -223,8 +233,14 @@ public class LlmChatNode implements WorkflowNode {
         }
 
         // 3. 添加当前用户消息
-        if (inputMessage != null) {
-            messages.add(new UserMessage(inputMessage));
+        // 优先使用配置的用户提示词,如果没有配置则使用 userInput
+        String defaultUserPrompt = "请回答问题：" + userInput;
+        if (chatContext != null && !chatContext.isEmpty()) {
+            defaultUserPrompt = "已知信息：" + chatContext + "\n" + defaultUserPrompt;
+        }
+        String finalUserMessage = (userPrompt != null && !userPrompt.isEmpty()) ? userPrompt : defaultUserPrompt;
+        if (finalUserMessage != null) {
+            messages.add(new UserMessage(finalUserMessage));
         }
 
         return messages;
@@ -265,4 +281,5 @@ public class LlmChatNode implements WorkflowNode {
     public String getNodeName() {
         return "LLM对话";
     }
+
 }

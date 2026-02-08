@@ -10,9 +10,9 @@ import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
+import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.core.WorkflowNode;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 @Component("INTENT_CLASSIFIER")
-public class IntentClassifierNode implements WorkflowNode {
+public class IntentClassifierNode extends AbstractWorkflowNode {
 
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
