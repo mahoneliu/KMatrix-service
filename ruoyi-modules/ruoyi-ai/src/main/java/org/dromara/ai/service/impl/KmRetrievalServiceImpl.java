@@ -7,14 +7,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
-import org.dromara.ai.domain.KmDocument;
-import org.dromara.ai.domain.KmDocumentChunk;
-import org.dromara.ai.domain.KmEmbedding;
 import org.dromara.ai.domain.KmQuestion;
-import org.dromara.ai.domain.KmQuestionChunkMap;
-
 import org.dromara.ai.domain.bo.KmRetrievalBo;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmRetrievalService;
@@ -37,12 +31,9 @@ import java.util.stream.Collectors;
 @Service
 public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
-    private final KmDocumentChunkMapper chunkMapper;
-    private final KmDocumentMapper documentMapper;
     private final KmDatasetMapper datasetMapper;
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionMapper questionMapper;
-    private final KmQuestionChunkMapMapper questionChunkMapMapper;
     private final IKmRerankService rerankService;
     private final EmbeddingModel embeddingModel;
 
@@ -96,8 +87,9 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     }
 
     /**
-     * 多源向量检索 (搜索 km_embedding 表，包括 Content 和 Question)
-     * 如果命中问题，则通过 km_question_chunk_map 关联到内容块
+     * 多源向量检索 (优化版 - 使用 SQL 表关联一次性获取所有数据)
+     * 搜索 km_embedding 表，包括 Content、Question 和 Title 类型
+     * 通过表关联优化性能，减少数据库交互次数
      *
      * @param query     查询文本
      * @param kbIds     知识库ID列表
@@ -111,181 +103,117 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         float[] queryEmbedding = embeddingModel.embed(query).content().vector();
         String vectorStr = floatArrayToString(queryEmbedding);
 
-        // 搜索 Content, Question 和 Title 类型的 embedding
-        List<Integer> sourceTypes = Arrays.asList(
-                KmEmbedding.SourceType.CONTENT,
-                KmEmbedding.SourceType.QUESTION,
-                KmEmbedding.SourceType.TITLE);
+        // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
+        List<Map<String, Object>> results = embeddingMapper.vectorSearch(
+                vectorStr, kbIds, topK * 2, threshold);
 
-        List<Map<String, Object>> embeddingResults = embeddingMapper.vectorSearch(
-                vectorStr, kbIds, sourceTypes, topK * 2, threshold);
-
-        return processEmbeddingResults(embeddingResults, topK);
+        return processSearchResults(results, topK);
     }
 
     /**
-     * 处理 Embedding 检索结果 (转换、关联 Chunk、去重、排序)
+     * 处理多表关联查询的结果 (优化版)
+     * 数据已经通过 SQL JOIN 获取，只需聚合和去重
+     * 
+     * @param results 关联查询结果
+     * @param topK    返回数量
+     * @return 检索结果列表
      */
-    /**
-     * 处理 Embedding 检索结果 (转换、关联 Chunk、去重、排序)
-     */
-    private List<KmRetrievalResultVo> processEmbeddingResults(List<Map<String, Object>> embeddingResults, int topK) {
-        if (CollUtil.isEmpty(embeddingResults)) {
+    private List<KmRetrievalResultVo> processSearchResults(List<Map<String, Object>> results, int topK) {
+        if (CollUtil.isEmpty(results)) {
             return Collections.emptyList();
         }
 
-        // 解析结果，将 Question 类型转换为关联的 Chunk
-        Set<Long> chunkIds = new HashSet<>();
+        // 按 chunkId 分组聚合
+        Map<Long, KmRetrievalResultVo> chunkMap = new LinkedHashMap<>();
         Map<Long, Double> chunkScores = new HashMap<>();
-        Map<Long, String> chunkHighlights = new HashMap<>();
-
-        // 存储标题命中的文档ID
-        Set<Long> titleDocIds = new HashSet<>();
-        Map<Long, Double> titleDocScores = new HashMap<>();
-
-        // 存储问题命中关联 (ChunkId -> List<QuestionId>)
-        Map<Long, List<Long>> chunkQuestionMap = new HashMap<>();
-        Set<Long> questionIds = new HashSet<>();
-
-        // 存储切片命中来源类型 (ChunkId -> List<SourceType>)
         Map<Long, List<String>> chunkSourceTypes = new HashMap<>();
+        Set<Long> questionIds = new HashSet<>();
+        Map<Long, List<Long>> chunkQuestionMap = new HashMap<>(); // chunkId -> List<questionId>
 
-        for (Map<String, Object> row : embeddingResults) {
-            Long sourceId = ((Number) row.get("source_id")).longValue();
-            Integer sourceType = ((Number) row.get("source_type")).intValue();
+        for (Map<String, Object> row : results) {
+            Long chunkId = ((Number) row.get("chunk_id")).longValue();
             Double score = ((Number) row.get("score")).doubleValue();
-            String highlight = (String) row.get("highlight");
+            String sourceTypeLabel = (String) row.get("source_type_label");
+            Long questionId = row.get("question_id") != null ? ((Number) row.get("question_id")).longValue() : null;
 
-            if (sourceType == KmEmbedding.SourceType.CONTENT) {
-                // Content 类型：sourceId 就是 chunkId
-                chunkIds.add(sourceId);
-                chunkScores.merge(sourceId, score, Math::max);
-                // 优先保存 Content 的高亮
-                if (highlight != null) {
-                    chunkHighlights.put(sourceId, highlight);
+            // 如果是新的 chunk，创建 VO
+            if (!chunkMap.containsKey(chunkId)) {
+                KmRetrievalResultVo vo = new KmRetrievalResultVo();
+                vo.setChunkId(chunkId);
+                vo.setDocumentId(((Number) row.get("document_id")).longValue());
+                vo.setContent((String) row.get("content"));
+                vo.setTitle((String) row.get("chunk_title"));
+                vo.setMetadata(row.get("metadata"));
+                vo.setDocumentName((String) row.get("document_name"));
+                vo.setSourceTypes(new ArrayList<>());
+                // 设置高亮字段(如果存在)
+                String highlight = (String) row.get("highlight");
+                if (StrUtil.isNotBlank(highlight)) {
+                    vo.setHighlight(highlight);
                 }
-                // 记录来源类型
-                chunkSourceTypes.computeIfAbsent(sourceId, k -> new ArrayList<>()).add("CONTENT");
-
-            } else if (sourceType == KmEmbedding.SourceType.TITLE) {
-                // Title 类型：sourceId 是 documentId
-                titleDocIds.add(sourceId);
-                titleDocScores.merge(sourceId, score, Math::max);
-            } else if (sourceType == KmEmbedding.SourceType.QUESTION) {
-                // Question 类型：sourceId 是关联记录ID (question_chunk_map.id)
-                // 需要通过 km_question_chunk_map 查找关联的 chunkId 和 questionId
-                KmQuestionChunkMap mapRecord = questionChunkMapMapper.selectById(sourceId);
-                if (mapRecord != null) {
-                    chunkIds.add(mapRecord.getChunkId());
-                    // 问题匹配可能比内容匹配更重要，这里取最高分
-                    chunkScores.merge(mapRecord.getChunkId(), score, Math::max);
-                    // 更新问题命中次数
-                    questionMapper.incrementHitNum(mapRecord.getQuestionId());
-                    // 记录问题ID与切片的关联
-                    chunkQuestionMap.computeIfAbsent(mapRecord.getChunkId(), k -> new ArrayList<>())
-                            .add(mapRecord.getQuestionId());
-                    questionIds.add(mapRecord.getQuestionId());
-
-                    // 记录来源类型
-                    chunkSourceTypes.computeIfAbsent(mapRecord.getChunkId(), k -> new ArrayList<>())
-                            .add("QUESTION");
-                }
+                chunkMap.put(chunkId, vo);
             }
 
-            // 确保不重复添加
-            List<String> types = chunkSourceTypes.getOrDefault(sourceId, new ArrayList<>());
-            if (types != null && !types.isEmpty()) {
-                // do not add default type if matched by question
+            KmRetrievalResultVo vo = chunkMap.get(chunkId);
+
+            // 记录最高分数
+            chunkScores.merge(chunkId, score, Math::max);
+
+            // 记录来源类型（去重）
+            chunkSourceTypes.computeIfAbsent(chunkId, k -> new ArrayList<>());
+            if (!chunkSourceTypes.get(chunkId).contains(sourceTypeLabel)) {
+                chunkSourceTypes.get(chunkId).add(sourceTypeLabel);
+                vo.getSourceTypes().add(sourceTypeLabel);
+            }
+
+            // 收集问题ID（用于批量更新命中次数和查询问题内容）
+            if (questionId != null) {
+                questionIds.add(questionId);
+                // 建立 chunkId -> questionId 的映射
+                chunkQuestionMap.computeIfAbsent(chunkId, k -> new ArrayList<>()).add(questionId);
             }
         }
 
-        // 处理标题命中的文档，获取其第一个切片作为代表
-        if (CollUtil.isNotEmpty(titleDocIds)) {
-            for (Long docId : titleDocIds) {
-                // 获取该文档的第一个切片(按ID排序)
-                List<KmDocumentChunk> chunks = chunkMapper.selectList(
-                        new LambdaQueryWrapper<KmDocumentChunk>()
-                                .select(KmDocumentChunk::getId)
-                                .eq(KmDocumentChunk::getDocumentId, docId)
-                                .orderByAsc(KmDocumentChunk::getId)
-                                .last("LIMIT 1"));
-
-                if (CollUtil.isNotEmpty(chunks)) {
-                    Long chunkId = chunks.get(0).getId();
-                    chunkIds.add(chunkId);
-                    chunkScores.merge(chunkId, titleDocScores.get(docId), Math::max);
-                    // 记录来源类型
-                    chunkSourceTypes.computeIfAbsent(chunkId, k -> new ArrayList<>()).add("TITLE");
-                }
-            }
+        // 批量更新问题命中次数（不阻塞主流程）
+        if (CollUtil.isNotEmpty(questionIds)) {
+            questionMapper.batchIncrementHitNum(new ArrayList<>(questionIds));
         }
 
-        if (chunkIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // 批量获取 Chunk 内容
-        List<Map<String, Object>> chunkRows = chunkMapper.selectChunksByIds(new ArrayList<>(chunkIds));
-
-        // 获取文档名称映射
-        Set<Long> docIds = chunkRows.stream()
-                .map(r -> ((Number) r.get("document_id")).longValue())
-                .collect(Collectors.toSet());
-
-        Map<Long, String> docNameMap = new HashMap<>();
-        if (!docIds.isEmpty()) {
-            List<KmDocument> docs = documentMapper.selectByIds(docIds);
-            docs.forEach(d -> docNameMap.put(d.getId(), d.getOriginalFilename()));
-        }
-
-        // 获取关联的问题内容
-        Map<Long, List<String>> chunkMatchedQuestions = new HashMap<>();
-
+        // 批量查询问题内容并填充 matchedQuestions
         if (CollUtil.isNotEmpty(questionIds)) {
             List<KmQuestion> questions = questionMapper.selectByIds(questionIds);
             Map<Long, String> questionContentMap = questions.stream()
                     .collect(Collectors.toMap(KmQuestion::getId, KmQuestion::getContent));
 
-            // 构建 chunkId -> List<QuestionContent> 的映射
+            // 为每个 chunk 填充 matchedQuestions
             for (Map.Entry<Long, List<Long>> entry : chunkQuestionMap.entrySet()) {
                 Long chunkId = entry.getKey();
                 List<Long> qIds = entry.getValue();
-                List<String> qContents = qIds.stream()
+                List<String> matchedQuestions = qIds.stream()
                         .map(questionContentMap::get)
                         .filter(StrUtil::isNotBlank)
+                        .distinct() // 去重
                         .collect(Collectors.toList());
-                if (CollUtil.isNotEmpty(qContents)) {
-                    chunkMatchedQuestions.put(chunkId, qContents);
+
+                KmRetrievalResultVo vo = chunkMap.get(chunkId);
+                if (vo != null && CollUtil.isNotEmpty(matchedQuestions)) {
+                    vo.setMatchedQuestions(matchedQuestions);
                 }
             }
         }
 
-        // 构建结果并按分数排序
-        return chunkRows.stream()
-                .map(row -> {
-                    Long chunkId = ((Number) row.get("id")).longValue();
-                    KmRetrievalResultVo vo = new KmRetrievalResultVo();
-                    vo.setChunkId(chunkId);
-                    vo.setDocumentId(((Number) row.get("document_id")).longValue());
-                    vo.setContent((String) row.get("content"));
-                    vo.setTitle((String) row.get("title"));
-                    vo.setMetadata(row.get("metadata"));
-                    vo.setScore(chunkScores.getOrDefault(chunkId, 0.0));
-                    vo.setDocumentName(docNameMap.get(vo.getDocumentId()));
-                    vo.setHighlight(chunkHighlights.get(chunkId));
-                    vo.setMatchedQuestions(chunkMatchedQuestions.get(chunkId));
-                    vo.setSourceTypes(chunkSourceTypes.get(chunkId));
-                    return vo;
-                })
+        // 设置分数并排序
+        return chunkMap.values().stream()
+                .peek(vo -> vo.setScore(chunkScores.get(vo.getChunkId())))
                 .sorted(Comparator.comparingDouble(KmRetrievalResultVo::getScore).reversed())
                 .limit(topK)
                 .collect(Collectors.toList());
     }
 
     /**
-     * 多源关键词检索
-     * 对于关键词检索，仍然使用 km_document_chunk 表的全文索引
-     * 但结果会与多源向量检索的结果格式保持一致
+     * 多源关键词检索 (优化版 - 使用 SQL 表关联一次性获取所有数据)
+     * 使用全文检索搜索 km_embedding 表，包括 Content、Question 和 Title 类型
+     * 通过表关联优化性能，减少数据库交互次数
      *
      * @param query 查询文本
      * @param kbIds 知识库ID列表
@@ -293,16 +221,11 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      * @return 检索结果
      */
     public List<KmRetrievalResultVo> multiSourceKeywordSearch(String query, List<Long> kbIds, int topK) {
-        // 搜索 Content, Question 和 Title 类型的 embedding
-        List<Integer> sourceTypes = Arrays.asList(
-                KmEmbedding.SourceType.CONTENT,
-                KmEmbedding.SourceType.QUESTION,
-                KmEmbedding.SourceType.TITLE);
+        // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
+        List<Map<String, Object>> results = embeddingMapper.keywordSearch(
+                query, kbIds, topK * 2);
 
-        List<Map<String, Object>> embeddingResults = embeddingMapper.keywordSearch(
-                query, kbIds, sourceTypes, topK * 2);
-
-        return processEmbeddingResults(embeddingResults, topK);
+        return processSearchResults(results, topK);
     }
 
     /**

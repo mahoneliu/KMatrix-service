@@ -2,7 +2,7 @@ package org.dromara.ai.workflow.nodes.nodeUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.workflow.core.WorkflowState;
-
+import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.domain.vo.config.ParamDefinition;
 
 import java.util.HashMap;
@@ -39,7 +39,8 @@ public class VariableResolver {
      * @param state     工作流状态
      * @return 解析后的参数 Map
      */
-    public static Map<String, Object> resolveInputs(Map<String, Object> inputDefs, WorkflowState state) {
+    public static Map<String, Object> resolveInputsOrConfig(Map<String, Object> inputDefs, WorkflowState state,
+            NodeContext context) {
         Map<String, Object> inputs = new HashMap<>();
 
         if (inputDefs == null) {
@@ -56,10 +57,10 @@ public class VariableResolver {
                 // 检查是否为完全匹配的单变量 (如 "${nodeId.output}")
                 if (strValue.startsWith("${") && strValue.endsWith("}") && strValue.indexOf("${", 2) == -1) {
                     // 完全匹配: 保持原始类型
-                    value = resolveExpression(strValue, state);
+                    value = resolveExpression(strValue, state, context);
                 } else {
                     // 字符串插值: 使用正则替换所有 ${...}
-                    value = interpolateString(strValue, state);
+                    value = interpolateString(strValue, state, context);
                 }
             }
 
@@ -78,13 +79,14 @@ public class VariableResolver {
      * @param paramDefs 参数类型定义列表
      * @return 解析后并完成类型转换的参数 Map
      */
-    public static Map<String, Object> resolveInputs(
+    public static Map<String, Object> resolveInputsOrConfig(
             Map<String, Object> inputDefs,
             WorkflowState state,
-            List<ParamDefinition> paramDefs) {
+            List<ParamDefinition> paramDefs,
+            NodeContext context) {
 
         // 先进行变量解析
-        Map<String, Object> resolved = resolveInputs(inputDefs, state);
+        Map<String, Object> resolved = resolveInputsOrConfig(inputDefs, state, context);
 
         // 如果有参数定义，进行类型转换
         if (paramDefs != null && !paramDefs.isEmpty()) {
@@ -102,14 +104,14 @@ public class VariableResolver {
      * @param state      工作流状态
      * @return 解析后的值
      */
-    public static Object resolveExpression(String expression, WorkflowState state) {
+    public static Object resolveExpression(String expression, WorkflowState state, NodeContext context) {
         if (expression == null || !expression.startsWith("${") || !expression.endsWith("}")) {
             return expression;
         }
 
         // 去除 ${ 和 }
         String expr = expression.substring(2, expression.length() - 1);
-        return resolveExpressionByName(expr, state);
+        return resolveExpressionByName(expr, state, context);
     }
 
     /**
@@ -120,7 +122,7 @@ public class VariableResolver {
      * @param state    工作流状态
      * @return 插值后的字符串
      */
-    public static String interpolateString(String template, WorkflowState state) {
+    public static String interpolateString(String template, WorkflowState state, NodeContext context) {
         if (template == null) {
             return null;
         }
@@ -130,7 +132,7 @@ public class VariableResolver {
 
         while (matcher.find()) {
             String expr = matcher.group(1);
-            Object resolved = resolveExpressionByName(expr, state);
+            Object resolved = resolveExpressionByName(expr, state, context);
             String replacement = resolved != null ? resolved.toString() : "";
             matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
         }
@@ -149,7 +151,7 @@ public class VariableResolver {
      * @param state 工作流状态
      * @return 解析后的值
      */
-    private static Object resolveExpressionByName(String expr, WorkflowState state) {
+    private static Object resolveExpressionByName(String expr, WorkflowState state, NodeContext context) {
         // 解析 nodeId.outputKey
         String[] parts = expr.split("\\.");
         if (parts.length == 2) {
@@ -159,6 +161,12 @@ public class VariableResolver {
             Map<String, Object> outputs = state.getNodeOutput(nodeId);
             if (outputs != null) {
                 return outputs.get(outputKey);
+            }
+        } else if (context != null) {
+            // 从当前节点入参获取
+            Map<String, Object> inputs = context.getNodeInputs();
+            if (inputs != null) {
+                return inputs.get(expr);
             }
         }
 

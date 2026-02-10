@@ -209,8 +209,10 @@ public class KmAppServiceImpl implements IKmAppService {
             return false;
         }
 
-        // 如果是工作流类型应用,校验工作流配置
-        if (AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType()) && StringUtils.isNotBlank(app.getDslData())) {
+        // 如果是工作流类型或固定模板应用,校验工作流配置
+        if ((AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType())
+                || AiAppType.FIXED_TEMPLATE.getCode().equals(app.getAppType()))
+                && StringUtils.isNotBlank(app.getDslData())) {
             WorkflowConfig config = JsonUtils.parseObject(app.getDslData(), WorkflowConfig.class);
             config.validate();
         }

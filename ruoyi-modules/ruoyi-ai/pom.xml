@@ -159,10 +159,12 @@
             <artifactId>langchain4j-pgvector</artifactId>
         </dependency>
 
-        <!-- LangChain4j ONNX Embeddings (支持 BGE 等本地模型) -->
+        <!-- LangChain4j ONNX Embeddings (支持 BGE-Base-ZH 等本地模型) -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+            <artifactId>langchain4j-embeddings-bge-small-zh</artifactId>
+            <version>${langchain4j.version}</version>
+            <!-- <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId> -->
         </dependency>
 
         <!-- LangChain4j ONNX Scoring/Reranker (BGE-Reranker 等) -->
@@ -192,13 +194,19 @@
         </dependency>
 
         <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>1.5.5.Final</version>
+        </dependency>
+
+        <dependency>
             <groupId>io.github.linpeilie</groupId>
             <artifactId>mapstruct-plus-spring-boot-starter</artifactId>
         </dependency>
 
     </dependencies>
 
-    <!-- <build>
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -243,5 +251,5 @@
                 </configuration>
             </plugin>
         </plugins>
-    </build> -->
+    </build>
 </project>

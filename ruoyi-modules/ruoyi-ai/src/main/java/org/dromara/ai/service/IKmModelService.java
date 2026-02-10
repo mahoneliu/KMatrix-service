@@ -57,4 +57,13 @@ public interface IKmModelService {
      * @return 是否成功
      */
     Boolean setDefaultModel(Long modelId);
+
+    /**
+     * 测试模型对话 (流式)
+     *
+     * @param bo 发送消息对象
+     * @return SseEmitter
+     */
+    org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
+            org.dromara.ai.domain.bo.KmModelChatSendBo bo);
 }

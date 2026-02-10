@@ -84,9 +84,10 @@ public class KmChatController extends BaseController {
      */
     @GetMapping("/history/{sessionId}")
     public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId,
+            @RequestParam(required = false, defaultValue = "false") Boolean includeExecutions,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
-        return R.ok(chatService.getHistory(sessionId, info.getUserId()));
+        return R.ok(chatService.getHistory(sessionId, info.getUserId(), includeExecutions));
     }
 
     /**

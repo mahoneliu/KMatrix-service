@@ -22,6 +22,7 @@ import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -267,9 +268,16 @@ public class KmDocumentController extends BaseController {
     /**
      * 提交分块并入库 (分块预览流程第三步)
      */
-    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
-    @PostMapping("/submitChunks")
     public R<KmDocumentVo> submitChunks(@RequestBody ChunkSubmitBo bo) {
         return R.ok(documentService.submitChunks(bo));
+    }
+
+    /**
+     * 下载文档
+     */
+    @Log(title = "知识库文档", businessType = BusinessType.EXPORT)
+    @GetMapping("/download/{id:\\d+}")
+    public void download(@NotNull(message = "主键不能为空") @PathVariable Long id, HttpServletResponse response) {
+        documentService.downloadDocument(id, response);
     }
 }

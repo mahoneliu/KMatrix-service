@@ -38,4 +38,10 @@ public class KmModelProviderServiceImpl implements IKmModelProviderService {
     public KmModelProviderVo queryById(Long providerId) {
         return baseMapper.selectVoById(providerId);
     }
+
+    @Override
+    public Boolean updateByBo(KmModelProviderBo bo) {
+        KmModelProvider provider = org.dromara.common.core.utils.MapstructUtils.convert(bo, KmModelProvider.class);
+        return baseMapper.updateById(provider) > 0;
+    }
 }

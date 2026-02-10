@@ -1,7 +1,7 @@
 package org.dromara.ai.config;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallzh.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,10 +16,10 @@ public class AiConfig {
 
     /**
      * 配置 Embedding 模型Bean
-     * 目前使用本地 ONNX 模型 (AllMiniLmL6V2)
+     * 目前使用本地 ONNX 模型 (BgeSmallZh)
      */
     @Bean
     public EmbeddingModel embeddingModel() {
-        return new AllMiniLmL6V2EmbeddingModel();
+        return new BgeSmallZhEmbeddingModel();
     }
 }

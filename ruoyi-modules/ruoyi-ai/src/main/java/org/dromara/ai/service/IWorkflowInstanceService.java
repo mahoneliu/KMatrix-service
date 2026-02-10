@@ -70,7 +70,7 @@ public interface IWorkflowInstanceService {
      * @param durationMs   执行耗时(毫秒)
      */
     void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams,
-            String nodeName, Long durationMs);
+            Map<String, Object> tokenUsage, String nodeName, Long durationMs);
 
     /**
      * 标记实例完成

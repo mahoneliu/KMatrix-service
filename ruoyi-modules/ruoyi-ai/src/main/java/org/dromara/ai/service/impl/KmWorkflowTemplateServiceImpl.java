@@ -156,6 +156,7 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         }
         appBo.setStatus("0"); // 草稿状态
         appBo.setGraphData(template.getGraphData());
+        appBo.setDslData(template.getDslData()); // 拷贝 DSL 数据
 
         // 2.1 记录模版来源
         appBo.setSourceTemplateId(templateId);
@@ -203,6 +204,7 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         newTemplate.setScopeType("1"); // 强制设置为自定义模板
         newTemplate.setWorkflowConfig(source.getWorkflowConfig());
         newTemplate.setGraphData(source.getGraphData());
+        newTemplate.setDslData(source.getDslData()); // 拷贝 DSL 数据
         newTemplate.setVersion(1);
         newTemplate.setIsPublished("0");
         newTemplate.setIsEnabled("1");

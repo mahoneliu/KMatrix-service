@@ -34,4 +34,24 @@ public class KmModelProviderController extends BaseController {
     public R<List<KmModelProviderVo>> list(KmModelProviderBo bo) {
         return R.ok(providerService.queryList(bo));
     }
+
+    /**
+     * 获取供应商详细信息
+     */
+    @cn.dev33.satoken.annotation.SaCheckPermission("ai:provider:query")
+    @GetMapping("/{providerId}")
+    public R<KmModelProviderVo> getInfo(@org.springframework.web.bind.annotation.PathVariable Long providerId) {
+        return R.ok(providerService.queryById(providerId));
+    }
+
+    /**
+     * 修改供应商
+     */
+    @cn.dev33.satoken.annotation.SaCheckPermission("ai:provider:edit")
+    @org.dromara.common.log.annotation.Log(title = "供应商管理", businessType = org.dromara.common.log.enums.BusinessType.UPDATE)
+    @org.springframework.web.bind.annotation.PutMapping
+    public R<Void> edit(
+            @org.springframework.validation.annotation.Validated(org.dromara.common.core.validate.EditGroup.class) @org.springframework.web.bind.annotation.RequestBody KmModelProviderBo bo) {
+        return toAjax(providerService.updateByBo(bo));
+    }
 }

@@ -37,6 +37,20 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
         int incrementHitNum(@Param("id") Long id);
 
         /**
+         * 批量更新问题命中次数
+         * 
+         * @param questionIds 问题ID列表
+         */
+        @org.apache.ibatis.annotations.Update("<script>" +
+                        "UPDATE km_question SET hit_num = hit_num + 1 " +
+                        "WHERE id IN " +
+                        "<foreach collection='questionIds' item='id' open='(' separator=',' close=')'>" +
+                        "  #{id}" +
+                        "</foreach>" +
+                        "</script>")
+        int batchIncrementHitNum(@Param("questionIds") List<Long> questionIds);
+
+        /**
          * 关键词全文检索 (支持 PostgreSQL)
          */
         @Select("<script>" +

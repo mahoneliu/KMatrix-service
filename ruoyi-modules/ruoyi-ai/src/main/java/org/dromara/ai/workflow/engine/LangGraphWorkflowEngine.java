@@ -52,6 +52,25 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         log.info("使用 LangGraph 引擎执行工作流");
 
         try {
+            // 解析是否需要显示执行信息
+            boolean isDebug = Boolean.TRUE.equals(chatWorkflowState.getDebug());
+            boolean isShowExecutionInfo = isDebug || Boolean.TRUE.equals(chatWorkflowState.getShowExecutionInfo());
+
+            // 0. 发送 START 节点开始事件（如果存在且需要显示执行信息）
+            // if (isShowExecutionInfo) {
+            // config.getNodes().stream()
+            // .filter(n -> "START".equals(n.getType()))
+            // .findFirst()
+            // .ifPresent(startNode -> {
+            // Map<String, Object> eventData = new HashMap<>();
+            // eventData.put("nodeId", startNode.getId());
+            // eventData.put("nodeName", startNode.getName());
+            // eventData.put("nodeType", startNode.getType());
+            // eventData.put("startTime", System.currentTimeMillis());
+            // sendSseEvent(emitter, SseEventType.NODE_START, eventData);
+            // });
+            // }
+
             // 1. 构建 StateGraph，将 emitter 通过闭包传递给节点
             StateGraph<WorkflowState> graph = buildGraph(config, emitter);
 
@@ -74,17 +93,6 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             throw e;
         }
     }
-
-    // @Override
-    // public WorkflowEngineType getEngineType() {
-    // return WorkflowEngineType.LANGGRAPH;
-    // }
-
-    // @Override
-    // public boolean supports(WorkflowConfig config) {
-    // // 不实现自动选择，仅支持显式指定
-    // return false;
-    // }
 
     /**
      * 构建 StateGraph
@@ -283,7 +291,18 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         String nodeName = nodeConfig.getName() != null ? nodeConfig.getName() : "";
         long startTime = System.currentTimeMillis();
         context.setNodeName(nodeName);
+        context.setNodeId(nodeConfig.getId());
         context.setStartTime(startTime);
+
+        // 发送节点开始事件
+        if (isShowExecutionInfo) {
+            Map<String, Object> eventData = new HashMap<>();
+            eventData.put("nodeId", nodeConfig.getId());
+            eventData.put("nodeName", nodeName);
+            eventData.put("nodeType", nodeConfig.getType());
+            eventData.put("startTime", startTime);
+            sendSseEvent(emitter, SseEventType.NODE_START, eventData);
+        }
 
         try {
             // 记录当前节点（不再直接修改 state，而是稍后通过返回 Map 更新）
@@ -302,14 +321,17 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             java.util.List<org.dromara.ai.domain.vo.config.ParamDefinition> inputParamDefs = node.getInputParamDefs();
 
             // 准备输入参数（带类型转换）
-            Map<String, Object> inputs = VariableResolver.resolveInputs(nodeConfig.getInputs(), state, inputParamDefs);
+            Map<String, Object> inputs = VariableResolver.resolveInputsOrConfig(nodeConfig.getInputs(), state,
+                    inputParamDefs, null);
+            // 设置节点配置和输入
+            context.setNodeInputs(inputs);
 
             // 准备节点配置（也需要进行变量替换，因为 LLM 的 systemPrompt 等在 config 中）
-            Map<String, Object> resolvedConfig = VariableResolver.resolveInputs(nodeConfig.getConfig(), state);
+            Map<String, Object> resolvedConfig = VariableResolver.resolveInputsOrConfig(nodeConfig.getConfig(), state,
+                    inputParamDefs, context);
 
-            // 设置节点配置和输入
+            // 设置节点配置
             context.setNodeConfig(resolvedConfig);
-            context.setNodeInputs(inputs);
 
             // 创建节点执行记录（调试模式：不写数据库）
             if (!isDebug) {
@@ -319,6 +341,14 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
             // 执行节点
             NodeOutput output = node.execute(context);
+
+            // 为了视觉效果，如果是 END 节点，强制延迟 500ms，确保前端能观察到高亮和连线动画
+            if ("END".equals(nodeConfig.getType())) {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ignored) {
+                }
+            }
 
             // 计算执行耗时
             duration = System.currentTimeMillis() - startTime;
@@ -331,7 +361,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 更新节点执行记录（调试模式：不写数据库）
             if (!isDebug) {
                 instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
-                        nodeName, duration);
+                        context.getTokenUsage(), nodeName, duration);
                 // 更新全局状态到实例
                 instanceService.updateGlobalState(state.getInstanceId(), globalState);
             }
@@ -341,6 +371,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 Map<String, Object> executionDetail = new HashMap<>();
                 executionDetail.put("nodeName", nodeName);
                 executionDetail.put("nodeType", nodeConfig.getType());
+                executionDetail.put("nodeId", currentNodeId);
                 executionDetail.put("inputs", inputs);
                 executionDetail.put("outputs", output.getOutputs());
                 executionDetail.put("durationMs", duration);
@@ -380,7 +411,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 更新失败记录（调试模式：不写数据库）
             if (!isDebug) {
                 instanceService.updateNodeExecution(executionId, NodeExecutionStatus.FAILED, null,
-                        nodeName, duration);
+                        null, nodeName, duration);
             }
 
             sendSseEvent(context.getSseEmitter(), SseEventType.NODE_ERROR,

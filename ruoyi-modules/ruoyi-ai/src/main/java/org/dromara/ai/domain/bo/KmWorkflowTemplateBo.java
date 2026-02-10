@@ -71,6 +71,11 @@ public class KmWorkflowTemplateBo extends BaseEntity {
     private String graphData;
 
     /**
+     * 后端执行DSL
+     */
+    private String dslData;
+
+    /**
      * 是否启用 (0停用/1启用)
      */
     private String isEnabled;

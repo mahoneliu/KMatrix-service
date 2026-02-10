@@ -23,12 +23,12 @@ import java.util.Collections;
 public class ModelConnectionTester {
 
     private static final String TEST_MESSAGE = "Hello";
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
 
     /**
-     * 测试 OpenAI 模型连接
+     * 测试 OpenAI 兼容模型连接 (含 DeepSeek, Moonshot, XAI, vLLM 等)
      */
-    public static String testOpenAI(String apiKey, String apiBase, String modelKey) {
+    public static String testOpenAiCompatible(String apiKey, String apiBase, String modelKey, String providerName) {
         try {
             if (StrUtil.isBlank(apiKey)) {
                 return "API Key 不能为空";
@@ -49,12 +49,19 @@ public class ModelConnectionTester {
             ChatLanguageModel model = builder.build();
             String response = model.generate(TEST_MESSAGE);
 
-            log.info("OpenAI 连接测试成功: model={}, response={}", modelKey, response);
-            return "连接测试成功";
+            log.info("{} 连接测试成功: model={}, response={}", providerName, modelKey, response);
+            return "连接成功";
         } catch (Exception e) {
-            log.error("OpenAI 连接测试失败: model={}", modelKey, e);
+            log.error("{} 连接测试失败: model={}", providerName, modelKey, e);
             return "连接测试失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 测试 Azure OpenAI 模型连接 (暂未引入依赖)
+     */
+    public static String testAzureOpenAi(String apiKey, String endpoint, String deploymentName) {
+        return "暂未支持 Azure OpenAI 连接测试 (缺少依赖)";
     }
 
     /**
@@ -78,7 +85,7 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("Ollama 连接测试成功: model={}, response={}", modelKey, response);
-            return "连接测试成功";
+            return "连接成功";
         } catch (Exception e) {
             log.error("Ollama 连接测试失败: model={}", modelKey, e);
             return "连接测试失败: " + e.getMessage();
@@ -105,7 +112,7 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("通义千问连接测试成功: model={}, response={}", modelKey, response);
-            return "连接测试成功";
+            return "连接成功";
         } catch (Exception e) {
             log.error("通义千问连接测试失败: model={}", modelKey, e);
             return "连接测试失败: " + e.getMessage();
@@ -135,10 +142,25 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("Gemini 连接测试成功: model={}, response={}", modelKey, response);
-            return "连接测试成功";
+            return "连接成功";
         } catch (Exception e) {
             log.error("Gemini 连接测试失败: model={}", modelKey, e);
             return "连接测试失败: " + e.getMessage();
         }
+    }
+
+    /**
+     * 测试智谱AI (Zhipu) 模型连接 - 使用 OpenAI 兼容模式
+     */
+    public static String testZhipu(String apiKey, String modelKey) {
+        // 智谱AI 新版接口兼容 OpenAI
+        return testOpenAiCompatible(apiKey, "https://open.bigmodel.cn/api/paas/v4/", modelKey, "智谱AI");
+    }
+
+    /**
+     * 测试 Anthropic (Claude) 模型连接 (暂未引入依赖)
+     */
+    public static String testAnthropic(String apiKey, String apiBase, String modelKey) {
+        return "暂未支持 Anthropic 连接测试 (缺少依赖)";
     }
 }

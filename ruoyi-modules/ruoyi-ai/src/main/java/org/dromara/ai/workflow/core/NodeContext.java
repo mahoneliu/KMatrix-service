@@ -51,6 +51,11 @@ public class NodeContext {
     // private Long userId;
 
     /**
+     * 节点ID
+     */
+    private String nodeId;
+
+    /**
      * 节点名称
      */
     private String nodeName;

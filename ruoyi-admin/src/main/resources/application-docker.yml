@@ -1,0 +1,29 @@
+# Docker 环境专用配置
+# 这里的配置会覆盖 application-dev.yml 中的同名配置
+
+spring:
+  datasource:
+    dynamic:
+      datasource:
+        master:
+          # Docker容器内部访问，使用 localhost 连接容器自带的 PostgreSQL
+          url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          username: root
+          password: root
+
+# AI 模块配置
+ai:
+  file-store:
+    # 容器内的文件上传路径
+    local-path: /data/uploads
+  reranker:
+    # 容器内的模型路径
+    model-path: /opt/models/model.onnx
+    tokenizer-path: /opt/models/tokenizer.json
+
+# Redis 配置 (虽然 dev 也是 localhost，但在 docker profile 里显式配置更安全)
+spring.data:
+  redis:
+    host: localhost
+    port: 6379
+    password: 123456

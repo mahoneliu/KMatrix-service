@@ -20,6 +20,8 @@ public class KmModelProviderBo extends BaseEntity {
     /**
      * 供应商ID
      */
+    @jakarta.validation.constraints.NotNull(message = "供应商ID不能为空", groups = {
+            org.dromara.common.core.validate.EditGroup.class })
     private Long providerId;
 
     /**

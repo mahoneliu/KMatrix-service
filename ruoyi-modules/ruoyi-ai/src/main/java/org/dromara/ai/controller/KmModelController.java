@@ -110,4 +110,14 @@ public class KmModelController extends BaseController {
     public R<Long> copy(@PathVariable Long modelId) {
         return R.ok(modelService.copyModel(modelId));
     }
+
+    /**
+     * 测试模型对话 (流式)
+     */
+    @SaCheckPermission("ai:model:query")
+    @PostMapping(value = "/chat/test/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
+            @RequestBody org.dromara.ai.domain.bo.KmModelChatSendBo bo) {
+        return modelService.streamTestChat(bo);
+    }
 }

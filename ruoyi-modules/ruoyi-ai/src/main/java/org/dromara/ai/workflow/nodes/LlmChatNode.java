@@ -23,7 +23,7 @@ import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import org.dromara.ai.workflow.nodes.nodeUtils.WorkflowParamConverter;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -98,6 +98,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
             throw new RuntimeException("userInput不能为空");
         }
         String chatContext = (String) context.getInput("chatContext");
+        log.info("LLM_CHAT节点 - : chatContext={}", chatContext);
 
         // 获取会话ID用于加载历史对话
         Long sessionId = context.getSessionId();
@@ -105,17 +106,73 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 构建消息列表（包含历史对话）
         List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
                 historyLimit, chatContext);
-
         log.info(
-                "LLM_CHAT节点 - : userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}",
-                userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId, messages.size());
+                "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}",
+                chatContext, userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId,
+                messages.size());
+
+        SseEmitter emitter = context.getSseEmitter();
+
+        // 尝试从输入参数 retrievedDocs 获取引用信息
+        Object retrievedDocsObj = context.getInput("retrievedDocs");
+        if (retrievedDocsObj instanceof List && emitter != null) {
+            try {
+                List<?> list = (List<?>) retrievedDocsObj;
+                List<Map<String, Object>> citations = new ArrayList<>();
+
+                for (int i = 0; i < list.size(); i++) {
+                    Object item = list.get(i);
+                    Map<String, Object> citation = null;
+
+                    // 直接从 KmRetrievalResultVo 对象构建 citation
+                    if (item instanceof org.dromara.ai.domain.vo.KmRetrievalResultVo) {
+                        org.dromara.ai.domain.vo.KmRetrievalResultVo vo = (org.dromara.ai.domain.vo.KmRetrievalResultVo) item;
+                        citation = new HashMap<>();
+                        citation.put("index", i + 1);
+                        citation.put("chunkId", vo.getChunkId());
+                        citation.put("documentId", vo.getDocumentId());
+                        citation.put("documentName", vo.getDocumentName());
+                        citation.put("content", vo.getContent());
+                        citation.put("score", vo.getScore());
+                    } else if (item instanceof Map) {
+                        // 兼容 Map 类型(序列化/反序列化场景)
+                        Map<?, ?> map = (Map<?, ?>) item;
+                        citation = new HashMap<>();
+                        citation.put("index", i + 1);
+                        citation.put("chunkId", map.get("chunkId"));
+                        citation.put("documentId", map.get("documentId"));
+                        citation.put("documentName", map.get("documentName"));
+                        citation.put("content", map.get("content"));
+                        citation.put("score", map.get("score"));
+                    }
+
+                    if (citation != null) {
+                        citations.add(citation);
+                    }
+                }
+
+                if (!citations.isEmpty()) {
+                    Map<String, Object> citationData = new HashMap<>();
+                    citationData.put("nodeId", context.getNodeId());
+                    citationData.put("nodeName", getNodeName());
+                    citationData.put("citations", citations);
+
+                    emitter.send(SseEmitter.event()
+                            .name(SseEventType.CITATION.getEventName())
+                            .data(citationData));
+                    log.info("LLM_CHAT节点发送引用事件成功, 引用数量: {}", citations.size());
+                }
+            } catch (Exception e) {
+                log.error("LLM_CHAT节点发送引用事件失败", e);
+            }
+        }
 
         // 使用流式模型（带参数）
         StreamingChatLanguageModel streamingModel = modelBuilder
                 .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
 
-        StringBuilder fullResponse = new StringBuilder();
-        SseEmitter emitter = context.getSseEmitter();
+        // StringBuilder fullResponse = new StringBuilder();
+        // SseEmitter emitter = context.getSseEmitter(); // Moved up
 
         // 使用 AtomicReference 保存 Response 对象以便在流式完成后访问
         CountDownLatch latch = new CountDownLatch(1);
@@ -125,18 +182,18 @@ public class LlmChatNode extends AbstractWorkflowNode {
         streamingModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
             @Override
             public void onNext(String token) {
-                fullResponse.append(token);
+                // fullResponse.append(token);
                 if (emitter != null) {
                     try {
                         // 如果开启流式输出，发送THINKING事件
-                        if (Boolean.TRUE.equals(streamOutput)) {
-                            emitter.send(SseEmitter.event()
-                                    .name(SseEventType.THINKING.getEventName())
-                                    .data(token));
-                        } else {
-                            // 默认行为：发送普通消息
-                            emitter.send(SseEmitter.event().data(token));
-                        }
+                        // if (Boolean.TRUE.equals(streamOutput)) {
+                        // emitter.send(SseEmitter.event()
+                        // .name(SseEventType.THINKING.getEventName())
+                        // .data(token));
+                        // } else {
+                        // 默认行为：发送普通消息
+                        emitter.send(SseEmitter.event().data(token));
+                        // }
                     } catch (java.io.IOException e) {
                         log.error("发送SSE消息失败", e);
                     }
@@ -168,7 +225,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
             throw errorRef.get();
         }
 
-        String aiResponse = fullResponse.toString();
+        // String aiResponse = fullResponse.toString();
 
         // 获取并记录 token 使用情况
         Response<AiMessage> response = responseRef.get();
@@ -192,10 +249,12 @@ public class LlmChatNode extends AbstractWorkflowNode {
         }
 
         // 保存输出
-        output.addOutput("response", aiResponse);
-        context.setGlobalValue("aiResponse", aiResponse);
+        AiMessage aiMessage = response.content();
+        String responseText = aiMessage.text();
+        log.info("LLM_CHAT节点执行完成, response={}", responseText);
+        output.addOutput("response", responseText);
+        context.setGlobalValue("aiResponse", responseText);
 
-        log.info("LLM_CHAT节点执行完成, response={}", aiResponse);
         return output;
     }
 
@@ -242,6 +301,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
         if (finalUserMessage != null) {
             messages.add(new UserMessage(finalUserMessage));
         }
+
+        log.info("LLM_CHAT节点 - : buildMessages finalUserMessage={}, AiMessageList={}", finalUserMessage,
+                messages);
 
         return messages;
     }

@@ -257,3 +257,20 @@ websocket:
 #  # 默认Authorization，如果有多个token，用逗号分隔
 #  token-name: ${sa-token.token-name},clientid
 
+--- # AI 配置
+ai:
+  # 文件存储配置
+  file-store:
+    # 存储类型: 1-OSS, 2-本地文件
+    type: 2
+    # 本地文件存储路径(仅当 type=2 时生效)
+    local-path: F:/kmatrix/uploads
+  reranker:
+    # 是否启用 ONNX BGE-Reranker 模型
+    enabled: true
+    # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
+    # 可选 bge-reranker-v2-m3 或 bge-reranker-base
+    model-path: F:\reranker\model.onnx
+    # Tokenizer 文件路径
+    tokenizer-path: F:\reranker\tokenizer.json
+

@@ -207,15 +207,13 @@ public class KmEtlServiceImpl implements IKmEtlService {
                         embeddingService.embedAndStoreChunks(documentId, kbId, innerChunks);
 
                         // 为文档标题生成向量（第一个chunk的title）
-                        String title = innerChunks.stream()
-                                .map(ChunkResult::getTitle)
-                                .filter(t -> t != null && !t.isBlank())
-                                .findFirst()
-                                .orElse(null);
+                        // String title = innerChunks.stream()
+                        // .map(ChunkResult::getTitle)
+                        // .filter(t -> t != null && !t.isBlank())
+                        // .findFirst()
+                        // .orElse(null);
 
-                        if (title == null) {
-                            title = document.getTitle();
-                        }
+                        String title = document.getTitle();
                         if (title == null && document.getOriginalFilename() != null) {
                             title = cn.hutool.core.io.FileUtil.mainName(document.getOriginalFilename());
                         }
@@ -469,7 +467,6 @@ public class KmEtlServiceImpl implements IKmEtlService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteChunksByDocumentId(Long documentId) {
-        // 1. Get Chunk IDs
         List<KmDocumentChunk> chunks = chunkMapper.selectList(new LambdaQueryWrapper<KmDocumentChunk>()
                 .eq(KmDocumentChunk::getDocumentId, documentId));
 
@@ -478,10 +475,15 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
         List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
 
-        // 2. Delete from km_embedding (SourceType=CONTENT (1))
+        // 1. Delete from km_embedding (SourceType=CONTENT (1))
         embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
                 .in(KmEmbedding::getSourceId, chunkIds)
                 .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.CONTENT));
+
+        // 2. Delete from km_embedding (SourceType=TITLE (2))
+        embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
+                .eq(KmEmbedding::getSourceId, documentId)
+                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.TITLE));
 
         // 3. 处理问题关联
         List<KmQuestionChunkMap> maps = questionChunkMapMapper.selectList(new LambdaQueryWrapper<KmQuestionChunkMap>()

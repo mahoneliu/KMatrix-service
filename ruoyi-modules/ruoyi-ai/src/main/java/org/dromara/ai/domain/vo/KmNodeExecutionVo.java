@@ -4,6 +4,7 @@ import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -70,11 +71,13 @@ public class KmNodeExecutionVo implements Serializable {
     /**
      * 输入参数
      */
+    @JsonProperty("inputs")
     private java.util.Map<String, Object> inputParams;
 
     /**
      * 输出参数
      */
+    @JsonProperty("outputs")
     private java.util.Map<String, Object> outputParams;
 
     /**
@@ -96,4 +99,27 @@ public class KmNodeExecutionVo implements Serializable {
      * 执行耗时(毫秒)
      */
     private Long durationMs;
+
+    /**
+     * 获取token使用统计(前端兼容格式)
+     * 前端期望的格式: { inputTokenCount, outputTokenCount, totalTokenCount }
+     */
+    public java.util.Map<String, Object> getTokenUsage() {
+        // 只有当至少有一个token字段不为null时才返回tokenUsage对象
+        if (inputTokens == null && outputTokens == null && totalTokens == null) {
+            return null;
+        }
+
+        java.util.Map<String, Object> tokenUsage = new java.util.HashMap<>();
+        if (inputTokens != null) {
+            tokenUsage.put("inputTokenCount", inputTokens);
+        }
+        if (outputTokens != null) {
+            tokenUsage.put("outputTokenCount", outputTokens);
+        }
+        if (totalTokens != null) {
+            tokenUsage.put("totalTokenCount", totalTokens);
+        }
+        return tokenUsage;
+    }
 }

@@ -51,7 +51,17 @@ public enum SseEventType {
     /**
      * 对话完成（发送给前端用于结束 streaming 状态）
      */
-    DONE("done", "对话完成");
+    DONE("done", "对话完成"),
+
+    /**
+     * 引用信息
+     */
+    CITATION("citation", "引用信息"),
+
+    /**
+     * 会话信息更新
+     */
+    SESSION_UPDATE("session_update", "会话信息更新");
 
     private final String eventName;
     private final String description;

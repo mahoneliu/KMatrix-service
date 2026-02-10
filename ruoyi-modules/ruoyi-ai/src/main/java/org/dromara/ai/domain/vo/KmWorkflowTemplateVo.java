@@ -67,6 +67,11 @@ public class KmWorkflowTemplateVo implements Serializable {
     private String graphData;
 
     /**
+     * 后端执行DSL (JSON)
+     */
+    private String dslData;
+
+    /**
      * 版本号
      */
     private Integer version;

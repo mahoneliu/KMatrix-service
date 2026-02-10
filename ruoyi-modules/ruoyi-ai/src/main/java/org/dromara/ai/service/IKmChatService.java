@@ -34,11 +34,12 @@ public interface IKmChatService {
     /**
      * 获取会话历史消息
      *
-     * @param sessionId 会话ID
-     * @param userId    当前用户ID
+     * @param sessionId         会话ID
+     * @param userId            当前用户ID
+     * @param includeExecutions 是否包含执行详情
      * @return 消息列表
      */
-    List<KmChatMessageVo> getHistory(Long sessionId, Long userId);
+    List<KmChatMessageVo> getHistory(Long sessionId, Long userId, Boolean includeExecutions);
 
     /**
      * 获取应用的所有会话 (仅ID)

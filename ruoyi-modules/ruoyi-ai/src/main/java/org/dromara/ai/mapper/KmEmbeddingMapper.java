@@ -54,118 +54,175 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
         int deleteByKbId(@Param("kbId") Long kbId);
 
         /**
-         * 多源向量相似度检索 (余弦距离)
-         * 查询 km_embedding 表，匹配范围包括所有 SourceType
-         * 使用 DISTINCT ON (source_id) 去重，每个源仅返回得分最高的一条
-         *
-         * @param queryVector 查询向量 (字符串格式)
+         * 多表关联向量检索 (一次性获取所有数据)
+         * 使用 CTE 和 JOIN 优化性能，避免 N+1 查询问题
+         * 注：始终查询所有源类型 (CONTENT, QUESTION, TITLE)，无需额外筛选参数
+         * 
+         * @param queryVector 查询向量字符串
          * @param kbIds       知识库ID列表
-         * @param sourceTypes 源类型列表 (0=QUESTION, 1=CONTENT, 2=TITLE)
          * @param topK        返回数量
-         * @param threshold   相似度阈值 (0-1)
-         * @return 检索结果列表
+         * @param threshold   相似度阈值
+         * @return 包含 chunk、document、question 信息的完整结果
          */
         @Select("<script>" +
-                        "SELECT DISTINCT ON (source_id) " +
-                        "       id, kb_id, source_id, source_type, " +
-                        "       (1 - (embedding &lt;=&gt; #{queryVector}::vector)) as score " +
-                        "FROM km_embedding " +
-                        "<where>" +
-                        "  <if test='kbIds != null and kbIds.size() > 0'>" +
-                        "    AND kb_id IN " +
-                        "    <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
-                        "      #{id}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "  <if test='sourceTypes != null and sourceTypes.size() > 0'>" +
-                        "    AND source_type IN " +
-                        "    <foreach collection='sourceTypes' item='type' open='(' separator=',' close=')'>" +
-                        "      #{type}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "  <if test='threshold != null'>" +
-                        "    AND (1 - (embedding &lt;=&gt; #{queryVector}::vector)) &gt;= #{threshold}" +
-                        "  </if>" +
-                        "</where>" +
-                        "ORDER BY source_id, embedding &lt;=&gt; #{queryVector}::vector " +
-                        "LIMIT #{topK}" +
-                        "</script>")
-        List<Map<String, Object>> multiSourceVectorSearch(
-                        @Param("queryVector") String queryVector,
-                        @Param("kbIds") List<Long> kbIds,
-                        @Param("sourceTypes") List<Integer> sourceTypes,
-                        @Param("topK") int topK,
-                        @Param("threshold") Double threshold);
-
-        /**
-         * 向量相似度检索 (不使用 DISTINCT，用于获取最相似的条目)
-         */
-        @Select("<script>" +
-                        "SELECT id, kb_id, source_id, source_type, " +
-                        "       (1 - (embedding &lt;=&gt; #{queryVector}::vector)) as score " +
-                        "FROM km_embedding " +
-                        "<where>" +
-                        "  <if test='kbIds != null and kbIds.size() > 0'>" +
-                        "    AND kb_id IN " +
-                        "    <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
-                        "      #{id}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "  <if test='sourceTypes != null and sourceTypes.size() > 0'>" +
-                        "    AND source_type IN " +
-                        "    <foreach collection='sourceTypes' item='type' open='(' separator=',' close=')'>" +
-                        "      #{type}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "  <if test='threshold != null'>" +
-                        "    AND (1 - (embedding &lt;=&gt; #{queryVector}::vector)) &gt;= #{threshold}" +
-                        "  </if>" +
-                        "</where>" +
-                        "ORDER BY embedding &lt;=&gt; #{queryVector}::vector " +
-                        "LIMIT #{topK}" +
+        // Step 1: 向量检索获取基础匹配结果
+                        "WITH base_matches AS ( " +
+                        "  SELECT " +
+                        "    id, kb_id, source_id, source_type, " +
+                        "    (1 - (embedding &lt;=&gt; #{queryVector}::vector)) as score " +
+                        "  FROM km_embedding " +
+                        "  <where>" +
+                        "    <if test='kbIds != null and kbIds.size() > 0'>" +
+                        "      AND kb_id IN " +
+                        "      <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
+                        "        #{id}" +
+                        "      </foreach>" +
+                        "    </if>" +
+                        "    <if test='threshold != null'>" +
+                        "      AND (1 - (embedding &lt;=&gt; #{queryVector}::vector)) &gt;= #{threshold}" +
+                        "    </if>" +
+                        "  </where>" +
+                        "  ORDER BY embedding &lt;=&gt; #{queryVector}::vector " +
+                        "  LIMIT #{topK} " +
+                        "), " +
+                        // Step 2: 一次性 JOIN 所有需要的表，使用 CASE WHEN 处理不同类型
+                        "title_first_chunks AS ( " +
+                        "  SELECT DISTINCT ON (bm.source_id) " +
+                        "    bm.source_id, dc.id as first_chunk_id " +
+                        "  FROM base_matches bm " +
+                        "  JOIN km_document_chunk dc ON bm.source_id = dc.document_id " +
+                        "  WHERE bm.source_type = 2 " +
+                        "  ORDER BY bm.source_id, dc.id ASC " +
+                        "), " +
+                        "enriched_matches AS ( " +
+                        "  SELECT " +
+                        "    bm.score, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " + // QUESTION
+                        "      WHEN bm.source_type = 1 THEN bm.source_id " + // CONTENT
+                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " + // TITLE
+                        "    END as chunk_id, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN qcm.question_id " +
+                        "      ELSE NULL " +
+                        "    END as question_id, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN 'QUESTION' " +
+                        "      WHEN bm.source_type = 1 THEN 'CONTENT' " +
+                        "      WHEN bm.source_type = 2 THEN 'TITLE' " +
+                        "    END as source_type_label " +
+                        "  FROM base_matches bm " +
+                        "  LEFT JOIN km_question_chunk_map qcm ON bm.source_type = 0 AND bm.source_id = qcm.id " +
+                        "  LEFT JOIN title_first_chunks tfc ON bm.source_type = 2 AND bm.source_id = tfc.source_id " +
+                        ") " +
+                        // Step 3: 最终查询，关联 chunk 和 document 数据
+                        "SELECT " +
+                        "  em.chunk_id, " +
+                        "  em.score, " +
+                        "  em.source_type_label, " +
+                        "  em.question_id, " +
+                        "  dc.content, " +
+                        "  dc.title as chunk_title, " +
+                        "  dc.metadata, " +
+                        "  dc.document_id, " +
+                        "  d.original_filename as document_name " +
+                        "FROM enriched_matches em " +
+                        "JOIN km_document_chunk dc ON em.chunk_id = dc.id " +
+                        "JOIN km_document d ON dc.document_id = d.id " +
+                        "ORDER BY em.score DESC " +
                         "</script>")
         List<Map<String, Object>> vectorSearch(
                         @Param("queryVector") String queryVector,
                         @Param("kbIds") List<Long> kbIds,
-                        @Param("sourceTypes") List<Integer> sourceTypes,
                         @Param("topK") int topK,
                         @Param("threshold") Double threshold);
 
         /**
-         * 统一关键词全文检索
-         * 这里的 score 使用 ts_rank 计算
+         * 多表关联关键词检索 (一次性获取所有数据)
+         * 使用 CTE 和 JOIN 优化性能，避免 N+1 查询问题
+         * 注：始终查询所有源类型 (CONTENT, QUESTION, TITLE)，无需额外筛选参数
+         * 
+         * @param query 查询文本
+         * @param kbIds 知识库ID列表
+         * @param topK  返回数量
+         * @return 包含 chunk、document、question 信息的完整结果
          */
         @Select("<script>" +
-                        "SELECT id, kb_id, source_id, source_type, text_content as content, " +
-                        "       ts_rank(search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score, "
+        // Step 1: 关键词检索获取基础匹配结果
+                        "WITH base_matches AS ( " +
+                        "  SELECT " +
+                        "    id, kb_id, source_id, source_type, " +
+                        "    ts_rank(search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score, "
                         +
-                        "       ts_headline('jiebacfg', text_content, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')), "
+                        "    ts_headline('jiebacfg', text_content, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')), "
                         +
-                        "                   'StartSel=&lt;mark&gt;, StopSel=&lt;/mark&gt;, MaxWords=80, MinWords=30') as highlight "
+                        "      'StartSel=&lt;mark&gt;, StopSel=&lt;/mark&gt;, MaxWords=80, MinWords=30') as highlight "
                         +
-                        "FROM km_embedding " +
-                        "<where>" +
-                        "  search_vector @@ to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')) "
+                        "  FROM km_embedding " +
+                        "  <where>" +
+                        "    search_vector @@ to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')) "
                         +
-                        "  <if test='kbIds != null and kbIds.size() > 0'>" +
-                        "    AND kb_id IN " +
-                        "    <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
-                        "      #{id}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "  <if test='sourceTypes != null and sourceTypes.size() > 0'>" +
-                        "    AND source_type IN " +
-                        "    <foreach collection='sourceTypes' item='type' open='(' separator=',' close=')'>" +
-                        "      #{type}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "</where>" +
-                        "ORDER BY score DESC " +
-                        "LIMIT #{topK}" +
+                        "    <if test='kbIds != null and kbIds.size() > 0'>" +
+                        "      AND kb_id IN " +
+                        "      <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
+                        "        #{id}" +
+                        "      </foreach>" +
+                        "    </if>" +
+
+                        "  </where>" +
+                        "  ORDER BY score DESC " +
+                        "  LIMIT #{topK} " +
+                        "), " +
+                        // Step 2: 一次性 JOIN 所有需要的表,使用 CASE WHEN 处理不同类型
+                        "title_first_chunks AS ( " +
+                        "  SELECT DISTINCT ON (bm.source_id) " +
+                        "    bm.source_id, dc.id as first_chunk_id " +
+                        "  FROM base_matches bm " +
+                        "  JOIN km_document_chunk dc ON bm.source_id = dc.document_id " +
+                        "  WHERE bm.source_type = 2 " +
+                        "  ORDER BY bm.source_id, dc.id ASC " +
+                        "), " +
+                        "enriched_matches AS ( " +
+                        "  SELECT " +
+                        "    bm.score, " +
+                        "    bm.highlight, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " + // QUESTION
+                        "      WHEN bm.source_type = 1 THEN bm.source_id " + // CONTENT
+                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " + // TITLE
+                        "    END as chunk_id, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN qcm.question_id " +
+                        "      ELSE NULL " +
+                        "    END as question_id, " +
+                        "    CASE " +
+                        "      WHEN bm.source_type = 0 THEN 'QUESTION' " +
+                        "      WHEN bm.source_type = 1 THEN 'CONTENT' " +
+                        "      WHEN bm.source_type = 2 THEN 'TITLE' " +
+                        "    END as source_type_label " +
+                        "  FROM base_matches bm " +
+                        "  LEFT JOIN km_question_chunk_map qcm ON bm.source_type = 0 AND bm.source_id = qcm.id " +
+                        "  LEFT JOIN title_first_chunks tfc ON bm.source_type = 2 AND bm.source_id = tfc.source_id " +
+                        ") " +
+                        // Step 3: 最终查询,关联 chunk 和 document 数据
+                        "SELECT " +
+                        "  em.chunk_id, " +
+                        "  em.score, " +
+                        "  em.source_type_label, " +
+                        "  em.question_id, " +
+                        "  em.highlight, " +
+                        "  dc.content, " +
+                        "  dc.title as chunk_title, " +
+                        "  dc.metadata, " +
+                        "  dc.document_id, " +
+                        "  d.original_filename as document_name " +
+                        "FROM enriched_matches em " +
+                        "JOIN km_document_chunk dc ON em.chunk_id = dc.id " +
+                        "JOIN km_document d ON dc.document_id = d.id " +
+                        "ORDER BY em.score DESC " +
                         "</script>")
         List<Map<String, Object>> keywordSearch(
                         @Param("query") String query,
                         @Param("kbIds") List<Long> kbIds,
-                        @Param("sourceTypes") List<Integer> sourceTypes,
                         @Param("topK") int topK);
 }

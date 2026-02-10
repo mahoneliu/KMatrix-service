@@ -31,6 +31,7 @@ public class KmModelServiceImpl implements IKmModelService {
 
     private final KmModelMapper baseMapper;
     private final KmModelProviderMapper providerMapper;
+    private final org.dromara.ai.util.ModelBuilder modelBuilder;
 
     /**
      * 构建查询条件包装器
@@ -88,46 +89,6 @@ public class KmModelServiceImpl implements IKmModelService {
     }
 
     @Override
-    public String testConnection(KmModelBo bo) {
-        log.info("开始测试模型连接: modelName={}, modelKey={}, providerId={}",
-                bo.getModelName(), bo.getModelKey(), bo.getProviderId());
-
-        try {
-            // 参数验证
-            if (StrUtil.isBlank(bo.getModelKey())) {
-                return "基础模型不能为空";
-            }
-            if (bo.getProviderId() == null) {
-                return "供应商ID不能为空";
-            }
-
-            // 查询供应商信息
-            KmModelProvider provider = providerMapper.selectById(bo.getProviderId());
-            if (provider == null) {
-                return "供应商不存在";
-            }
-
-            String providerKey = provider.getProviderKey();
-            String apiKey = bo.getApiKey();
-            String apiBase = StrUtil.isNotBlank(bo.getApiBase()) ? bo.getApiBase() : provider.getDefaultEndpoint();
-            String modelKey = bo.getModelKey();
-
-            // 根据供应商类型调用对应的测试方法
-            return switch (providerKey) {
-                case "openai" -> ModelConnectionTester.testOpenAI(apiKey, apiBase, modelKey);
-                case "ollama" -> ModelConnectionTester.testOllama(apiBase, modelKey);
-                case "qwen" -> ModelConnectionTester.testQwen(apiKey, modelKey);
-                case "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
-                case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
-                default -> "暂不支持该供应商的连接测试: " + providerKey;
-            };
-        } catch (Exception e) {
-            log.error("模型连接测试失败", e);
-            return "连接测试失败: " + e.getMessage();
-        }
-    }
-
-    @Override
     public Long copyModel(Long modelId) {
         // 查询原模型
         KmModel original = baseMapper.selectById(modelId);
@@ -172,5 +133,144 @@ public class KmModelServiceImpl implements IKmModelService {
         return baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
                 .set(KmModel::getIsDefault, 1)
                 .eq(KmModel::getModelId, modelId)) > 0;
+    }
+
+    @Override
+    public String testConnection(KmModelBo bo) {
+        log.info("开始测试模型连接: modelName={}, modelKey={}, providerId={}",
+                bo.getModelName(), bo.getModelKey(), bo.getProviderId());
+
+        try {
+            // 参数验证
+            if (StrUtil.isBlank(bo.getModelKey())) {
+                return "基础模型不能为空";
+            }
+            if (bo.getProviderId() == null) {
+                return "供应商ID不能为空";
+            }
+
+            // 查询供应商信息
+            KmModelProvider provider = providerMapper.selectById(bo.getProviderId());
+            if (provider == null) {
+                return "供应商不存在";
+            }
+
+            String providerKey = provider.getProviderKey();
+            String apiKey = bo.getApiKey();
+            String apiBase = StrUtil.isNotBlank(bo.getApiBase()) ? bo.getApiBase() : provider.getDefaultEndpoint();
+            String modelKey = bo.getModelKey();
+
+            // 根据供应商类型调用对应的测试方法
+            return switch (providerKey) {
+                case "openai" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "OpenAI");
+                case "ollama" -> ModelConnectionTester.testOllama(apiBase, modelKey);
+                case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
+                case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
+                case "azure" -> {
+                    // Azure 需要解析 apiBase 获取 endpoint 和 deploymentName
+                    // 假设 apiBase 是 endpoint, modelKey 是 deploymentName
+                    yield ModelConnectionTester.testAzureOpenAi(apiKey, apiBase, modelKey);
+                }
+                case "zhipu" -> ModelConnectionTester.testZhipu(apiKey, modelKey);
+                case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
+                // 其它兼容 OpenAI 协议的供应商
+                case "deepseek" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "DeepSeek");
+                case "moonshot" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "Moonshot");
+                case "xai" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "X.AI");
+                case "vllm" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "vLLM");
+                case "doubao" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "Doubao");
+                default ->
+                    ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, provider.getProviderName());
+            };
+        } catch (Exception e) {
+            log.error("模型连接测试失败", e);
+            return "连接测试失败: " + e.getMessage();
+        }
+    }
+
+    @Override
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
+            org.dromara.ai.domain.bo.KmModelChatSendBo bo) {
+        // 创建SSE发射器
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(
+                5 * 60 * 1000L);
+
+        // 异步处理
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                // 获取模型
+                KmModel model = baseMapper.selectById(bo.getModelId());
+                if (model == null) {
+                    sendError(emitter, "模型不存在");
+                    return;
+                }
+
+                KmModelProvider provider = providerMapper.selectById(model.getProviderId());
+                if (provider == null) {
+                    sendError(emitter, "供应商不存在");
+                    return;
+                }
+
+                // 构建 ChatModel
+                // 这里为了简单，暂不使用流式 TokenHandler 回调，而是生成后一次性返回 (模拟流式，因为 ModelBuilder 返回的是
+                // ChatLanguageModel)
+                // 如果 ModelBuilder 支持 buildStreamingChatModel，则可以使用 real streaming
+                // 让我们尝试使用 ChatLanguageModel (同步) 并发送结果
+
+                // 如果需要实时流式，需修改 ModelBuilder 或在此处自行构建 StreamingModel
+                // ModelBuilder 确实有 buildStreamingChatModel
+
+                dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
+                        .buildStreamingChatModel(
+                                model, provider.getProviderKey(), bo.getTemperature(), bo.getMaxTokens());
+
+                // 构造消息 (简单单轮对话)
+                dev.langchain4j.data.message.UserMessage userMessage = new dev.langchain4j.data.message.UserMessage(
+                        bo.getMessage());
+
+                // 流式生成
+                streamingModel.generate(java.util.Collections.singletonList(userMessage),
+                        new dev.langchain4j.model.StreamingResponseHandler<dev.langchain4j.data.message.AiMessage>() {
+                            @Override
+                            public void onNext(String token) {
+                                try {
+                                    // 发送片段
+                                    emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+                                            .event().name("token").data(token));
+                                } catch (Exception e) {
+                                    log.warn("SSE发送失败", e);
+                                }
+                            }
+
+                            @Override
+                            public void onComplete(
+                                    dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> response) {
+                                emitter.complete();
+                            }
+
+                            @Override
+                            public void onError(Throwable error) {
+                                log.error("模型生成错误", error);
+                                sendError(emitter, error.getMessage());
+                            }
+                        });
+
+            } catch (Exception e) {
+                log.error("测试对话失败", e);
+                sendError(emitter, "对话失败: " + e.getMessage());
+            }
+        });
+
+        return emitter;
+    }
+
+    private void sendError(org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter, String msg) {
+        try {
+            emitter.send(
+                    org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().name("error").data(msg));
+            emitter.complete();
+        } catch (Exception e) {
+            // ignore
+        }
     }
 }

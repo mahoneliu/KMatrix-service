@@ -63,8 +63,9 @@ public class KmAdminChatController extends BaseController {
      */
     @SaCheckPermission("ai:app:edit")
     @GetMapping("/history/{sessionId}")
-    public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId) {
-        return R.ok(chatService.getHistory(sessionId, LoginHelper.getUserId()));
+    public R<List<KmChatMessageVo>> getHistory(@PathVariable Long sessionId,
+            @RequestParam(required = false, defaultValue = "false") Boolean includeExecutions) {
+        return R.ok(chatService.getHistory(sessionId, LoginHelper.getUserId(), includeExecutions));
     }
 
     /**

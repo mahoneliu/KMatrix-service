@@ -21,9 +21,7 @@ import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.config.KmAiProperties;
 import org.dromara.ai.domain.enums.FileStoreType;
 import org.dromara.ai.domain.vo.LocalFileVo;
-import org.dromara.ai.service.IKmDocumentChunkService;
 import org.dromara.ai.service.IKmDocumentService;
-import org.dromara.ai.service.IKmEmbeddingService;
 import org.dromara.ai.service.IKmEtlService;
 import org.dromara.ai.service.IKmQuestionService;
 import org.dromara.ai.service.IKmTempFileService;
@@ -38,6 +36,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import org.springframework.http.MediaType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -748,6 +752,53 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         } catch (Exception e) {
             log.error("Failed to submit chunks", e);
             throw new RuntimeException("分块提交失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void downloadDocument(Long id, HttpServletResponse response) {
+        KmDocument doc = documentMapper.selectById(id);
+        if (doc == null) {
+            throw new RuntimeException("文档不存在");
+        }
+
+        try {
+            FileStoreType storeType = FileStoreType.fromValue(doc.getStoreType());
+            if (storeType.isOss()) {
+                if (doc.getOssId() != null) {
+                    ossService.download(doc.getOssId(), response);
+                } else {
+                    throw new RuntimeException("OSS文件ID丢失");
+                }
+            } else if (storeType.isLocal()) {
+                String filePath = doc.getFilePath();
+                if (StringUtils.isBlank(filePath)) {
+                    throw new RuntimeException("文件路径丢失");
+                }
+
+                // 本地文件下载
+                response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+                String fileName = URLEncoder.encode(doc.getOriginalFilename(), StandardCharsets.UTF_8).replaceAll("\\+",
+                        "%20");
+                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+
+                try (InputStream is = localFileService.getFileStream(filePath);
+                        OutputStream os = response.getOutputStream()) {
+                    if (is == null) {
+                        throw new RuntimeException("文件流获取失败");
+                    }
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = is.read(buffer)) != -1) {
+                        os.write(buffer, 0, bytesRead);
+                    }
+                }
+            } else {
+                throw new RuntimeException("不支持的存储类型: " + storeType);
+            }
+        } catch (Exception e) {
+            log.error("Failed to download document: {}", id, e);
+            throw new RuntimeException("下载失败: " + e.getMessage());
         }
     }
 

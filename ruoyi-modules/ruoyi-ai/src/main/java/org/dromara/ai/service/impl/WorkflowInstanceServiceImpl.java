@@ -92,7 +92,7 @@ public class WorkflowInstanceServiceImpl implements IWorkflowInstanceService {
 
     @Override
     public void updateNodeExecution(Long executionId, NodeExecutionStatus status, Map<String, Object> outputParams,
-            String nodeName, Long durationMs) {
+            Map<String, Object> tokenUsage, String nodeName, Long durationMs) {
         KmNodeExecution execution = new KmNodeExecution();
         execution.setExecutionId(executionId);
         execution.setStatus(status);
@@ -100,6 +100,18 @@ public class WorkflowInstanceServiceImpl implements IWorkflowInstanceService {
         execution.setNodeName(nodeName);
         execution.setDurationMs(durationMs);
         execution.setEndTime(new Date());
+
+        if (tokenUsage != null) {
+            if (tokenUsage.containsKey("inputTokenCount")) {
+                execution.setInputTokens((Integer) tokenUsage.get("inputTokenCount"));
+            }
+            if (tokenUsage.containsKey("outputTokenCount")) {
+                execution.setOutputTokens((Integer) tokenUsage.get("outputTokenCount"));
+            }
+            if (tokenUsage.containsKey("totalTokenCount")) {
+                execution.setTotalTokens((Integer) tokenUsage.get("totalTokenCount"));
+            }
+        }
 
         executionMapper.updateById(execution);
         log.debug("更新节点执行记录: executionId={}, status={}", executionId, status);

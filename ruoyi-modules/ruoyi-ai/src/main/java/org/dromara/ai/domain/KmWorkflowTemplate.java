@@ -72,6 +72,12 @@ public class KmWorkflowTemplate extends BaseEntity {
     private String graphData;
 
     /**
+     * 后端执行DSL (JSON)
+     */
+    @TableField(typeHandler = JsonTypeHandler.class)
+    private String dslData;
+
+    /**
      * 版本号
      */
     private Integer version;

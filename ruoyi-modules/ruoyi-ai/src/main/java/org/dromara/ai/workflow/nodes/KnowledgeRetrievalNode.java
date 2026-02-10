@@ -11,6 +11,7 @@ import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.nodes.nodeUtils.SseHelper;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -38,7 +39,8 @@ public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
 
         NodeOutput output = new NodeOutput();
         SseEmitter emitter = context.getSseEmitter();
-        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        // Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        Boolean streamOutput = true;
 
         // 1. 获取查询文本
         String query = (String) context.getInput("query");
@@ -96,31 +98,15 @@ public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
                     "✅ 检索到 " + results.size() + " 条相关内容\n");
         }
 
-        // 7. 构建引用元数据 (供前端渲染使用)
-        List<java.util.Map<String, Object>> citations = new ArrayList<>();
-        for (int i = 0; i < results.size(); i++) {
-            KmRetrievalResultVo r = results.get(i);
-            java.util.Map<String, Object> citation = new java.util.HashMap<>();
-            citation.put("index", i + 1);
-            citation.put("chunkId", r.getChunkId());
-            citation.put("documentId", r.getDocumentId());
-            citation.put("documentName", r.getDocumentName());
-            citation.put("content", r.getContent());
-            citation.put("score", r.getScore());
-            citations.add(citation);
-        }
-
-        // 8. 设置输出
+        // 7. 设置输出
         output.addOutput("retrievedDocs", results);
         output.addOutput("context", contextText);
         output.addOutput("docCount", results.size());
         output.addOutput("hasResults", hasResults);
-        output.addOutput("citations", citations);
 
-        // 9. 设置全局变量供后续节点使用
+        // 8. 设置全局变量供后续节点使用
         context.setGlobalValue("retrievedContext", contextText);
         context.setGlobalValue("retrievedDocs", results);
-        context.setGlobalValue("citations", citations);
 
         log.info("KNOWLEDGE_RETRIEVAL节点执行完成");
         return output;

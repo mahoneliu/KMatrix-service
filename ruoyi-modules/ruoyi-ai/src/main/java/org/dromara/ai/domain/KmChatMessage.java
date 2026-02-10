@@ -3,6 +3,7 @@ package org.dromara.ai.domain;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
@@ -14,6 +15,7 @@ import java.io.Serial;
  * @date 2025-12-31
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("km_chat_message")
 public class KmChatMessage extends BaseEntity {
 

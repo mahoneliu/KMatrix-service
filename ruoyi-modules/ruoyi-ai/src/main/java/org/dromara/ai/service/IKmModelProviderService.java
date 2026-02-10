@@ -21,4 +21,9 @@ public interface IKmModelProviderService {
      * 根据ID查询
      */
     KmModelProviderVo queryById(Long providerId);
+
+    /**
+     * 更新供应商信息
+     */
+    Boolean updateByBo(KmModelProviderBo bo);
 }
