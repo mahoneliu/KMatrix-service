@@ -60,15 +60,10 @@ spring:
           # username: root
           # password: kyxxjs@2tencent
           # PostgreSQL 连接配置 - 请根据实际环境修改
-          # driverClassName: org.postgresql.Driver
-          # url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
-          # username: postgres
-          # password: password
-          # PostgreSQL 连接配置 - 腾讯云
           driverClassName: org.postgresql.Driver
-          url: "jdbc:postgresql://159.75.166.187:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
-          username: kmatrix
-          password: kmatrix!1pwd
+          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
+          username: postgres
+          password: password
 #        # MySQL 数据源 (已注释)
 #        mysql_master:
 #          type: ${spring.datasource.type}

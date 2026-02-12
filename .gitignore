@@ -1,6 +1,8 @@
 ######################################################################
 # Build Tools
 
+application-dev.yml
+application-prod.yml
 docker/push_docker_standalone.ps1
 .gradle
 /build/

@@ -47,12 +47,13 @@ spring:
         # 主库数据源
         master:
           type: ${spring.datasource.type}
-          driverClassName: com.mysql.cj.jdbc.Driver
+          # driverClassName: com.mysql.cj.jdbc.Driver
           # jdbc 所有参数配置参考 https://lionli.blog.csdn.net/article/details/122018562
           # rewriteBatchedStatements=true 批处理优化 大幅提升批量插入更新删除性能(对数据库有性能损耗 使用批量操作应考虑性能问题)
-          url: jdbc:mysql://localhost:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
-          username: root
-          password: root
+          driverClassName: org.postgresql.Driver
+          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
+          username: kmatrix
+          password: xxxxxxxxx
 #        # 从库数据源
 #        slave:
 #          lazy: true
@@ -103,9 +104,9 @@ spring.data:
     # 端口，默认为6379
     port: 6379
     # 数据库索引
-    database: 0
+    database: 10
     # redis 密码必须配置
-    password: ruoyi123
+    password: 123456
     # 连接超时时间
     timeout: 10s
     # 是否开启ssl
@@ -272,10 +273,16 @@ justauth:
       redirect-uri: ${justauth.address}/social-callback?source=gitea
 --- # AI 配置
 ai:
+  # 文件存储配置
+  file-store:
+    # 存储类型: 1-OSS, 2-本地文件
+    type: 2
+    # 本地文件存储路径(仅当 type=2 时生效)
+    local-path: /ky/kmatrix/uploads
   reranker:
     # 是否启用 ONNX BGE-Reranker 模型
-    enabled: false
+    enabled: true
     # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
-    model-path: /opt/models/bge-reranker-large-onnx/model.onnx
+    model-path: /ky/kmatrix/models/bge-reranker-large-onnx/model.onnx
     # Tokenizer 文件路径
-    tokenizer-path: /opt/models/bge-reranker-large-onnx/sentencepiece.bpe.model
+    tokenizer-path: /ky/kmatrix/models/bge-reranker-large-onnx/sentencepiece.bpe.model

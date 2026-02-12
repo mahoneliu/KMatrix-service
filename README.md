@@ -24,7 +24,7 @@
 
 ## 📖 项目简介
 
-**KMatrix** 是**科亿知识库 (KYKMS)** 的全新重构版本，专注于将传统的文档管理与先进的 AI 技术深度融合。
+**KMatrix** 是**科亿知识库 (KYKMS)** 的全新设计版本，专注于将传统的文档管理与先进的 AI 技术深度融合。
 
 在数字化时代，企业积累了海量非结构化数据，但往往难以有效利用。KMatrix 致力于解决这一痛点，通过 **RAG (检索增强生成)** 技术和 **可视化工作流编排**，将静态文档转化为动态知识服务。
 
@@ -161,6 +161,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 
 ## 🔗 链接与交流
 
+- **在线试用**: [http://kmatrix.kykms.cn](http://kmatrix.kykms.cn) 默认登录信息：test/666666
 - **技术文档**: [快速开始](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **微信**: 加群或者商业合作洽谈，可扫码
 
