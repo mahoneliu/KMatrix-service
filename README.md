@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-    <a href="https://github.com/dromara/KMatrix">
-        <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
+    <a href="https://gitee.com/kyxxjs/kmatrix-service">
+        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
     </a>
     <a href="https://spring.io/projects/spring-boot">
         <img src="https://img.shields.io/badge/Spring%20Boot-3.5.7-green.svg" alt="Spring Boot" />
@@ -35,7 +35,7 @@ KMatrix 不仅仅是一个文档存储库，更是一个 **AI Agent 孵化平台
 ## ✨ 核心亮点
 
 - **🚀 现代技术栈**：后端基于 **RuoYi-Vue-Plus (Spring Boot 3 + JDK 17)**，前端基于 **Soybean Admin (Vue 3 + Vite + Naive UI)**，紧跟技术潮流，性能卓越，开发体验极佳。
-- **🧠 强大的 AI 引擎**：深度集成 **LangChain4j** 和 **LangGraph**，提供 Java 领域最强的 AI 应用开发体验。
+- **🧠 强大的 AI 引擎**：深度集成 **LangChain4j** 和 **LangGraph4j**，提供 Java 领域最强的 AI 应用开发体验。
 - **⛓️ 可视化工作流 (Workflow)**：内置基于 **Vue Flow** 的工作流编排引擎，支持节点拖拽、连线配置。用户可自定义 AI 处理流程（如：知识检索 -> LLM 思考 -> 结果格式化）。
 - **📚 增强型 RAG**：支持 **PostgreSQL + pgvector** 高效向量检索，结合 **Elasticsearch** (计划中) 混合检索，提供精准的文档问答能力。支持 PDF、Word、Markdown 等多种格式解析。
 - **🔌 无缝嵌入**：拷贝一行脚本即可嵌入到第三方业务系统，让已有系统快速拥有智能问答能力。
@@ -93,6 +93,8 @@ KMatrix/
 └── docker/                   # 容器化部署脚本
 ```
 
+当前代码为KMatrix的后端项目，前端项目链接：[https://gitee.com/kyxxjs/kmatrix-ui](https://gitee.com/kyxxjs/kmatrix-ui)
+
 -----------------------------------
 
 ## 🚀 快速开始
@@ -112,7 +114,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 
 - 待所有容器状态显示为healthy后，可通过浏览器访问 KMatrix：
 
-  - http://目标服务器 IP 地址:8080
+  - http://目标服务器 IP 地址
 
 - 默认登录信息
   - 用户名：admin
@@ -179,4 +181,4 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 
 ## 📄 版权声明
 
-本软件开源授权许可为 **Apache License 2.0**。您可以自由使用、修改和分发，但请保留原作者的版权声明。
+本软件开源授权许可为 **MIT**。您可以自由使用、修改和分发，但请保留原作者的版权声明。
