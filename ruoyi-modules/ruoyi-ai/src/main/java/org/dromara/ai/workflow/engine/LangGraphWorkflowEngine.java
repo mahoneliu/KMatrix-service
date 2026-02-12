@@ -46,31 +46,67 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     private final ObjectStreamStateSerializer<WorkflowState> stateSerializer = new ObjectStreamStateSerializer<>(
             WorkflowState::new);
 
+    /**
+     * 递归清理 Map 中的 String 值，确保其为有效 UTF-8 字符串
+     * 防止 PostgreSQL 报错: invalid byte sequence for encoding "UTF8": 0xa3
+     */
+    private Map<String, Object> sanitizeData(Map<String, Object> data) {
+        if (data == null) {
+            return null;
+        }
+        Map<String, Object> sanitized = new HashMap<>();
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                String strVal = (String) value;
+                // 1. Replace Non-Breaking Space (\u00A0) with standard space
+                strVal = strVal.replace('\u00A0', ' ');
+                // 2. 重新编码以过滤无效字节序列 (Re-encode to ensure valid UTF-8 bytes)
+                // note: simple re-encoding doesn't fix "wrongly decoded" bytes, but ensures the
+                // resulting string maps to valid UTF-8
+                sanitized.put(entry.getKey(), new String(strVal.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        java.nio.charset.StandardCharsets.UTF_8));
+            } else if (value instanceof Map) {
+                sanitized.put(entry.getKey(), sanitizeData((Map<String, Object>) value));
+            } else if (value instanceof List) {
+                sanitized.put(entry.getKey(), sanitizeList((List<Object>) value));
+            } else {
+                sanitized.put(entry.getKey(), value);
+            }
+        }
+        return sanitized;
+    }
+
+    private List<Object> sanitizeList(List<Object> list) {
+        if (list == null) {
+            return null;
+        }
+        List<Object> sanitized = new ArrayList<>();
+        for (Object item : list) {
+            if (item instanceof String) {
+                String strVal = (String) item;
+                // 1. Replace Non-Breaking Space
+                strVal = strVal.replace('\u00A0', ' ');
+                // 2. Re-encode
+                sanitized.add(new String(strVal.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        java.nio.charset.StandardCharsets.UTF_8));
+            } else if (item instanceof Map) {
+                sanitized.add(sanitizeData((Map<String, Object>) item));
+            } else if (item instanceof List) {
+                sanitized.add(sanitizeList((List<Object>) item));
+            } else {
+                sanitized.add(item);
+            }
+        }
+        return sanitized;
+    }
+
     @Override
     public String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter)
             throws Exception {
         log.info("使用 LangGraph 引擎执行工作流");
 
         try {
-            // 解析是否需要显示执行信息
-            boolean isDebug = Boolean.TRUE.equals(chatWorkflowState.getDebug());
-            boolean isShowExecutionInfo = isDebug || Boolean.TRUE.equals(chatWorkflowState.getShowExecutionInfo());
-
-            // 0. 发送 START 节点开始事件（如果存在且需要显示执行信息）
-            // if (isShowExecutionInfo) {
-            // config.getNodes().stream()
-            // .filter(n -> "START".equals(n.getType()))
-            // .findFirst()
-            // .ifPresent(startNode -> {
-            // Map<String, Object> eventData = new HashMap<>();
-            // eventData.put("nodeId", startNode.getId());
-            // eventData.put("nodeName", startNode.getName());
-            // eventData.put("nodeType", startNode.getType());
-            // eventData.put("startTime", System.currentTimeMillis());
-            // sendSseEvent(emitter, SseEventType.NODE_START, eventData);
-            // });
-            // }
-
             // 1. 构建 StateGraph，将 emitter 通过闭包传递给节点
             StateGraph<WorkflowState> graph = buildGraph(config, emitter);
 
@@ -336,7 +372,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 创建节点执行记录（调试模式：不写数据库）
             if (!isDebug) {
                 executionId = instanceService.createNodeExecution(
-                        state.getInstanceId(), nodeConfig.getId(), nodeConfig.getType(), inputs);
+                        state.getInstanceId(), nodeConfig.getId(), nodeConfig.getType(), sanitizeData(inputs));
             }
 
             // 执行节点
@@ -360,10 +396,14 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
             // 更新节点执行记录（调试模式：不写数据库）
             if (!isDebug) {
-                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, output.getOutputs(),
+                // 清理输出数据
+                Map<String, Object> sanitizedOutputs = sanitizeData(output.getOutputs());
+                Map<String, Object> sanitizedGlobalState = sanitizeData(globalState);
+
+                instanceService.updateNodeExecution(executionId, NodeExecutionStatus.COMPLETED, sanitizedOutputs,
                         context.getTokenUsage(), nodeName, duration);
                 // 更新全局状态到实例
-                instanceService.updateGlobalState(state.getInstanceId(), globalState);
+                instanceService.updateGlobalState(state.getInstanceId(), sanitizedGlobalState);
             }
 
             if (isShowExecutionInfo) {

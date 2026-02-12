@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Define default data directory
+export PGDATA="/var/lib/postgresql/data"
+
 # Handle single volume mount /kmatrix-data
 if [ -d "/kmatrix-data" ]; then
     echo "Detected /kmatrix-data mount. Configuring environment..."
@@ -12,6 +15,10 @@ if [ -d "/kmatrix-data" ]; then
     mkdir -p /kmatrix-data/models
     mkdir -p /kmatrix-data/logs
     
+    # 1. Configure Postgres to use new path directly (no symlink)
+    export PGDATA="/kmatrix-data/postgres-data"
+    echo "Using Postgres Data Directory: $PGDATA"
+    
     # Function to replace directory with symlink
     link_dir() {
         src=$1
@@ -19,14 +26,15 @@ if [ -d "/kmatrix-data" ]; then
         if [ -d "$src" ]; then
             if [ -d "$dest" ]; then
                 echo "Replacing directory $dest with symlink to $src"
+                # IMPORTANT: Only safe if dest is NOT a VOLUME
                 rm -rf "$dest"
             fi
             ln -s "$src" "$dest"
         fi
     }
 
-    # Link Data Directories
-    link_dir "/kmatrix-data/postgres-data" "/var/lib/postgresql/data"
+    # Link Data Directories (Safe now as we removed VOLUMEs from Dockerfile)
+    # Postgres is handled via PGDATA, so no link needed for it.
     link_dir "/kmatrix-data/redis-data" "/var/lib/redis"
     link_dir "/kmatrix-data/uploads" "/data/uploads"
     link_dir "/kmatrix-data/models" "/opt/models"
@@ -53,23 +61,30 @@ if [ -d "/kmatrix-data" ]; then
     fi
 
     # Fix permissions for data directories (Postgres is picky)
-    chown -R postgres:postgres /var/lib/postgresql/data
-    chmod 700 /var/lib/postgresql/data
+    if [ -d "$PGDATA" ]; then
+        chown -R postgres:postgres "$PGDATA"
+        chmod 700 "$PGDATA"
+    fi
     chown -R redis:redis /var/lib/redis
 fi
 
 # Initialize Postgres Data Directory if empty
-if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
-    echo "Initializing PostgreSQL data directory..."
-    chown -R postgres:postgres /var/lib/postgresql/data
-    su - postgres -c "/usr/lib/postgresql/17/bin/initdb -D /var/lib/postgresql/data"
+if [ -z "$(ls -A "$PGDATA" 2>/dev/null)" ]; then
+    echo "Initializing PostgreSQL data directory at $PGDATA..."
     
-    # Configure potential pgvector extension here if needed or handled by init scripts
-    echo "host all all 0.0.0.0/0 md5" >> /var/lib/postgresql/data/pg_hba.conf
-    echo "listen_addresses='*'" >> /var/lib/postgresql/data/postgresql.conf
+    # Create directory if it doesn't exist (e.g. if we are using default path and it was wiped)
+    mkdir -p "$PGDATA"
+    chown -R postgres:postgres "$PGDATA"
+    chmod 700 "$PGDATA"
+
+    su - postgres -c "/usr/lib/postgresql/17/bin/initdb -D \"$PGDATA\""
+    
+    # Configure pg_hba.conf and postgresql.conf
+    echo "host all all 0.0.0.0/0 md5" >> "$PGDATA/pg_hba.conf"
+    echo "listen_addresses='*'" >> "$PGDATA/postgresql.conf"
     
     # Start temporary postgres server to run init scripts
-    su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D /var/lib/postgresql/data -w start"
+    su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D \"$PGDATA\" -w start"
     
     # Create database and user
     su - postgres -c "psql -c \"CREATE USER root WITH SUPERUSER PASSWORD 'root';\""
@@ -85,15 +100,15 @@ if [ -z "$(ls -A /var/lib/postgresql/data)" ]; then
         echo "Warning: $SQL_FILE not found!"
     fi
     
-    su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D /var/lib/postgresql/data -m fast -w stop"
+    su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D \"$PGDATA\" -m fast -w stop"
 else
-    echo "PostgreSQL data directory is not empty. Skipping initialization."
-    chown -R postgres:postgres /var/lib/postgresql/data
+    echo "PostgreSQL data directory at $PGDATA is not empty. Skipping initialization."
+    chown -R postgres:postgres "$PGDATA"
+    chmod 700 "$PGDATA"
 fi
 
 # Ensure directories exist and have correct permissions
 mkdir -p /data/uploads /data/temp /opt/models
-# chmod -R 777 /data # Dangerous but ensures write access for mapped volumes
 
 # Generate final configs from templates if needed (using envsubst)
 

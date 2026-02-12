@@ -7,7 +7,7 @@ spring:
       datasource:
         master:
           # Docker容器内部访问，使用 localhost 连接容器自带的 PostgreSQL
-          url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true
           username: root
           password: root
 

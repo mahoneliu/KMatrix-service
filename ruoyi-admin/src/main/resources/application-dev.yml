@@ -56,17 +56,17 @@ spring:
           type: ${spring.datasource.type}
           # MySQL 数据源
           # driverClassName: com.mysql.cj.jdbc.Driver
-          # url: jdbc:mysql://119.29.242.177:3306/kmatrix?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true
+          # url: "jdbc:mysql://119.29.242.177:3306/kmatrix?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&autoReconnect=true&rewriteBatchedStatements=true&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true"
           # username: root
           # password: kyxxjs@2tencent
           # PostgreSQL 连接配置 - 请根据实际环境修改
           # driverClassName: org.postgresql.Driver
-          # url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          # url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
           # username: postgres
           # password: password
           # PostgreSQL 连接配置 - 腾讯云
           driverClassName: org.postgresql.Driver
-          url: jdbc:postgresql://159.75.166.187:5432/kmatrix?currentSchema=public&useUnicode=true&characterEncoding=utf8&reWriteBatchedInserts=true
+          url: "jdbc:postgresql://159.75.166.187:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
           username: kmatrix
           password: kmatrix!1pwd
 #        # MySQL 数据源 (已注释)

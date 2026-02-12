@@ -1,6 +1,7 @@
 ######################################################################
 # Build Tools
 
+docker/push_docker_standalone.ps1
 .gradle
 /build/
 !gradle/wrapper/gradle-wrapper.jar

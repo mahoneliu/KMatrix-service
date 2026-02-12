@@ -48,12 +48,11 @@ RUN mkdir -p /var/log/supervisor \
     && mkdir -p /data/uploads \
     && mkdir -p /data/temp
 
+# Copy Backend Artifacts (Pre-built)
+COPY kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar /app/ruoyi-admin.jar
 # Copy Frontend Artifacts (Pre-built)
 COPY kmatrix-ui/apps/admin/dist /usr/share/nginx/html/admin
 COPY kmatrix-ui/apps/chat/dist /usr/share/nginx/html/chat
-
-# Copy Backend Artifacts (Pre-built)
-COPY kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar /app/ruoyi-admin.jar
 
 # Copy Config Files
 COPY kmatrix-service/docker/redis.conf /etc/redis/redis.conf
@@ -83,7 +82,7 @@ ENV TZ=Asia/Shanghai
 EXPOSE 80 8080 5432
 
 # Mounts
-VOLUME ["/var/lib/postgresql/data", "/var/lib/redis", "/data/uploads", "/opt/models"]
+
 
 # Entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
