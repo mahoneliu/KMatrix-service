@@ -41,11 +41,6 @@ public class KmDataset extends BaseEntity {
     private String name;
 
     /**
-     * 类型 (FILE/WEB/MANUAL)
-     */
-    private String type;
-
-    /**
      * ETL配置 (JSON)
      */
     @TableField(typeHandler = org.dromara.ai.handler.UniversalJsonTypeHandler.class)

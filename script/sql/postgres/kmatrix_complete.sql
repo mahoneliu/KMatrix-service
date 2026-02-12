@@ -9,8 +9,7 @@
 -- 第一部分: 扩展定义
 -- ======================================================================
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_jieba; -- 如果环境支持jieba分词，请开启
--- CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- 开启trgm扩展以支持模糊查询
+CREATE EXTENSION IF NOT EXISTS pg_jieba; 
 
 
 CREATE FUNCTION cast_varchar_to_timestamp(character varying) RETURNS timestamp with time zone
@@ -1893,7 +1892,6 @@ CREATE TABLE km_dataset (
     id BIGSERIAL PRIMARY KEY,
     kb_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) DEFAULT 'FILE', -- FILE, WEB, MANUAL
     config JSONB,
     is_system Boolean DEFAULT 'false',
     allowed_file_types VARCHAR(255),
@@ -1913,7 +1911,6 @@ CREATE INDEX idx_dataset_kb_id ON km_dataset(kb_id);
 COMMENT ON TABLE km_dataset IS '数据集表';
 COMMENT ON COLUMN km_dataset.kb_id IS '知识库ID';
 COMMENT ON COLUMN km_dataset.name IS '数据集名称';
-COMMENT ON COLUMN km_dataset.type IS '数据集类型:FILE/WEB/MANUAL';
 COMMENT ON COLUMN km_dataset.config IS '配置参数';
 COMMENT ON COLUMN km_dataset.is_system IS '是否为系统数据集';
 COMMENT ON COLUMN km_dataset.allowed_file_types IS '支持的文件格式(逗号分隔,*表示全部)';

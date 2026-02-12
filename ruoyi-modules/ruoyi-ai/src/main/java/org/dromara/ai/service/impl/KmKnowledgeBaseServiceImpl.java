@@ -115,7 +115,6 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         KmDataset genericFile = new KmDataset();
         genericFile.setKbId(kbId);
         genericFile.setName("通用文件");
-        genericFile.setType("FILE");
         genericFile.setProcessType(DatasetProcessType.GENERIC_FILE);
         genericFile.setSourceType(KmDataset.SourceType.FILE_UPLOAD);
         genericFile.setIsSystem(true);
@@ -129,7 +128,6 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         KmDataset qaPair = new KmDataset();
         qaPair.setKbId(kbId);
         qaPair.setName("QA问答对");
-        qaPair.setType("FILE");
         qaPair.setProcessType(DatasetProcessType.QA_PAIR);
         qaPair.setSourceType(KmDataset.SourceType.FILE_UPLOAD);
         qaPair.setIsSystem(true);
@@ -140,7 +138,6 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         KmDataset onlineDoc = new KmDataset();
         onlineDoc.setKbId(kbId);
         onlineDoc.setName("在线文档");
-        onlineDoc.setType("MANUAL");
         onlineDoc.setProcessType(DatasetProcessType.ONLINE_DOC);
         onlineDoc.setSourceType(KmDataset.SourceType.TEXT_INPUT);
         onlineDoc.setIsSystem(true);
@@ -154,7 +151,6 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         KmDataset webLink = new KmDataset();
         webLink.setKbId(kbId);
         webLink.setName("网页链接");
-        webLink.setType("WEB");
         webLink.setProcessType(DatasetProcessType.WEB_LINK);
         webLink.setSourceType(KmDataset.SourceType.WEB_CRAWL);
         webLink.setIsSystem(true);

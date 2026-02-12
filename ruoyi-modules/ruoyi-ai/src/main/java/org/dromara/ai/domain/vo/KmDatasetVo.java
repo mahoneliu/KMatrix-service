@@ -36,11 +36,6 @@ public class KmDatasetVo implements Serializable {
     private String name;
 
     /**
-     * 类型 (FILE/WEB/MANUAL)
-     */
-    private String type;
-
-    /**
      * ETL配置 (JSON)
      */
     private Map<String, Object> config;

@@ -39,12 +39,6 @@ public class KmDatasetBo implements Serializable {
     private String name;
 
     /**
-     * 类型 (FILE/WEB/MANUAL)
-     */
-    @NotBlank(message = "数据集类型不能为空")
-    private String type;
-
-    /**
      * ETL配置 (JSON)
      */
     private Map<String, Object> config;

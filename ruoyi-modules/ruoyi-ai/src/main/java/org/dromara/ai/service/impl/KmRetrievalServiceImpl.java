@@ -56,28 +56,32 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         int topK = bo.getTopK() != null ? bo.getTopK() : 5;
         double threshold = bo.getThreshold() != null ? bo.getThreshold() : 0.0; // Debug: default to 0.0
         String mode = bo.getMode() != null ? bo.getMode() : "VECTOR";
+        boolean enableRerank = Boolean.TRUE.equals(bo.getEnableRerank());
 
-        log.info("Search Params: query={}, kbIds={}, topK={}, threshold={}, mode={}",
-                bo.getQuery(), kbIds, topK, threshold, mode);
+        log.info("Search Params: query={}, kbIds={}, topK={}, threshold={}, mode={}, enableRerank={}",
+                bo.getQuery(), kbIds, topK, threshold, mode, enableRerank);
+
+        // 如果启用rerank,检索数量为topK的两倍
+        int retrievalCount = enableRerank ? topK * 2 : topK;
 
         List<KmRetrievalResultVo> results;
 
-        // 执行多源检索 (搜索 km_embedding 表，包括 Content + Question + Title)
+        // 执行多源检索 (搜索 km_embedding 表,包括 Content + Question + Title)
         switch (mode.toUpperCase()) {
             case "KEYWORD":
-                results = multiSourceKeywordSearch(bo.getQuery(), kbIds, topK);
+                results = multiSourceKeywordSearch(bo.getQuery(), kbIds, retrievalCount);
                 break;
             case "HYBRID":
-                results = multiSourceHybridSearch(bo.getQuery(), kbIds, topK, threshold);
+                results = multiSourceHybridSearch(bo.getQuery(), kbIds, retrievalCount, threshold);
                 break;
             case "VECTOR":
             default:
-                results = multiSourceVectorSearch(bo.getQuery(), kbIds, topK, threshold);
+                results = multiSourceVectorSearch(bo.getQuery(), kbIds, retrievalCount, threshold);
                 break;
         }
 
-        // 如果启用 Rerank
-        if (Boolean.TRUE.equals(bo.getEnableRerank()) && CollUtil.isNotEmpty(results)) {
+        // 如果启用 Rerank,对检索到的结果进行重排序,返回topK个结果
+        if (enableRerank && CollUtil.isNotEmpty(results)) {
             results = rerankService.rerank(bo.getQuery(), results, topK);
         }
 
@@ -91,13 +95,13 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      * 搜索 km_embedding 表，包括 Content、Question 和 Title 类型
      * 通过表关联优化性能，减少数据库交互次数
      *
-     * @param query     查询文本
-     * @param kbIds     知识库ID列表
-     * @param topK      返回数量
-     * @param threshold 相似度阈值
+     * @param query          查询文本
+     * @param kbIds          知识库ID列表
+     * @param retrievalCount 返回数量
+     * @param threshold      相似度阈值
      * @return 检索结果
      */
-    public List<KmRetrievalResultVo> multiSourceVectorSearch(String query, List<Long> kbIds, int topK,
+    public List<KmRetrievalResultVo> multiSourceVectorSearch(String query, List<Long> kbIds, int retrievalCount,
             double threshold) {
         // 生成查询向量
         float[] queryEmbedding = embeddingModel.embed(query).content().vector();
@@ -105,20 +109,20 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
         // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
         List<Map<String, Object>> results = embeddingMapper.vectorSearch(
-                vectorStr, kbIds, topK * 2, threshold);
+                vectorStr, kbIds, retrievalCount, threshold);
 
-        return processSearchResults(results, topK);
+        return processSearchResults(results, retrievalCount);
     }
 
     /**
      * 处理多表关联查询的结果 (优化版)
      * 数据已经通过 SQL JOIN 获取，只需聚合和去重
      * 
-     * @param results 关联查询结果
-     * @param topK    返回数量
+     * @param results        关联查询结果
+     * @param retrievalCount 返回数量
      * @return 检索结果列表
      */
-    private List<KmRetrievalResultVo> processSearchResults(List<Map<String, Object>> results, int topK) {
+    private List<KmRetrievalResultVo> processSearchResults(List<Map<String, Object>> results, int retrievalCount) {
         if (CollUtil.isEmpty(results)) {
             return Collections.emptyList();
         }
@@ -206,7 +210,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         return chunkMap.values().stream()
                 .peek(vo -> vo.setScore(chunkScores.get(vo.getChunkId())))
                 .sorted(Comparator.comparingDouble(KmRetrievalResultVo::getScore).reversed())
-                .limit(topK)
+                .limit(retrievalCount)
                 .collect(Collectors.toList());
     }
 
@@ -215,34 +219,34 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      * 使用全文检索搜索 km_embedding 表，包括 Content、Question 和 Title 类型
      * 通过表关联优化性能，减少数据库交互次数
      *
-     * @param query 查询文本
-     * @param kbIds 知识库ID列表
-     * @param topK  返回数量
+     * @param query          查询文本
+     * @param kbIds          知识库ID列表
+     * @param retrievalCount 返回数量
      * @return 检索结果
      */
-    public List<KmRetrievalResultVo> multiSourceKeywordSearch(String query, List<Long> kbIds, int topK) {
+    public List<KmRetrievalResultVo> multiSourceKeywordSearch(String query, List<Long> kbIds, int retrievalCount) {
         // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
         List<Map<String, Object>> results = embeddingMapper.keywordSearch(
-                query, kbIds, topK * 2);
+                query, kbIds, retrievalCount);
 
-        return processSearchResults(results, topK);
+        return processSearchResults(results, retrievalCount);
     }
 
     /**
      * 多源混合检索 (向量 + 关键词 + RRF 融合)
      *
-     * @param query     查询文本
-     * @param kbIds     知识库ID列表
-     * @param topK      返回数量
-     * @param threshold 相似度阈值
+     * @param query          查询文本
+     * @param kbIds          知识库ID列表
+     * @param retrievalCount 返回数量
+     * @param threshold      相似度阈值
      * @return 检索结果
      */
-    public List<KmRetrievalResultVo> multiSourceHybridSearch(String query, List<Long> kbIds, int topK,
+    public List<KmRetrievalResultVo> multiSourceHybridSearch(String query, List<Long> kbIds, int retrievalCount,
             double threshold) {
         // 1. 多源向量检索
-        List<KmRetrievalResultVo> vectorResults = multiSourceVectorSearch(query, kbIds, topK * 2, 0);
+        List<KmRetrievalResultVo> vectorResults = multiSourceVectorSearch(query, kbIds, retrievalCount, 0);
         // 2. 多源关键词检索
-        List<KmRetrievalResultVo> keywordResults = multiSourceKeywordSearch(query, kbIds, topK * 2);
+        List<KmRetrievalResultVo> keywordResults = multiSourceKeywordSearch(query, kbIds, retrievalCount);
 
         // 3. RRF 融合
         Map<Long, Double> rrfScores = new HashMap<>();
@@ -288,7 +292,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         // 4. 按 RRF 分数排序
         List<KmRetrievalResultVo> results = rrfScores.entrySet().stream()
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
-                .limit(topK)
+                .limit(retrievalCount)
                 .map(e -> {
                     KmRetrievalResultVo vo = chunkMap.get(e.getKey());
                     vo.setScore(e.getValue());
