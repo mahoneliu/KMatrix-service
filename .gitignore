@@ -1,0 +1,53 @@
+######################################################################
+# Build Tools
+
+ruoyi-admin\src\main\resources\application-dev.yml
+ruoyi-admin\src\main\resources\application-prod.yml
+docker/push_docker_standalone.ps1
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+target/
+out/
+!.mvn/wrapper/maven-wrapper.jar
+
+######################################################################
+# IDE
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### JRebel ###
+rebel.xml
+
+### NetBeans ###
+nbproject/private/
+build/*
+nbbuild/
+nbdist/
+.nb-gradle/
+
+######################################################################
+# Others
+*.log
+*.log.gz
+*.xml.versionsBackup
+*.swp
+
+!*/build/*.java
+!*/build/*.html
+!*/build/*.xml
+
+.flattened-pom.xml

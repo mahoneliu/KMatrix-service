@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/target
+**/.git
+**/.idea
+**/.vscode
+.agent
+logs
+postgres-data
+docker-compose*.yml
+build_docker*.sh
