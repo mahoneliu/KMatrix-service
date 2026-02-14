@@ -49,6 +49,7 @@ RUN mkdir -p /var/log/supervisor \
     && mkdir -p /data/temp
 
 # Copy Backend Artifacts (Pre-built)
+COPY kmatrix-service/ruoyi-admin/target/lib /app/lib
 COPY kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar /app/ruoyi-admin.jar
 # Copy Frontend Artifacts (Pre-built)
 COPY kmatrix-ui/apps/admin/dist /usr/share/nginx/html/admin

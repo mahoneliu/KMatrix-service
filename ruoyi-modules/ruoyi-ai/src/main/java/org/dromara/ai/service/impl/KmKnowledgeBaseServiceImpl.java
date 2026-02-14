@@ -59,7 +59,7 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     @Override
     public TableDataInfo<KmKnowledgeBaseVo> queryPageList(KmKnowledgeBaseBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<KmKnowledgeBase> lqw = buildQueryWrapper(bo);
-        Page<KmKnowledgeBaseVo> result = baseMapper.selectVoPage(pageQuery.build(), lqw);
+        Page<KmKnowledgeBaseVo> result = baseMapper.selectVoPageWithStats(pageQuery.build(), lqw);
         return TableDataInfo.build(result);
     }
 

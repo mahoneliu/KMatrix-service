@@ -161,7 +161,8 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 
 ## 🔗 链接与交流
 
-- **在线试用**: [http://kmatrix.kykms.cn](http://kmatrix.kykms.cn) 默认登录信息：test/666666
+- **在线试用**: [http://kmatrix.kykms.cn](http://kmatrix.kykms.cn) 账密：test/666666
+- **浮窗嵌入效果**: 访问[科亿官网](http://www.kykms.cn)，右下角的聊天入口图标。
 - **技术文档**: [快速开始](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **微信**: 加群或者商业合作洽谈，可扫码
 

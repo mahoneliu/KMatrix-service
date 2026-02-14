@@ -1,8 +1,8 @@
 ######################################################################
 # Build Tools
 
-ruoyi-admin\src\main\resources\application-dev.yml
-ruoyi-admin\src\main\resources\application-prod.yml
+ruoyi-admin/src/main/resources/application-dev.yml
+ruoyi-admin/src/main/resources/application-prod.yml
 docker/push_docker_standalone.ps1
 .gradle
 /build/
