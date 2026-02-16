@@ -1,11 +1,12 @@
 package org.dromara.ai.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
-
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.TokenUsage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataSource;
@@ -78,7 +79,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
         }
 
         List<KmDatabaseMeta> metas = databaseMetaMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KmDatabaseMeta>()
+                new LambdaQueryWrapper<KmDatabaseMeta>()
                         .eq(KmDatabaseMeta::getDataSourceId, dataSourceId));
         if (metas.isEmpty()) {
             throw new RuntimeException("数据源没有配置元数据，请先添加表结构信息");
@@ -220,7 +221,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
 
         // 保存 token 使用信息
         if (response != null && response.tokenUsage() != null) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            TokenUsage tokenUsage = response.tokenUsage();
             Map<String, Object> tokenUsageMap = new HashMap<>();
             tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
             tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());

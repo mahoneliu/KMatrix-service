@@ -3,7 +3,7 @@ package org.dromara.ai.mapper.handler;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedTypes;
-
+import org.postgresql.util.PGobject;
 import java.sql.*;
 import java.util.Arrays;
 
@@ -23,7 +23,7 @@ public class FloatArrayTypeHandler extends BaseTypeHandler<float[]> {
         // 将 float[] 转换为 PostgreSQL vector 格式字符串: [1.0,2.0,3.0]
         String vectorString = Arrays.toString(parameter);
         // 使用 PGobject 设置 vector 类型
-        org.postgresql.util.PGobject pGobject = new org.postgresql.util.PGobject();
+        PGobject pGobject = new PGobject();
         pGobject.setType("vector");
         pGobject.setValue(vectorString);
         ps.setObject(i, pGobject);

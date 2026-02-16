@@ -9,6 +9,7 @@ import org.dromara.ai.domain.bo.KmModelProviderBo;
 import org.dromara.ai.domain.vo.KmModelProviderVo;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmModelProviderService;
+import org.dromara.common.core.utils.MapstructUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -41,7 +42,7 @@ public class KmModelProviderServiceImpl implements IKmModelProviderService {
 
     @Override
     public Boolean updateByBo(KmModelProviderBo bo) {
-        KmModelProvider provider = org.dromara.common.core.utils.MapstructUtils.convert(bo, KmModelProvider.class);
+        KmModelProvider provider = MapstructUtils.convert(bo, KmModelProvider.class);
         return baseMapper.updateById(provider) > 0;
     }
 }

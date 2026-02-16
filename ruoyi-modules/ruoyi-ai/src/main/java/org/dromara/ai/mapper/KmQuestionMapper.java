@@ -2,9 +2,11 @@ package org.dromara.ai.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.Map;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.dromara.ai.domain.KmQuestion;
 import org.dromara.ai.domain.vo.KmQuestionVo;
 
@@ -33,7 +35,7 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
         /**
          * 更新命中次数
          */
-        @org.apache.ibatis.annotations.Update("UPDATE km_question SET hit_num = hit_num + 1 WHERE id = #{id}")
+        @Update("UPDATE km_question SET hit_num = hit_num + 1 WHERE id = #{id}")
         int incrementHitNum(@Param("id") Long id);
 
         /**
@@ -41,7 +43,7 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
          * 
          * @param questionIds 问题ID列表
          */
-        @org.apache.ibatis.annotations.Update("<script>" +
+        @Update("<script>" +
                         "UPDATE km_question SET hit_num = hit_num + 1 " +
                         "WHERE id IN " +
                         "<foreach collection='questionIds' item='id' open='(' separator=',' close=')'>" +
@@ -72,7 +74,7 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
                         "ORDER BY score DESC " +
                         "LIMIT #{topK}" +
                         "</script>")
-        List<java.util.Map<String, Object>> keywordSearch(
+        List<Map<String, Object>> keywordSearch(
                         @Param("query") String query,
                         @Param("kbIds") List<Long> kbIds,
                         @Param("topK") int topK);
@@ -104,7 +106,7 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
                         "ORDER BY q.create_time DESC " +
                         "LIMIT #{limit} OFFSET #{offset}" +
                         "</script>")
-        List<java.util.Map<String, Object>> selectPageWithChunkCount(
+        List<Map<String, Object>> selectPageWithChunkCount(
                         @Param("kbId") Long kbId,
                         @Param("content") String content,
                         @Param("offset") long offset,

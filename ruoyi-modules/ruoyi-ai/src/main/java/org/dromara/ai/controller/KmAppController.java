@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmAppBo;
 import org.dromara.ai.domain.vo.KmAppStatisticsVo;
+import org.dromara.ai.domain.vo.KmAppVersionVo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.common.core.domain.R;
@@ -132,7 +133,7 @@ public class KmAppController extends BaseController {
      */
     @SaCheckPermission("ai:app:query")
     @GetMapping("/{appId}/publish-history")
-    public R<List<org.dromara.ai.domain.vo.KmAppVersionVo>> getPublishHistory(@PathVariable Long appId) {
+    public R<List<KmAppVersionVo>> getPublishHistory(@PathVariable Long appId) {
         return R.ok(appService.getPublishHistory(appId));
     }
 }

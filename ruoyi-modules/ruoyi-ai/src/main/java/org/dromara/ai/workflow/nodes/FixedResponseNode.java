@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.nodes;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.dromara.ai.workflow.core.AbstractWorkflowNode;
@@ -41,7 +42,7 @@ public class FixedResponseNode extends AbstractWorkflowNode {
             try {
                 emitter.send(
                         SseEmitter.event().data(response));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 log.error("发送SSE消息失败", e);
             }
         }

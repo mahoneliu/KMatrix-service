@@ -3,6 +3,7 @@ package org.dromara.ai.service;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
+import org.dromara.ai.domain.vo.KmNodeExecutionVo;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
@@ -94,6 +95,6 @@ public interface IKmChatService {
      * @param userId    当前用户ID
      * @return 执行详情列表
      */
-    List<org.dromara.ai.domain.vo.KmNodeExecutionVo> getExecutionDetails(Long sessionId, Long userId);
+    List<KmNodeExecutionVo> getExecutionDetails(Long sessionId, Long userId);
 
 }

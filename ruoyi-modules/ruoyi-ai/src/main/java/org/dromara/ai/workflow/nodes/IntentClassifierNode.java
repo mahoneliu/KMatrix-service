@@ -1,12 +1,21 @@
 package org.dromara.ai.workflow.nodes;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.ai.domain.enums.SseEventType;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.util.ModelBuilder;
@@ -14,8 +23,9 @@ import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 import org.springframework.stereotype.Component;
-
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -61,35 +71,35 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
 
         // 构建提示词
         String systemPrompt = buildIntentPrompt(intentNames);
-        List<dev.langchain4j.data.message.ChatMessage> messages = new ArrayList<>();
+        List<ChatMessage> messages = new ArrayList<>();
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(text));
 
         String responseText;
-        dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> response = null;
+        Response<AiMessage> response = null;
 
         if (Boolean.TRUE.equals(streamOutput)) {
             // 流式模式
-            dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
+            StreamingChatLanguageModel streamingModel = modelBuilder
                     .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
 
             StringBuilder fullResponse = new StringBuilder();
-            org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = context.getSseEmitter();
-            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-            java.util.concurrent.atomic.AtomicReference<dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage>> responseRef = new java.util.concurrent.atomic.AtomicReference<>();
-            java.util.concurrent.atomic.AtomicReference<Throwable> errorRef = new java.util.concurrent.atomic.AtomicReference<>();
+            SseEmitter emitter = context.getSseEmitter();
+            CountDownLatch latch = new CountDownLatch(1);
+            AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
+            AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
             streamingModel.generate(messages,
-                    new dev.langchain4j.model.StreamingResponseHandler<dev.langchain4j.data.message.AiMessage>() {
+                    new StreamingResponseHandler<AiMessage>() {
                         @Override
                         public void onNext(String token) {
                             fullResponse.append(token);
                             if (emitter != null) {
                                 try {
                                     // 发送 THINKING 事件
-                                    emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+                                    emitter.send(SseEmitter
                                             .event()
-                                            .name(org.dromara.ai.domain.enums.SseEventType.THINKING.getEventName())
+                                            .name(SseEventType.THINKING.getEventName())
                                             .data(token));
                                 } catch (Exception e) {
                                     // ignore
@@ -99,7 +109,7 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
 
                         @Override
                         public void onComplete(
-                                dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> resp) {
+                                Response<AiMessage> resp) {
                             responseRef.set(resp);
                             latch.countDown();
                         }
@@ -143,10 +153,10 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
 
         // 获取并记录 token 使用情况
         if (response != null && response.tokenUsage() != null) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            TokenUsage tokenUsage = response.tokenUsage();
 
             // 保存到 NodeContext
-            java.util.Map<String, Object> tokenUsageMap = new java.util.HashMap<>();
+            Map<String, Object> tokenUsageMap = new HashMap<>();
             tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
             tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
             tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());

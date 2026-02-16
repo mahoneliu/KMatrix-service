@@ -3,19 +3,31 @@ package org.dromara.ai.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmModelBo;
+import org.dromara.ai.domain.bo.KmModelChatSendBo;
 import org.dromara.ai.domain.vo.KmModelVo;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmModelService;
+import org.dromara.ai.util.ModelBuilder;
 import org.dromara.ai.util.ModelConnectionTester;
+import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 
 /**
@@ -31,7 +43,7 @@ public class KmModelServiceImpl implements IKmModelService {
 
     private final KmModelMapper baseMapper;
     private final KmModelProviderMapper providerMapper;
-    private final org.dromara.ai.util.ModelBuilder modelBuilder;
+    private final ModelBuilder modelBuilder;
 
     /**
      * 构建查询条件包装器
@@ -57,8 +69,8 @@ public class KmModelServiceImpl implements IKmModelService {
         // 填充供应商图标
         if (!list.isEmpty()) {
             List<KmModelProvider> providers = providerMapper.selectList(Wrappers.emptyWrapper());
-            java.util.Map<Long, String> iconMap = providers.stream()
-                    .collect(java.util.stream.Collectors.toMap(KmModelProvider::getProviderId,
+            Map<Long, String> iconMap = providers.stream()
+                    .collect(Collectors.toMap(KmModelProvider::getProviderId,
                             KmModelProvider::getIconUrl, (v1, v2) -> v1));
             list.forEach(m -> m.setProviderIcon(iconMap.get(m.getProviderId())));
         }
@@ -93,7 +105,7 @@ public class KmModelServiceImpl implements IKmModelService {
         // 查询原模型
         KmModel original = baseMapper.selectById(modelId);
         if (original == null) {
-            throw new org.dromara.common.core.exception.ServiceException("原模型不存在");
+            throw new ServiceException("原模型不存在");
         }
 
         // 创建新模型
@@ -117,10 +129,10 @@ public class KmModelServiceImpl implements IKmModelService {
         // 1. 验证模型是否存在且为语言模型
         KmModel model = baseMapper.selectById(modelId);
         if (model == null) {
-            throw new org.dromara.common.core.exception.ServiceException("模型不存在");
+            throw new ServiceException("模型不存在");
         }
         if (!"1".equals(model.getModelType())) {
-            throw new org.dromara.common.core.exception.ServiceException("只能将语言模型设置为默认模型");
+            throw new ServiceException("只能将语言模型设置为默认模型");
         }
 
         // 2. 清除当前默认模型
@@ -189,14 +201,14 @@ public class KmModelServiceImpl implements IKmModelService {
     }
 
     @Override
-    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
-            org.dromara.ai.domain.bo.KmModelChatSendBo bo) {
+    public SseEmitter streamTestChat(
+            KmModelChatSendBo bo) {
         // 创建SSE发射器
-        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter = new org.springframework.web.servlet.mvc.method.annotation.SseEmitter(
+        SseEmitter emitter = new SseEmitter(
                 5 * 60 * 1000L);
 
         // 异步处理
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
+        CompletableFuture.runAsync(() -> {
             try {
                 // 获取模型
                 KmModel model = baseMapper.selectById(bo.getModelId());
@@ -220,22 +232,22 @@ public class KmModelServiceImpl implements IKmModelService {
                 // 如果需要实时流式，需修改 ModelBuilder 或在此处自行构建 StreamingModel
                 // ModelBuilder 确实有 buildStreamingChatModel
 
-                dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
+                StreamingChatLanguageModel streamingModel = modelBuilder
                         .buildStreamingChatModel(
                                 model, provider.getProviderKey(), bo.getTemperature(), bo.getMaxTokens());
 
                 // 构造消息 (简单单轮对话)
-                dev.langchain4j.data.message.UserMessage userMessage = new dev.langchain4j.data.message.UserMessage(
+                UserMessage userMessage = new UserMessage(
                         bo.getMessage());
 
                 // 流式生成
-                streamingModel.generate(java.util.Collections.singletonList(userMessage),
-                        new dev.langchain4j.model.StreamingResponseHandler<dev.langchain4j.data.message.AiMessage>() {
+                streamingModel.generate(Collections.singletonList(userMessage),
+                        new StreamingResponseHandler<AiMessage>() {
                             @Override
                             public void onNext(String token) {
                                 try {
                                     // 发送片段
-                                    emitter.send(org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+                                    emitter.send(SseEmitter
                                             .event().name("token").data(token));
                                 } catch (Exception e) {
                                     log.warn("SSE发送失败", e);
@@ -244,7 +256,7 @@ public class KmModelServiceImpl implements IKmModelService {
 
                             @Override
                             public void onComplete(
-                                    dev.langchain4j.model.output.Response<dev.langchain4j.data.message.AiMessage> response) {
+                                    Response<AiMessage> response) {
                                 emitter.complete();
                             }
 
@@ -264,10 +276,10 @@ public class KmModelServiceImpl implements IKmModelService {
         return emitter;
     }
 
-    private void sendError(org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter, String msg) {
+    private void sendError(SseEmitter emitter, String msg) {
         try {
             emitter.send(
-                    org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event().name("error").data(msg));
+                    SseEmitter.event().name("error").data(msg));
             emitter.complete();
         } catch (Exception e) {
             // ignore

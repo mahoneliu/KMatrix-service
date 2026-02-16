@@ -4,13 +4,16 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
+import dev.langchain4j.data.document.splitter.DocumentSplitters;
+import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
-import org.dromara.ai.domain.bo.ChunkPreviewBo;
-import org.dromara.ai.domain.bo.ChunkSubmitBo;
-import org.dromara.ai.domain.bo.KmDocumentBo;
+import org.dromara.ai.domain.bo.*;
 import org.dromara.ai.domain.enums.EmbeddingOption;
 import org.dromara.ai.domain.vo.ChunkPreviewVo;
 import org.dromara.ai.domain.vo.KmDocumentVo;
@@ -37,6 +40,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
@@ -45,6 +50,7 @@ import org.springframework.http.MediaType;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -77,7 +83,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KmDocumentVo uploadDocument(Long datasetId, MultipartFile file,
-            List<org.dromara.ai.domain.bo.ChunkResult> chunks) {
+            List<ChunkResult> chunks) {
         try {
             // 保存文档记录
             KmDocument document = saveDocumentRecord(datasetId, file);
@@ -173,7 +179,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
      * 如果提供了自定义分块,则直接向量化;否则调用ETL处理
      */
     private void processDocumentAfterCommit(Long documentId, Long kbId,
-            List<org.dromara.ai.domain.bo.ChunkResult> chunks) {
+            List<ChunkResult> chunks) {
         try {
             etlService.processDocumentAsync(documentId, chunks);
         } catch (Exception e) {
@@ -568,8 +574,8 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     }
 
     @Override
-    public Map<Long, List<ChunkPreviewVo>> batchPreviewChunks(org.dromara.ai.domain.bo.BatchChunkPreviewBo bo) {
-        Map<Long, List<ChunkPreviewVo>> resultMap = new java.util.HashMap<>();
+    public Map<Long, List<ChunkPreviewVo>> batchPreviewChunks(BatchChunkPreviewBo bo) {
+        Map<Long, List<ChunkPreviewVo>> resultMap = new HashMap<>();
 
         for (Long tempFileId : bo.getTempFileIds()) {
             try {
@@ -602,10 +608,10 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
      */
     private String parseFileContent(String filePath) {
         try {
-            java.io.File file = new java.io.File(filePath);
-            try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
-                dev.langchain4j.data.document.DocumentParser parser = new dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser();
-                dev.langchain4j.data.document.Document doc = parser.parse(fis);
+            File file = new File(filePath);
+            try (FileInputStream fis = new FileInputStream(file)) {
+                DocumentParser parser = new ApacheTikaDocumentParser();
+                Document doc = parser.parse(fis);
                 return doc.text();
             }
         } catch (Exception e) {
@@ -618,12 +624,12 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
      * 递归分块
      */
     private List<String> splitTextRecursive(String text, int chunkSize, int overlap) {
-        var splitter = dev.langchain4j.data.document.splitter.DocumentSplitters.recursive(chunkSize, overlap);
-        dev.langchain4j.data.document.Document doc = dev.langchain4j.data.document.Document.from(text);
-        List<dev.langchain4j.data.segment.TextSegment> segments = splitter.split(doc);
+        var splitter = DocumentSplitters.recursive(chunkSize, overlap);
+        Document doc = Document.from(text);
+        List<TextSegment> segments = splitter.split(doc);
 
         List<String> result = new ArrayList<>();
-        for (dev.langchain4j.data.segment.TextSegment segment : segments) {
+        for (TextSegment segment : segments) {
             result.add(segment.text());
         }
         return result;
@@ -669,7 +675,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 throw new RuntimeException("临时文件不存在");
             }
 
-            java.io.File tempFile = new java.io.File(tempPath);
+            File tempFile = new File(tempPath);
             if (!tempFile.exists()) {
                 throw new RuntimeException("临时文件不存在: " + tempPath);
             }
@@ -724,15 +730,15 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             // 5. 转换ChunkItem为ChunkResult
             Long docId = document.getId();
             Long kbId = dataset.getKbId();
-            List<org.dromara.ai.domain.bo.ChunkResult> chunkResults = new ArrayList<>();
+            List<ChunkResult> chunkResults = new ArrayList<>();
             for (int i = 0; i < bo.getChunks().size(); i++) {
                 ChunkSubmitBo.ChunkItem item = bo.getChunks().get(i);
-                java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+                Map<String, Object> metadata = new HashMap<>();
                 metadata.put("chunkIndex", i);
                 metadata.put("totalChunks", bo.getChunks().size());
                 metadata.put("customChunk", true); // 标记为用户自定义分块
 
-                chunkResults.add(org.dromara.ai.domain.bo.ChunkResult.builder()
+                chunkResults.add(ChunkResult.builder()
                         .content(item.getContent())
                         .title(item.getTitle())
                         .metadata(metadata)

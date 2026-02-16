@@ -1,5 +1,6 @@
 package org.dromara.ai.service.impl;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -125,7 +126,7 @@ public class LocalFileServiceImpl implements ILocalFileService {
 
             // 5. 保存文件 (Copy)
             String filePath = uploadDir + File.separator + fileName;
-            cn.hutool.core.io.FileUtil.copy(file, new File(filePath), true);
+            FileUtil.copy(file, new File(filePath), true);
 
             // 6. 构建返回对象
             LocalFileVo vo = new LocalFileVo();

@@ -3,6 +3,7 @@ package org.dromara.ai.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmModelBo;
+import org.dromara.ai.domain.bo.KmModelChatSendBo;
 import org.dromara.ai.domain.vo.KmModelVo;
 import org.dromara.ai.service.IKmModelService;
 import org.dromara.common.core.domain.R;
@@ -11,6 +12,7 @@ import org.dromara.common.core.validate.EditGroup;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 
 /**
@@ -115,9 +117,9 @@ public class KmModelController extends BaseController {
      * 测试模型对话 (流式)
      */
     @SaCheckPermission("ai:model:query")
-    @PostMapping(value = "/chat/test/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
-    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
-            @RequestBody org.dromara.ai.domain.bo.KmModelChatSendBo bo) {
+    @PostMapping(value = "/chat/test/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamTestChat(
+            @RequestBody KmModelChatSendBo bo) {
         return modelService.streamTestChat(bo);
     }
 }

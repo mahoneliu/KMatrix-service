@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.nodes.nodeUtils;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.enums.SseEventType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -30,7 +31,7 @@ public final class SseHelper {
                 emitter.send(SseEmitter.event()
                         .name(SseEventType.THINKING.getEventName())
                         .data(message));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 log.error("发送thinking事件失败", e);
             }
         }
@@ -49,7 +50,7 @@ public final class SseHelper {
                 emitter.send(SseEmitter.event()
                         .name(eventType.getEventName())
                         .data(data));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 log.error("发送SSE事件失败: {}", eventType.getEventName(), e);
             }
         }

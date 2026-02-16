@@ -502,11 +502,11 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
 
         // 批量查询所有问题的分段数量（优化：避免N+1查询）
         List<Long> questionIds = result.stream().map(KmQuestionVo::getId).toList();
-        java.util.Map<Long, java.util.Map<String, Object>> countMap = chunkMapMapper.countByQuestionIds(questionIds);
+        Map<Long, Map<String, Object>> countMap = chunkMapMapper.countByQuestionIds(questionIds);
 
         // 设置分段数量
         for (KmQuestionVo vo : result) {
-            java.util.Map<String, Object> countData = countMap.get(vo.getId());
+            Map<String, Object> countData = countMap.get(vo.getId());
             Integer count = countData != null ? ((Number) countData.get("count")).intValue() : 0;
             vo.setChunkCount(count);
         }

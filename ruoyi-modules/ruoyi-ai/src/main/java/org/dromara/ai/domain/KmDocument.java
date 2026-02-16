@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.dromara.ai.handler.UniversalJsonTypeHandler;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 import java.util.Map;
@@ -124,7 +125,7 @@ public class KmDocument extends BaseEntity {
      * 状态追踪元数据 (JSON格式)
      * 包含 aggs 聚合统计和 state_time 状态时间记录
      */
-    @TableField(typeHandler = org.dromara.ai.handler.UniversalJsonTypeHandler.class)
+    @TableField(typeHandler = UniversalJsonTypeHandler.class)
     private Map<String, Object> statusMeta;
 
 }

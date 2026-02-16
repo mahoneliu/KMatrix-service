@@ -1,8 +1,10 @@
 package org.dromara.ai.service;
-
-import org.dromara.ai.domain.bo.KmDocumentBo;
+import java.util.Map;
+import org.dromara.ai.domain.bo.*;
 import org.dromara.ai.domain.enums.EmbeddingOption;
+import org.dromara.ai.domain.vo.ChunkPreviewVo;
 import org.dromara.ai.domain.vo.KmDocumentVo;
+import org.dromara.ai.domain.vo.TempFileVo;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +38,7 @@ public interface IKmDocumentService {
          * @return 文档信息
          */
         KmDocumentVo uploadDocument(Long datasetId, MultipartFile file,
-                        List<org.dromara.ai.domain.bo.ChunkResult> chunks);
+                        List<ChunkResult> chunks);
 
         /**
          * 批量上传文档到数据集
@@ -188,7 +190,7 @@ public interface IKmDocumentService {
          * @param file      文件
          * @return 临时文件信息
          */
-        org.dromara.ai.domain.vo.TempFileVo uploadTempFile(Long datasetId, MultipartFile file);
+        TempFileVo uploadTempFile(Long datasetId, MultipartFile file);
 
         /**
          * 批量上传临时文件 (分块预览流程第一步 - 批量版本)
@@ -197,7 +199,7 @@ public interface IKmDocumentService {
          * @param files     文件列表
          * @return 临时文件信息列表
          */
-        List<org.dromara.ai.domain.vo.TempFileVo> uploadTempFiles(Long datasetId, MultipartFile[] files);
+        List<TempFileVo> uploadTempFiles(Long datasetId, MultipartFile[] files);
 
         /**
          * 分块预览 (分块预览流程第二步)
@@ -205,7 +207,7 @@ public interface IKmDocumentService {
          * @param bo 分块预览请求
          * @return 分块预览结果列表
          */
-        List<org.dromara.ai.domain.vo.ChunkPreviewVo> previewChunks(org.dromara.ai.domain.bo.ChunkPreviewBo bo);
+        List<ChunkPreviewVo> previewChunks(ChunkPreviewBo bo);
 
         /**
          * 批量分块预览 (分块预览流程第二步 - 批量版本)
@@ -213,8 +215,8 @@ public interface IKmDocumentService {
          * @param bo 批量分块预览请求
          * @return 临时文件ID -> 分块预览结果列表的映射
          */
-        java.util.Map<Long, List<org.dromara.ai.domain.vo.ChunkPreviewVo>> batchPreviewChunks(
-                        org.dromara.ai.domain.bo.BatchChunkPreviewBo bo);
+        Map<Long, List<ChunkPreviewVo>> batchPreviewChunks(
+                        BatchChunkPreviewBo bo);
 
         /**
          * 提交分块并入库 (分块预览流程第三步)
@@ -222,7 +224,7 @@ public interface IKmDocumentService {
          * @param bo 分块提交请求
          * @return 文档信息
          */
-        KmDocumentVo submitChunks(org.dromara.ai.domain.bo.ChunkSubmitBo bo);
+        KmDocumentVo submitChunks(ChunkSubmitBo bo);
 
         /**
          * 下载文档

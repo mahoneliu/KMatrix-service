@@ -1,8 +1,9 @@
 package org.dromara.ai.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
-
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataSource;
@@ -76,7 +77,7 @@ public class SqlGenerateNode extends AbstractWorkflowNode {
         }
 
         List<KmDatabaseMeta> metas = databaseMetaMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KmDatabaseMeta>()
+                new LambdaQueryWrapper<KmDatabaseMeta>()
                         .eq(KmDatabaseMeta::getDataSourceId, dataSourceId));
         if (metas.isEmpty()) {
             throw new RuntimeException("数据源没有配置元数据，请先添加表结构信息");
@@ -140,7 +141,7 @@ public class SqlGenerateNode extends AbstractWorkflowNode {
         // 6. 生成 SQL
         String generatedSql;
         if (Boolean.TRUE.equals(streamOutput)) {
-            dev.langchain4j.model.chat.StreamingChatLanguageModel streamingModel = modelBuilder
+            StreamingChatLanguageModel streamingModel = modelBuilder
                     .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
             generatedSql = SqlGenerator.generateSql(streamingModel, schemaDescription, userQuery, context);
         } else {

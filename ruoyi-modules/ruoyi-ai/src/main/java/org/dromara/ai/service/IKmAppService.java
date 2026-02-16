@@ -1,7 +1,10 @@
 package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmAppBo;
+import org.dromara.ai.domain.vo.KmAppStatisticsVo;
+import org.dromara.ai.domain.vo.KmAppVersionVo;
 import org.dromara.ai.domain.vo.KmAppVo;
+import org.dromara.ai.domain.vo.config.AppSnapshot;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 
@@ -61,7 +64,7 @@ public interface IKmAppService {
      * @param appId 应用ID
      * @return 最新发布版本的快照,如果没有发布版本则返回null
      */
-    org.dromara.ai.domain.vo.config.AppSnapshot getLatestPublishedSnapshot(Long appId);
+    AppSnapshot getLatestPublishedSnapshot(Long appId);
 
     /**
      * 更新公开访问开关
@@ -79,7 +82,7 @@ public interface IKmAppService {
      * @param period 统计周期 (7d, 30d, 90d)
      * @return 统计数据
      */
-    org.dromara.ai.domain.vo.KmAppStatisticsVo getAppStatistics(Long appId, String period);
+    KmAppStatisticsVo getAppStatistics(Long appId, String period);
 
     /**
      * 获取应用发布历史
@@ -87,5 +90,5 @@ public interface IKmAppService {
      * @param appId 应用ID
      * @return 发布历史列表
      */
-    List<org.dromara.ai.domain.vo.KmAppVersionVo> getPublishHistory(Long appId);
+    List<KmAppVersionVo> getPublishHistory(Long appId);
 }

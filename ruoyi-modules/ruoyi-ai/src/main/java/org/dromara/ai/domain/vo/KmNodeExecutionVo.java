@@ -1,6 +1,8 @@
 package org.dromara.ai.domain.vo;
 
 import io.github.linpeilie.annotations.AutoMapper;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Data;
 import org.dromara.ai.domain.KmNodeExecution;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
@@ -72,13 +74,13 @@ public class KmNodeExecutionVo implements Serializable {
      * 输入参数
      */
     @JsonProperty("inputs")
-    private java.util.Map<String, Object> inputParams;
+    private Map<String, Object> inputParams;
 
     /**
      * 输出参数
      */
     @JsonProperty("outputs")
-    private java.util.Map<String, Object> outputParams;
+    private Map<String, Object> outputParams;
 
     /**
      * 输入token数
@@ -104,13 +106,13 @@ public class KmNodeExecutionVo implements Serializable {
      * 获取token使用统计(前端兼容格式)
      * 前端期望的格式: { inputTokenCount, outputTokenCount, totalTokenCount }
      */
-    public java.util.Map<String, Object> getTokenUsage() {
+    public Map<String, Object> getTokenUsage() {
         // 只有当至少有一个token字段不为null时才返回tokenUsage对象
         if (inputTokens == null && outputTokens == null && totalTokens == null) {
             return null;
         }
 
-        java.util.Map<String, Object> tokenUsage = new java.util.HashMap<>();
+        Map<String, Object> tokenUsage = new HashMap<>();
         if (inputTokens != null) {
             tokenUsage.put("inputTokenCount", inputTokens);
         }

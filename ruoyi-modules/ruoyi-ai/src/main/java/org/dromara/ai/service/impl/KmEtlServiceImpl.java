@@ -1,6 +1,7 @@
 package org.dromara.ai.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -8,16 +9,19 @@ import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.bo.ChunkResult;
 import org.dromara.ai.domain.enums.EmbeddingOption;
+import org.dromara.ai.util.FileTypeValidator;
 import org.dromara.ai.util.StatusMetaUtils;
 import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
+import org.dromara.ai.mapper.KmEmbeddingMapper;
 import org.springframework.context.annotation.Lazy;
 import org.dromara.ai.service.IKmEmbeddingService;
 import org.dromara.ai.service.IKmEtlService;
@@ -41,10 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * ETL处理服务实现
@@ -60,7 +61,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
     private final KmDocumentMapper documentMapper;
     private final KmDocumentChunkMapper chunkMapper;
-    private final org.dromara.ai.mapper.KmEmbeddingMapper embeddingMapper;
+    private final KmEmbeddingMapper embeddingMapper;
     private final KmDatasetMapper datasetMapper;
     private final ISysOssService ossService;
     private final EmbeddingModel embeddingModel;
@@ -80,7 +81,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
     public KmEtlServiceImpl(
             KmDocumentMapper documentMapper,
             KmDocumentChunkMapper chunkMapper,
-            org.dromara.ai.mapper.KmEmbeddingMapper embeddingMapper,
+            KmEmbeddingMapper embeddingMapper,
             KmDatasetMapper datasetMapper,
             ISysOssService ossService,
             EmbeddingModel embeddingModel,
@@ -138,7 +139,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
                     title = document.getTitle();
                 }
                 if (title == null && document.getOriginalFilename() != null) {
-                    title = cn.hutool.core.io.FileUtil.mainName(document.getOriginalFilename());
+                    title = FileUtil.mainName(document.getOriginalFilename());
                 }
 
                 if (title != null) {
@@ -167,7 +168,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
                 if (StringUtils.isNotBlank(dataset.getAllowedFileTypes())
                         && StringUtils.isNotBlank(document.getOriginalFilename())) {
                     try {
-                        org.dromara.ai.util.FileTypeValidator.validate(
+                        FileTypeValidator.validate(
                                 document.getOriginalFilename(),
                                 dataset.getAllowedFileTypes());
                     } catch (Exception e) {
@@ -215,7 +216,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
                         String title = document.getTitle();
                         if (title == null && document.getOriginalFilename() != null) {
-                            title = cn.hutool.core.io.FileUtil.mainName(document.getOriginalFilename());
+                            title = FileUtil.mainName(document.getOriginalFilename());
                         }
 
                         if (title != null) {
@@ -422,7 +423,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
         LocalDateTime now = LocalDateTime.now();
 
         // 同步写入 Unified Index (km_embedding)
-        List<org.dromara.ai.domain.KmEmbedding> embeddings = new ArrayList<>();
+        List<KmEmbedding> embeddings = new ArrayList<>();
 
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
@@ -447,13 +448,13 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
             chunkEntities.add(chunk);
 
-            org.dromara.ai.domain.KmEmbedding emp = new org.dromara.ai.domain.KmEmbedding();
+            KmEmbedding emp = new KmEmbedding();
             emp.setId(IdUtil.getSnowflakeNextId());
             emp.setKbId(chunk.getKbId());
             emp.setSourceId(chunk.getId());
-            emp.setSourceType(org.dromara.ai.domain.KmEmbedding.SourceType.CONTENT);
+            emp.setSourceType(KmEmbedding.SourceType.CONTENT);
             emp.setEmbedding(embedding);
-            emp.setEmbeddingString(java.util.Arrays.toString(embedding));
+            emp.setEmbeddingString(Arrays.toString(embedding));
             emp.setTextContent(chunkText);
             emp.setCreateTime(now);
             embeddings.add(emp);
@@ -503,8 +504,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
             // 统计每个问题在本次删除中涉及的关联数量
             Map<Long, Long> linksToDeleteCount = maps.stream()
-                    .collect(java.util.stream.Collectors.groupingBy(KmQuestionChunkMap::getQuestionId,
-                            java.util.stream.Collectors.counting()));
+                    .collect(Collectors.groupingBy(KmQuestionChunkMap::getQuestionId,
+                            Collectors.counting()));
 
             // 查询这些问题在数据库中的总关联数量
             QueryWrapper<KmQuestionChunkMap> query = new QueryWrapper<>();

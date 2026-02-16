@@ -2,7 +2,7 @@ package org.dromara.ai.service;
 
 import org.dromara.ai.domain.vo.LocalFileVo;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.io.File;
 import java.io.InputStream;
 
 /**
@@ -27,7 +27,7 @@ public interface ILocalFileService {
      * @param file 要上传的文件
      * @return 本地文件信息
      */
-    LocalFileVo upload(java.io.File file);
+    LocalFileVo upload(File file);
 
     /**
      * 获取文件输入流

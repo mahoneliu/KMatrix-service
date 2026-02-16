@@ -1,6 +1,7 @@
 package org.dromara.ai.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.domain.vo.KmNodeDefinitionVo;
@@ -49,7 +50,7 @@ public class KmNodeDefinitionController extends BaseController {
      * @return 规则映射表 (源节点类型 -> 允许的目标节点类型列表)
      */
     @GetMapping("/connection/rules")
-    public R<java.util.Map<String, List<String>>> getConnectionRules() {
+    public R<Map<String, List<String>>> getConnectionRules() {
         return R.ok(connectionRuleService.getConnectionRulesMap());
     }
 

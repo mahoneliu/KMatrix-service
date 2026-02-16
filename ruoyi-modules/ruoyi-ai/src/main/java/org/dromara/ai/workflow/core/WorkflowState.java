@@ -1,6 +1,7 @@
 package org.dromara.ai.workflow.core;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.bsc.langgraph4j.state.AgentState;
 import org.bsc.langgraph4j.state.Channel;
 import org.bsc.langgraph4j.state.Channels;
@@ -17,7 +18,7 @@ import java.util.Map;
  * @date 2026-01-02
  */
 @Data
-@lombok.EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = false)
 public class WorkflowState extends AgentState implements Serializable {
 
     private static final long serialVersionUID = 1L;

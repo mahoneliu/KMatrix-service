@@ -1,9 +1,11 @@
 package org.dromara.ai.domain.bo;
 
 import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.ai.domain.KmModelProvider;
+import org.dromara.common.core.validate.EditGroup;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 /**
@@ -20,8 +22,8 @@ public class KmModelProviderBo extends BaseEntity {
     /**
      * 供应商ID
      */
-    @jakarta.validation.constraints.NotNull(message = "供应商ID不能为空", groups = {
-            org.dromara.common.core.validate.EditGroup.class })
+    @NotNull(message = "供应商ID不能为空", groups = {
+            EditGroup.class })
     private Long providerId;
 
     /**
