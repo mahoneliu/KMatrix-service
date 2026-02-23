@@ -22,5 +22,16 @@
     "java.import.gradle.enabled": false,
     "java.import.maven.enabled": true,
     // 禁用增量编译,避免 MapStruct 重复生成代码
-    "java.project.outputPath": "out"
+    "java.project.outputPath": "output/classes",
+    // 排除 ruoyi-ai 模块,避免 VS Code 自动编译与 Maven 冲突
+    "java.project.sourcePaths": [],
+    "files.exclude": {
+        "**/ruoyi-modules/ruoyi-ai/target": true
+    },
+    "java.import.exclusions": [
+        "**/ruoyi-modules/ruoyi-ai/**"
+    ],
+    "java.debug.settings.forceBuildBeforeLaunch": false,
+    "java.debug.settings.hotCodeReplace": "auto",
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx8G -Xms100m -Xlog:disable"
 }

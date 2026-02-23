@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "DromaraApplication",
+            "request": "launch",
+            "mainClass": "org.dromara.DromaraApplication",
+            "projectName": "ruoyi-admin",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "encoding": "UTF-8",
+            "preLaunchTask": ""
+        },
+        {
+            "type": "java",
+            "name": "MonitorAdminApplication",
+            "request": "launch",
+            "mainClass": "org.dromara.monitor.admin.MonitorAdminApplication",
+            "projectName": "ruoyi-monitor-admin",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "encoding": "UTF-8",
+            "preLaunchTask": ""
+        },
+        {
+            "type": "java",
+            "name": "SnailJobServerApplication",
+            "request": "launch",
+            "mainClass": "org.dromara.snailjob.SnailJobServerApplication",
+            "projectName": "ruoyi-snailjob-server",
+            "vmArgs": "-Dfile.encoding=UTF-8",
+            "encoding": "UTF-8",
+            "preLaunchTask": ""
+        }
+    ]
+}
