@@ -1,5 +1,6 @@
 package org.dromara.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmDocumentChunkBo;
@@ -34,6 +35,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 查询文档下的切片列表
      */
+    @SaCheckPermission("ai:chunk:list")
     @GetMapping("/listByDocument/{documentId}")
     public R<List<KmDocumentChunkVo>> listByDocument(@NotNull(message = "文档ID不能为空") @PathVariable Long documentId) {
         return R.ok(chunkService.listByDocumentId(documentId));
@@ -42,6 +44,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 获取切片详细信息
      */
+    @SaCheckPermission("ai:chunk:query")
     @GetMapping("/{id:\\d+}")
     public R<KmDocumentChunkVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return R.ok(chunkService.queryById(id));
@@ -50,6 +53,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 修改切片
      */
+    @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping
     public R<Void> edit(@RequestBody Map<String, Object> body) {
@@ -68,6 +72,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 删除切片
      */
+    @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -77,6 +82,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 分页查询切片列表
      */
+    @SaCheckPermission("ai:chunk:list")
     @GetMapping("/list")
     public TableDataInfo<KmDocumentChunkVo> list(KmDocumentChunkBo bo, PageQuery pageQuery) {
         return chunkService.pageList(bo, pageQuery);
@@ -85,6 +91,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 手工添加切片
      */
+    @SaCheckPermission("ai:chunk:add")
     @Log(title = "知识库切片", businessType = BusinessType.INSERT)
     @PostMapping
     public R<KmDocumentChunkVo> add(@Validated @RequestBody KmDocumentChunkBo bo) {
@@ -94,6 +101,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 启用切片
      */
+    @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/enable/{id:\\d+}")
     public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -103,6 +111,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 禁用切片
      */
+    @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/disable/{id:\\d+}")
     public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -112,6 +121,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 批量启用切片
      */
+    @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/batchEnable")
     public R<Void> batchEnable(@RequestBody List<Long> ids) {
@@ -121,6 +131,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 批量禁用切片
      */
+    @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/batchDisable")
     public R<Void> batchDisable(@RequestBody List<Long> ids) {
@@ -130,6 +141,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 批量删除切片
      */
+    @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/batchDelete")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {

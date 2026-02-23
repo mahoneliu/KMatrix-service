@@ -1,5 +1,6 @@
 package org.dromara.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.BatchChunkPreviewBo;
@@ -44,6 +45,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 上传文档到数据集
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/upload")
     public R<KmDocumentVo> upload(
@@ -55,6 +57,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量上传文档到数据集
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadBatch")
     public R<List<KmDocumentVo>> uploadBatch(
@@ -66,6 +69,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 查询数据集下的文档列表
      */
+    @SaCheckPermission("ai:document:list")
     @GetMapping("/listByDataset/{datasetId}")
     public R<List<KmDocumentVo>> listByDataset(
             @NotNull(message = "数据集ID不能为空") @PathVariable Long datasetId) {
@@ -75,6 +79,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 查询知识库下的所有文档列表
      */
+    @SaCheckPermission("ai:document:list")
     @GetMapping("/listByKb/{kbId}")
     public R<List<KmDocumentVo>> listByKb(
             @NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
@@ -84,6 +89,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 分页查询文档列表
      */
+    @SaCheckPermission("ai:document:list")
     @GetMapping("/list")
     public TableDataInfo<KmDocumentVo> list(KmDocumentBo bo, PageQuery pageQuery) {
         return documentService.pageList(bo, pageQuery);
@@ -92,6 +98,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 获取文档详细信息
      */
+    @SaCheckPermission("ai:document:query")
     @GetMapping("/{id:\\d+}")
     public R<KmDocumentVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
         return R.ok(documentService.queryById(id));
@@ -100,6 +107,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 删除文档
      */
+    @SaCheckPermission("ai:document:remove")
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -107,18 +115,9 @@ public class KmDocumentController extends BaseController {
     }
 
     /**
-     * 重新处理文档 (重新触发ETL)
-     */
-    // @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
-    // @PostMapping("/reprocess/{id:\\d+}")
-    // public R<Void> reprocess(@NotNull(message = "主键不能为空") @PathVariable Long id)
-    // {
-    // return toAjax(documentService.reprocessEmbeddingDocument(id));
-    // }
-
-    /**
      * 创建在线文档
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/createOnlineDoc")
     public R<KmDocumentVo> createOnlineDoc(
@@ -131,6 +130,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 创建网页链接文档
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/createWebLink")
     public R<KmDocumentVo> createWebLink(
@@ -142,6 +142,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 启用文档
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/enable/{id:\\d+}")
     public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -151,6 +152,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 禁用文档
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/disable/{id:\\d+}")
     public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -160,6 +162,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量启用文档
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/batchEnable")
     public R<Void> batchEnable(@RequestBody List<Long> ids) {
@@ -169,6 +172,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量禁用文档
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/batchDisable")
     public R<Void> batchDisable(@RequestBody List<Long> ids) {
@@ -178,6 +182,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量删除文档
      */
+    @SaCheckPermission("ai:document:remove")
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
     @DeleteMapping("/batchDelete")
     public R<Void> batchDelete(@RequestBody List<Long> ids) {
@@ -187,6 +192,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 更新文档名称
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/{id:\\d+}")
     public R<Void> updateDocumentName(
@@ -198,6 +204,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量向量化生成
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/batchEmbedding")
     public R<Void> batchEmbedding(@RequestBody BatchEmbeddingRequest request) {
@@ -209,6 +216,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 单个文档向量化
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/embedding/{id:\\d+}")
     public R<Void> embedding(
@@ -220,6 +228,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量问题生成
      */
+    @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/batchGenerateQuestions")
     public R<Void> batchGenerateQuestions(@RequestBody BatchGenerateQuestionsRequest request) {
@@ -230,6 +239,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 上传临时文件 (分块预览流程第一步)
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadTemp")
     public R<TempFileVo> uploadTemp(
@@ -241,6 +251,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量上传临时文件 (分块预览流程第一步 - 批量版本)
      */
+    @SaCheckPermission("ai:document:add")
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadTempBatch")
     public R<List<TempFileVo>> uploadTempBatch(
@@ -252,6 +263,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 预览分块 (分块预览流程第二步)
      */
+    @SaCheckPermission("ai:document:query")
     @PostMapping("/previewChunks")
     public R<List<ChunkPreviewVo>> previewChunks(@RequestBody ChunkPreviewBo bo) {
         return R.ok(documentService.previewChunks(bo));
@@ -260,6 +272,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量预览分块 (分块预览流程第二步 - 批量版本)
      */
+    @SaCheckPermission("ai:document:query")
     @PostMapping("/batchPreviewChunks")
     public R<Map<Long, List<ChunkPreviewVo>>> batchPreviewChunks(@RequestBody BatchChunkPreviewBo bo) {
         return R.ok(documentService.batchPreviewChunks(bo));
@@ -268,6 +281,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 提交分块并入库 (分块预览流程第三步)
      */
+    @SaCheckPermission("ai:document:add")
     public R<KmDocumentVo> submitChunks(@RequestBody ChunkSubmitBo bo) {
         return R.ok(documentService.submitChunks(bo));
     }
@@ -275,6 +289,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 下载文档
      */
+    @SaCheckPermission("ai:document:download")
     @Log(title = "知识库文档", businessType = BusinessType.EXPORT)
     @GetMapping("/download/{id:\\d+}")
     public void download(@NotNull(message = "主键不能为空") @PathVariable Long id, HttpServletResponse response) {

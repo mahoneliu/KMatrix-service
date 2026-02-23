@@ -1,5 +1,6 @@
 package org.dromara.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmQuestionBo;
@@ -34,6 +35,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 分页查询问题列表
      */
+    @SaCheckPermission("ai:question:list")
     @GetMapping("/list")
     public TableDataInfo<KmQuestionVo> list(KmQuestionBo bo, PageQuery pageQuery) {
         return questionService.pageList(bo, pageQuery);
@@ -42,6 +44,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 查询切片关联的问题列表
      */
+    @SaCheckPermission("ai:question:list")
     @GetMapping("/listByChunk/{chunkId}")
     public R<List<KmQuestionVo>> listByChunk(@NotNull(message = "切片ID不能为空") @PathVariable Long chunkId) {
         return R.ok(questionService.listByChunkId(chunkId));
@@ -50,6 +53,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 查询文档下的所有问题
      */
+    @SaCheckPermission("ai:question:list")
     @GetMapping("/listByDocument/{documentId}")
     public R<List<KmQuestionVo>> listByDocument(@NotNull(message = "文档ID不能为空") @PathVariable Long documentId) {
         return R.ok(questionService.listByDocumentId(documentId));
@@ -58,6 +62,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 手动添加问题
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping
     public R<Void> add(@RequestBody Map<String, Object> body) {
@@ -74,6 +79,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 关联现有问题
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping("/link")
     public R<Void> link(@RequestBody Map<String, Object> body) {
@@ -93,6 +99,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 取消关联问题
      */
+    @SaCheckPermission("ai:question:remove")
     @Log(title = "知识库问题", businessType = BusinessType.DELETE)
     @PostMapping("/unlink")
     public R<Void> unlink(@RequestBody Map<String, Object> body) {
@@ -112,6 +119,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 删除问题
      */
+    @SaCheckPermission("ai:question:remove")
     @Log(title = "知识库问题", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
@@ -121,6 +129,7 @@ public class KmQuestionController extends BaseController {
     /**
      * AI自动生成问题
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping("/generate")
     public R<List<KmQuestionVo>> generate(@RequestBody Map<String, Object> body) {
@@ -145,6 +154,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 批量为切片生成问题
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping("/batchGenerate")
     public R<Void> batchGenerate(@RequestBody Map<String, Object> body) {
@@ -172,6 +182,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 查询知识库下的所有问题
      */
+    @SaCheckPermission("ai:question:list")
     @GetMapping("/listByKb/{kbId}")
     public R<List<KmQuestionVo>> listByKb(@NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
         return R.ok(questionService.listByKbId(kbId));
@@ -180,6 +191,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 更新问题内容
      */
+    @SaCheckPermission("ai:question:edit")
     @Log(title = "知识库问题", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
     public R<Void> update(@NotNull(message = "问题ID不能为空") @PathVariable Long id,
@@ -195,6 +207,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 批量删除问题
      */
+    @SaCheckPermission("ai:question:remove")
     @Log(title = "知识库问题", businessType = BusinessType.DELETE)
     @DeleteMapping("/batch")
     public R<Void> batchRemove(@RequestBody List<Long> ids) {
@@ -207,6 +220,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 批量添加问题到知识库
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping("/batchAdd")
     public R<Void> batchAdd(@RequestBody Map<String, Object> body) {
@@ -227,6 +241,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 获取问题关联的分段列表
      */
+    @SaCheckPermission("ai:question:query")
     @GetMapping("/{id}/chunks")
     public R<List<Map<String, Object>>> getLinkedChunks(@NotNull(message = "问题ID不能为空") @PathVariable Long id) {
         return R.ok(questionService.getLinkedChunks(id));
@@ -235,6 +250,7 @@ public class KmQuestionController extends BaseController {
     /**
      * 批量关联问题到分段
      */
+    @SaCheckPermission("ai:question:add")
     @Log(title = "知识库问题", businessType = BusinessType.INSERT)
     @PostMapping("/batchLink")
     public R<Void> batchLink(@RequestBody Map<String, Object> body) {

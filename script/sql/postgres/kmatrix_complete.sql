@@ -3085,6 +3085,118 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 INSERT INTO sys_role_menu (role_id, menu_id) 
 SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2026;
 
+-- ======================================================================
+-- AI 模块补充按钮级接口权限 (菜单 ID 2027-2060)
+-- 补充各控制器 @SaCheckPermission 对应的按钮级菜单权限，
+-- 与已有页面菜单形成完整的 列表/查询/新增/修改/删除 权限体系
+-- ======================================================================
+
+-- ----------------------------
+-- 模型管理按钮权限 (parent: 2001)
+-- KmModelController: ai:model:list 已有；补充 query/add/edit/remove
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2027, '模型查询', 2001, 1, '', '', 1, 0, 'F', '0', '0', 'ai:model:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2028, '模型新增', 2001, 2, '', '', 1, 0, 'F', '0', '0', 'ai:model:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2029, '模型修改', 2001, 3, '', '', 1, 0, 'F', '0', '0', 'ai:model:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2030, '模型删除', 2001, 4, '', '', 1, 0, 'F', '0', '0', 'ai:model:remove', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 工作流模板按钮权限 (parent: 2020)
+-- KmWorkflowTemplateController 使用 ai:workflowTemplate:* (驼峰，与已有菜单保持一致)
+-- SQL 已有: 2021=query, 2022=add, 2023=edit, 2024=remove，无需重复，仅追加列表查询权限
+-- 注意: KmWorkflowTemplateController 代码中使用了 ai:workflow-template:* (连字符)，
+--       与以下 SQL 权限标识不一致，建议统一为驼峰格式
+-- ----------------------------
+-- (工作流模板已有 query/add/edit/remove 四个按钮，菜单 2021-2024，无需补充)
+
+-- ----------------------------
+-- 节点定义按钮权限 (parent: 2015)
+-- KmNodeDefinitionController: ai:workflow:node:list/query/add/edit/remove
+-- 已有 2015 节点定义页面菜单(ai:nodeDefinition:list)；補充操作按钮
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2031, '节点查询', 2015, 1, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:node:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2032, '节点新增', 2015, 2, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:node:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2033, '节点修改', 2015, 3, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:node:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2034, '节点删除', 2015, 4, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:node:remove', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 数据源管理按钮权限 (parent: 2016)
+-- KmDataSourceController / KmDatabaseMetaController: ai:datasource:list/query/add/edit/remove
+-- 已有 2016 数据源管理页面菜单(ai:datasourceManager:list)；补充操作按钮
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2035, '数据源列表', 2016, 1, '', '', 1, 0, 'F', '0', '0', 'ai:datasource:list',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2036, '数据源查询', 2016, 2, '', '', 1, 0, 'F', '0', '0', 'ai:datasource:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2037, '数据源新增', 2016, 3, '', '', 1, 0, 'F', '0', '0', 'ai:datasource:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2038, '数据源修改', 2016, 4, '', '', 1, 0, 'F', '0', '0', 'ai:datasource:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2039, '数据源删除', 2016, 5, '', '', 1, 0, 'F', '0', '0', 'ai:datasource:remove', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 将以上补充的按钮权限分配给超级管理员角色(role_id=1)
+-- ----------------------------
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2027 AND menu_id <= 2039;
+
+-- ======================================================================
+-- 知识库相关控制器按钮级接口权限 (菜单 ID 2040-2075)
+-- KmKnowledgeBaseController / KmDocumentController / KmDocumentChunkController
+-- KmQuestionController / KmRetrievalController
+-- ======================================================================
+
+-- ----------------------------
+-- 知识库管理按钮权限 (parent: 2018)
+-- KmKnowledgeBaseController: ai:knowledge:list 已有页面菜单；补充操作按钮
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2040, '知识库查询', 2018, 1, '', '', 1, 0, 'F', '0', '0', 'ai:knowledge:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2041, '知识库新增', 2018, 2, '', '', 1, 0, 'F', '0', '0', 'ai:knowledge:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2042, '知识库修改', 2018, 3, '', '', 1, 0, 'F', '0', '0', 'ai:knowledge:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2043, '知识库删除', 2018, 4, '', '', 1, 0, 'F', '0', '0', 'ai:knowledge:remove', '#', 1, CURRENT_TIMESTAMP, ''),
+(2044, '知识库检索', 2018, 5, '', '', 1, 0, 'F', '0', '0', 'ai:retrieval:search', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 文档管理按钮权限 (parent: 2019 知识库详情页)
+-- KmDocumentController: ai:document:list/query/add/edit/remove/download
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2050, '文档列表', 2019, 1, '', '', 1, 0, 'F', '0', '0', 'ai:document:list',     '#', 1, CURRENT_TIMESTAMP, ''),
+(2051, '文档查询', 2019, 2, '', '', 1, 0, 'F', '0', '0', 'ai:document:query',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2052, '文档上传', 2019, 3, '', '', 1, 0, 'F', '0', '0', 'ai:document:add',      '#', 1, CURRENT_TIMESTAMP, ''),
+(2053, '文档修改', 2019, 4, '', '', 1, 0, 'F', '0', '0', 'ai:document:edit',     '#', 1, CURRENT_TIMESTAMP, ''),
+(2054, '文档删除', 2019, 5, '', '', 1, 0, 'F', '0', '0', 'ai:document:remove',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2055, '文档下载', 2019, 6, '', '', 1, 0, 'F', '0', '0', 'ai:document:download', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 切片管理按钮权限 (parent: 2026 分块管理页)
+-- KmDocumentChunkController: ai:chunk:list/query/add/edit/remove
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2060, '切片列表', 2026, 1, '', '', 1, 0, 'F', '0', '0', 'ai:chunk:list',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2061, '切片查询', 2026, 2, '', '', 1, 0, 'F', '0', '0', 'ai:chunk:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2062, '切片新增', 2026, 3, '', '', 1, 0, 'F', '0', '0', 'ai:chunk:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2063, '切片修改', 2026, 4, '', '', 1, 0, 'F', '0', '0', 'ai:chunk:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2064, '切片删除', 2026, 5, '', '', 1, 0, 'F', '0', '0', 'ai:chunk:remove', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 问题管理按钮权限 (parent: 2026 分块管理页)
+-- KmQuestionController: ai:question:list/query/add/edit/remove
+-- ----------------------------
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
+(2070, '问题列表', 2026, 6,  '', '', 1, 0, 'F', '0', '0', 'ai:question:list',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2071, '问题查询', 2026, 7,  '', '', 1, 0, 'F', '0', '0', 'ai:question:query',  '#', 1, CURRENT_TIMESTAMP, ''),
+(2072, '问题新增', 2026, 8,  '', '', 1, 0, 'F', '0', '0', 'ai:question:add',    '#', 1, CURRENT_TIMESTAMP, ''),
+(2073, '问题修改', 2026, 9,  '', '', 1, 0, 'F', '0', '0', 'ai:question:edit',   '#', 1, CURRENT_TIMESTAMP, ''),
+(2074, '问题删除', 2026, 10, '', '', 1, 0, 'F', '0', '0', 'ai:question:remove', '#', 1, CURRENT_TIMESTAMP, '');
+
+-- ----------------------------
+-- 将以上知识库相关按钮权限分配给超级管理员角色(role_id=1)
+-- ----------------------------
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2040 AND menu_id <= 2074;
+
+
 -- 内置系统模板: 标准知识库问答
 INSERT INTO km_workflow_template
 (template_id, template_name, template_code, description, icon, category, scope_type, workflow_config, graph_data, "version", parent_version_id, is_published, publish_time, is_enabled, use_count, create_dept, create_by, create_time, update_by, update_time, remark, dsl_data) VALUES

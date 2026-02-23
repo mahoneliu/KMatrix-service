@@ -41,7 +41,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 查询工作流模板列表
      */
-    @SaCheckPermission("ai:workflow-template:list")
+    @SaCheckPermission("ai:workflowTemplate:list")
     @GetMapping("/list")
     public TableDataInfo<KmWorkflowTemplateVo> list(KmWorkflowTemplateBo bo, PageQuery pageQuery) {
         return templateService.queryPageList(bo, pageQuery);
@@ -70,7 +70,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 获取工作流模板详情
      */
-    @SaCheckPermission("ai:workflow-template:query")
+    @SaCheckPermission("ai:workflowTemplate:query")
     @GetMapping("/{templateId}")
     public R<KmWorkflowTemplateVo> getInfo(@PathVariable Long templateId) {
         return R.ok(templateService.queryById(templateId));
@@ -79,7 +79,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 新增工作流模板 (仅用户模板)
      */
-    @SaCheckPermission("ai:workflow-template:add")
+    @SaCheckPermission("ai:workflowTemplate:add")
     @Log(title = "工作流模板", businessType = BusinessType.INSERT)
     @PostMapping
     public R<Long> add(@Validated @RequestBody KmWorkflowTemplateBo bo) {
@@ -92,7 +92,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 修改工作流模板 (仅用户模板)
      */
-    @SaCheckPermission("ai:workflow-template:edit")
+    @SaCheckPermission("ai:workflowTemplate:edit")
     @Log(title = "工作流模板", businessType = BusinessType.UPDATE)
     @PutMapping
     public R<Void> edit(@Validated @RequestBody KmWorkflowTemplateBo bo) {
@@ -107,7 +107,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 删除工作流模板 (仅用户模板)
      */
-    @SaCheckPermission("ai:workflow-template:remove")
+    @SaCheckPermission("ai:workflowTemplate:remove")
     @Log(title = "工作流模板", businessType = BusinessType.DELETE)
     @DeleteMapping("/{templateIds}")
     public R<Void> remove(@PathVariable Long[] templateIds) {
@@ -140,7 +140,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 复制模板为自定义模板
      */
-    @SaCheckPermission("ai:workflow-template:add")
+    @SaCheckPermission("ai:workflowTemplate:add")
     @Log(title = "复制工作流模板", businessType = BusinessType.INSERT)
     @PostMapping("/copy/{templateId}")
     public R<Long> copyTemplate(@PathVariable Long templateId,

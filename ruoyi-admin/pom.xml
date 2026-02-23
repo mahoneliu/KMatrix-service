@@ -142,18 +142,8 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!-- 默认只声明 maven-jar-plugin 和 maven-war-plugin，不在此处执行 repackage -->
+            <!-- repackage 由下面的 profile 控制，避免 Fat JAR 覆盖增量打包 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -171,10 +161,40 @@
         </plugins>
     </build>
     <profiles>
+        <!-- 默认打包：生成包含所有依赖的 Fat JAR（适用于直接运行部署） -->
         <profile>
-            <id>incremental</id>
+            <id>default-package</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <version>${spring-boot.version}</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>repackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 增量打包：生成瘦 JAR + lib/ 目录（适用于只更新部分模块的增量部署） -->
+        <!-- 使用方式: mvn clean package -P incremental -->
+        <profile>
+            <id>incremental</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- 配置 MANIFEST 让瘦 JAR 能通过 lib/ 找到依赖 -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
@@ -184,11 +204,12 @@
                                 <manifest>
                                     <addClasspath>true</addClasspath>
                                     <classpathPrefix>lib/</classpathPrefix>
-                                    <mainClass>org.dromara.RuoYiApplication</mainClass>
+                                    <mainClass>org.dromara.DromaraApplication</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
                     </plugin>
+                    <!-- 将所有依赖复制到 target/lib/ -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-dependency-plugin</artifactId>
@@ -208,6 +229,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- 禁用 spring-boot repackage，不生成 Fat JAR -->
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>

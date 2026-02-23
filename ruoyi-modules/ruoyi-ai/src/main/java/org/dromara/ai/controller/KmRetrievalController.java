@@ -1,5 +1,6 @@
 package org.dromara.ai.controller;
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmRetrievalBo;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
@@ -33,6 +34,7 @@ public class KmRetrievalController extends BaseController {
      * - KEYWORD: 关键词全文检索
      * - HYBRID: 混合检索 (向量 + 关键词 + RRF 融合)
      */
+    @SaCheckPermission("ai:retrieval:search")
     @PostMapping("/search")
     public R<List<KmRetrievalResultVo>> search(@RequestBody KmRetrievalBo bo) {
         return R.ok(retrievalService.search(bo));
@@ -45,6 +47,7 @@ public class KmRetrievalController extends BaseController {
      * @param kbId  知识库ID (可选)
      * @param topK  返回数量 (默认 5)
      */
+    @SaCheckPermission("ai:retrieval:search")
     @GetMapping("/query")
     public R<List<KmRetrievalResultVo>> query(
             @RequestParam String query,
@@ -70,6 +73,7 @@ public class KmRetrievalController extends BaseController {
      * @param kbId  知识库ID (可选)
      * @param topK  返回数量 (默认 5)
      */
+    @SaCheckPermission("ai:retrieval:search")
     @GetMapping("/hybrid")
     public R<List<KmRetrievalResultVo>> hybridQuery(
             @RequestParam String query,
