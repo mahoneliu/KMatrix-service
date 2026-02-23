@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.dromara.ai.handler.UniversalJsonTypeHandler;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 import java.util.Map;
@@ -43,7 +44,7 @@ public class KmDataset extends BaseEntity {
     /**
      * ETL配置 (JSON)
      */
-    @TableField(typeHandler = org.dromara.ai.handler.UniversalJsonTypeHandler.class)
+    @TableField(typeHandler = UniversalJsonTypeHandler.class)
     private Map<String, Object> config;
 
     /**

@@ -1,20 +1,19 @@
 package org.dromara.ai.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import org.dromara.ai.domain.KmApp;
-import org.dromara.ai.domain.KmAppKnowledge;
-import org.dromara.ai.domain.KmAppVersion;
+import org.dromara.ai.domain.*;
 import org.dromara.ai.domain.bo.KmAppBo;
 import org.dromara.ai.domain.enums.AiAppType;
+import org.dromara.ai.domain.vo.KmAppStatisticsVo;
+import org.dromara.ai.domain.vo.KmAppVersionVo;
 import org.dromara.ai.domain.vo.KmAppVo;
 import org.dromara.ai.domain.vo.config.AppSnapshot;
-import org.dromara.ai.mapper.KmAppKnowledgeMapper;
-import org.dromara.ai.mapper.KmAppMapper;
-import org.dromara.ai.mapper.KmAppVersionMapper;
+import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.common.core.utils.MapstructUtils;
@@ -28,6 +27,7 @@ import org.dromara.ai.service.IKmAppTokenService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,8 +45,8 @@ public class KmAppServiceImpl implements IKmAppService {
     private final KmAppVersionMapper versionMapper;
     private final KmAppKnowledgeMapper appKnowledgeMapper;
     private final IKmAppTokenService appTokenService;
-    private final org.dromara.ai.mapper.KmChatSessionMapper chatSessionMapper;
-    private final org.dromara.ai.mapper.KmChatMessageMapper chatMessageMapper;
+    private final KmChatSessionMapper chatSessionMapper;
+    private final KmChatMessageMapper chatMessageMapper;
 
     /**
      * 查询AI应用
@@ -303,25 +303,25 @@ public class KmAppServiceImpl implements IKmAppService {
      * 获取应用统计数据
      */
     @Override
-    public org.dromara.ai.domain.vo.KmAppStatisticsVo getAppStatistics(Long appId, String period) {
+    public KmAppStatisticsVo getAppStatistics(Long appId, String period) {
         if (appId == null) {
-            return new org.dromara.ai.domain.vo.KmAppStatisticsVo();
+            return new KmAppStatisticsVo();
         }
 
         // 计算时间范围
         Date startTime = calculateStartTime(period);
 
         // 统计数据
-        org.dromara.ai.domain.vo.KmAppStatisticsVo stats = new org.dromara.ai.domain.vo.KmAppStatisticsVo();
+        KmAppStatisticsVo stats = new KmAppStatisticsVo();
 
         // 1. 用户总数 (基于会话去重)
         // SELECT COUNT(DISTINCT user_id) FROM km_chat_session WHERE app_id = ? AND
         // create_time >= ?
         // 这里暂时简化为查询会话数，实际应关联用户
         long userCount = chatSessionMapper.selectCount(
-                new LambdaQueryWrapper<org.dromara.ai.domain.KmChatSession>()
-                        .eq(org.dromara.ai.domain.KmChatSession::getAppId, appId)
-                        .ge(startTime != null, org.dromara.ai.domain.KmChatSession::getCreateTime, startTime));
+                new LambdaQueryWrapper<KmChatSession>()
+                        .eq(KmChatSession::getAppId, appId)
+                        .ge(startTime != null, KmChatSession::getCreateTime, startTime));
         stats.setUserCount(userCount);
         stats.setUserCountDelta(0L); // 暂不计算环比
 
@@ -331,8 +331,8 @@ public class KmAppServiceImpl implements IKmAppService {
         // 注意:这里如果会话很多可能有性能问题, 理想情况应该在 Message 表冗余 appId 或使用 JOIN
         // 这里暂时使用 EXISTS 子查询 (MyBatis-Plus apply)
         long questionCount = chatMessageMapper.selectCount(
-                new LambdaQueryWrapper<org.dromara.ai.domain.KmChatMessage>()
-                        .eq(org.dromara.ai.domain.KmChatMessage::getRole, "user") // 只统计用户提问
+                new LambdaQueryWrapper<KmChatMessage>()
+                        .eq(KmChatMessage::getRole, "user") // 只统计用户提问
                         .apply("session_id IN (SELECT session_id FROM km_chat_session WHERE app_id = {0}" +
                                 (startTime != null ? " AND create_time >= {1}" : "") + ")",
                                 appId, startTime));
@@ -343,14 +343,14 @@ public class KmAppServiceImpl implements IKmAppService {
         stats.setTokensTotal(0L);
 
         // 4. 用户满意度
-        org.dromara.ai.domain.vo.KmAppStatisticsVo.Satisfaction satisfaction = new org.dromara.ai.domain.vo.KmAppStatisticsVo.Satisfaction();
+        KmAppStatisticsVo.Satisfaction satisfaction = new KmAppStatisticsVo.Satisfaction();
         satisfaction.setLike(0L);
         satisfaction.setDislike(0L);
         stats.setSatisfaction(satisfaction);
 
         // 5. 模拟趋势数据 (后续对接真实数据)
-        stats.setUserTrend(new java.util.HashMap<>());
-        stats.setQuestionTrend(new java.util.HashMap<>());
+        stats.setUserTrend(new HashMap<>());
+        stats.setQuestionTrend(new HashMap<>());
 
         return stats;
     }
@@ -358,11 +358,11 @@ public class KmAppServiceImpl implements IKmAppService {
     private Date calculateStartTime(String period) {
         Date now = new Date();
         if ("7d".equals(period)) {
-            return cn.hutool.core.date.DateUtil.offsetDay(now, -7);
+            return DateUtil.offsetDay(now, -7);
         } else if ("30d".equals(period)) {
-            return cn.hutool.core.date.DateUtil.offsetDay(now, -30);
+            return DateUtil.offsetDay(now, -30);
         } else if ("90d".equals(period)) {
-            return cn.hutool.core.date.DateUtil.offsetDay(now, -90);
+            return DateUtil.offsetDay(now, -90);
         }
         return null; // 全部
     }
@@ -371,11 +371,11 @@ public class KmAppServiceImpl implements IKmAppService {
      * 获取应用发布历史
      */
     @Override
-    public List<org.dromara.ai.domain.vo.KmAppVersionVo> getPublishHistory(Long appId) {
+    public List<KmAppVersionVo> getPublishHistory(Long appId) {
         List<KmAppVersion> versions = versionMapper.selectList(
                 new LambdaQueryWrapper<KmAppVersion>()
                         .eq(KmAppVersion::getAppId, appId)
                         .orderByDesc(KmAppVersion::getVersion));
-        return MapstructUtils.convert(versions, org.dromara.ai.domain.vo.KmAppVersionVo.class);
+        return MapstructUtils.convert(versions, KmAppVersionVo.class);
     }
 }

@@ -6,10 +6,7 @@ import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.dromara.ai.domain.vo.NodeParamDefinitionVo;
 
-import java.sql.CallableStatement;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,10 +30,10 @@ public class NodeParamListTypeHandler extends BaseTypeHandler<List<NodeParamDefi
                 ps.setObject(i, pgObject);
                 return;
             } catch (Exception e) {
-                ps.setObject(i, json, java.sql.Types.OTHER);
+                ps.setObject(i, json, Types.OTHER);
             }
         } else {
-            ps.setObject(i, json, java.sql.Types.OTHER);
+            ps.setObject(i, json, Types.OTHER);
         }
     }
 

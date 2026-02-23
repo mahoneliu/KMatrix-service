@@ -1,7 +1,8 @@
 package org.dromara.ai.workflow.core;
 
+import java.util.List;
 import java.util.Map;
-
+import org.dromara.ai.domain.vo.config.ParamDefinition;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
 
@@ -57,7 +58,7 @@ public interface WorkflowNode {
      *
      * @return 输入参数定义列表，默认返回null表示不进行类型转换
      */
-    default java.util.List<org.dromara.ai.domain.vo.config.ParamDefinition> getInputParamDefs() {
+    default List<ParamDefinition> getInputParamDefs() {
         return null;
     }
 

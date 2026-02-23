@@ -1,6 +1,10 @@
 package org.dromara.ai.service.etl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.text.csv.CsvData;
+import cn.hutool.core.text.csv.CsvReader;
+import cn.hutool.core.text.csv.CsvRow;
+import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
@@ -19,6 +23,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -200,16 +206,16 @@ public class QaPairEtlHandler implements EtlHandler {
      * 读取 CSV 文件为原始行列表
      */
     private List<List<String>> readCsvAsRows(InputStream is) {
-        cn.hutool.core.text.csv.CsvReader reader = cn.hutool.core.text.csv.CsvUtil.getReader();
-        cn.hutool.core.text.csv.CsvData data = reader
-                .read(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8));
-        List<cn.hutool.core.text.csv.CsvRow> rows = data.getRows();
+        CsvReader reader = CsvUtil.getReader();
+        CsvData data = reader
+                .read(new InputStreamReader(is, StandardCharsets.UTF_8));
+        List<CsvRow> rows = data.getRows();
         if (CollUtil.isEmpty(rows)) {
             return Collections.emptyList();
         }
 
         List<List<String>> result = new ArrayList<>();
-        for (cn.hutool.core.text.csv.CsvRow row : rows) {
+        for (CsvRow row : rows) {
             result.add(row.getRawList());
         }
         return result;

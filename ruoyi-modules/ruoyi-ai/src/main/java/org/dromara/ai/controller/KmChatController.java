@@ -1,10 +1,12 @@
 package org.dromara.ai.controller;
-
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
+import org.dromara.ai.domain.vo.KmNodeExecutionVo;
+import org.dromara.ai.enums.ChatUserType;
 import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.ai.service.IKmChatService;
@@ -49,7 +51,7 @@ public class KmChatController extends BaseController {
         if (tokenInfo.getUserType() != null) {
             bo.setUserType(tokenInfo.getUserType().getCode());
         } else {
-            bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
+            bo.setUserType(ChatUserType.ANONYMOUS_USER.getCode());
         }
 
         if (tokenInfo.getAppId() != null) {
@@ -73,7 +75,7 @@ public class KmChatController extends BaseController {
         if (info.getUserType() != null) {
             bo.setUserType(info.getUserType().getCode());
         } else {
-            bo.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER.getCode());
+            bo.setUserType(ChatUserType.ANONYMOUS_USER.getCode());
         }
 
         return R.ok(chatService.chat(bo));
@@ -128,7 +130,7 @@ public class KmChatController extends BaseController {
      */
     @PutMapping("/session/{sessionId}/title")
     public R<Void> updateSessionTitle(@PathVariable Long sessionId,
-            @RequestBody java.util.Map<String, String> params,
+            @RequestBody Map<String, String> params,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         String title = params.get("title");
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
@@ -155,7 +157,7 @@ public class KmChatController extends BaseController {
             if (appId != null) {
                 ChatSessionTokenInfo info = new ChatSessionTokenInfo();
                 info.setAppId(appId);
-                info.setUserType(org.dromara.ai.enums.ChatUserType.ANONYMOUS_USER);
+                info.setUserType(ChatUserType.ANONYMOUS_USER);
                 return info;
             }
         }
@@ -165,7 +167,7 @@ public class KmChatController extends BaseController {
         if (LoginHelper.isLogin()) {
             ChatSessionTokenInfo info = new ChatSessionTokenInfo();
             info.setUserId(LoginHelper.getUserId());
-            info.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER);
+            info.setUserType(ChatUserType.SYSTEM_USER);
             return info;
         }
 
@@ -181,7 +183,7 @@ public class KmChatController extends BaseController {
      * 调试会话（sessionId < 0）不支持查询
      */
     @GetMapping("/execution/session/{sessionId}")
-    public R<List<org.dromara.ai.domain.vo.KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
+    public R<List<KmNodeExecutionVo>> getExecutionDetails(@PathVariable Long sessionId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (sessionId < 0) {
             return R.fail("调试会话不保存执行记录");

@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.core;
-
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Data;
 
 import java.util.List;
@@ -116,9 +117,9 @@ public class WorkflowConfig {
         if (edges == null)
             return false;
         // 检查是否有节点有多个出边
-        java.util.Map<String, Long> outDegree = edges.stream()
-                .collect(java.util.stream.Collectors.groupingBy(EdgeConfig::getFrom,
-                        java.util.stream.Collectors.counting()));
+        Map<String, Long> outDegree = edges.stream()
+                .collect(Collectors.groupingBy(EdgeConfig::getFrom,
+                        Collectors.counting()));
         return outDegree.values().stream().anyMatch(count -> count > 1);
     }
 
@@ -153,7 +154,7 @@ public class WorkflowConfig {
         // 1. 检查 END 节点存在性和唯一性
         List<NodeConfig> endNodes = nodes.stream()
                 .filter(node -> "END".equals(node.getType()))
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
 
         if (endNodes.isEmpty()) {
             throw new IllegalArgumentException("工作流必须包含一个 END 节点");
@@ -174,20 +175,20 @@ public class WorkflowConfig {
 
         // 3. 检查所有终端节点(没有出边的节点)
         // 收集所有有出边的节点
-        java.util.Set<String> nodesWithOutgoingEdges = edges.stream()
+        Set<String> nodesWithOutgoingEdges = edges.stream()
                 .map(EdgeConfig::getFrom)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         // 找出所有终端节点(没有出边的节点)
         List<NodeConfig> terminalNodes = nodes.stream()
                 .filter(node -> !nodesWithOutgoingEdges.contains(node.getId()))
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
 
         // 终端节点只能有一个,且必须是 END 类型
         if (terminalNodes.size() > 1) {
             String terminalNodeIds = terminalNodes.stream()
                     .map(NodeConfig::getId)
-                    .collect(java.util.stream.Collectors.joining(", "));
+                    .collect(Collectors.joining(", "));
             throw new IllegalArgumentException(
                     "工作流只能有一个终端节点(没有出边的节点),当前有多个: " + terminalNodeIds);
         }

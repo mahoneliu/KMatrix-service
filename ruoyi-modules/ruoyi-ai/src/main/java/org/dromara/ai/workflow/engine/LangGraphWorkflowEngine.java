@@ -6,6 +6,7 @@ import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
 import org.dromara.ai.domain.enums.SseEventType;
+import org.dromara.ai.domain.vo.config.ParamDefinition;
 import org.dromara.ai.service.IWorkflowInstanceService;
 import org.dromara.ai.workflow.core.WorkflowConfig;
 import org.dromara.ai.workflow.core.NodeContext;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import ch.qos.logback.core.util.StringUtil;
+import java.nio.charset.StandardCharsets;
 
 import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.StateGraph.END;
@@ -64,8 +66,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 // 2. 重新编码以过滤无效字节序列 (Re-encode to ensure valid UTF-8 bytes)
                 // note: simple re-encoding doesn't fix "wrongly decoded" bytes, but ensures the
                 // resulting string maps to valid UTF-8
-                sanitized.put(entry.getKey(), new String(strVal.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        java.nio.charset.StandardCharsets.UTF_8));
+                sanitized.put(entry.getKey(), new String(strVal.getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8));
             } else if (value instanceof Map) {
                 sanitized.put(entry.getKey(), sanitizeData((Map<String, Object>) value));
             } else if (value instanceof List) {
@@ -88,8 +90,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 // 1. Replace Non-Breaking Space
                 strVal = strVal.replace('\u00A0', ' ');
                 // 2. Re-encode
-                sanitized.add(new String(strVal.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        java.nio.charset.StandardCharsets.UTF_8));
+                sanitized.add(new String(strVal.getBytes(StandardCharsets.UTF_8),
+                        StandardCharsets.UTF_8));
             } else if (item instanceof Map) {
                 sanitized.add(sanitizeData((Map<String, Object>) item));
             } else if (item instanceof List) {
@@ -354,7 +356,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             nodeName = StringUtil.isNullOrEmpty(nodeName) ? node.getNodeName() : nodeName;
 
             // 获取节点的输入参数定义（用于类型转换）
-            java.util.List<org.dromara.ai.domain.vo.config.ParamDefinition> inputParamDefs = node.getInputParamDefs();
+            List<ParamDefinition> inputParamDefs = node.getInputParamDefs();
 
             // 准备输入参数（带类型转换）
             Map<String, Object> inputs = VariableResolver.resolveInputsOrConfig(nodeConfig.getInputs(), state,

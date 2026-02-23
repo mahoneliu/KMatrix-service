@@ -8,12 +8,15 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmChatMessage;
 import org.dromara.ai.domain.KmModel;
 import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.enums.SseEventType;
+import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.mapper.KmChatMessageMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
@@ -125,8 +128,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
                     Map<String, Object> citation = null;
 
                     // 直接从 KmRetrievalResultVo 对象构建 citation
-                    if (item instanceof org.dromara.ai.domain.vo.KmRetrievalResultVo) {
-                        org.dromara.ai.domain.vo.KmRetrievalResultVo vo = (org.dromara.ai.domain.vo.KmRetrievalResultVo) item;
+                    if (item instanceof KmRetrievalResultVo) {
+                        KmRetrievalResultVo vo = (KmRetrievalResultVo) item;
                         citation = new HashMap<>();
                         citation.put("index", i + 1);
                         citation.put("chunkId", vo.getChunkId());
@@ -194,7 +197,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
                         // 默认行为：发送普通消息
                         emitter.send(SseEmitter.event().data(token));
                         // }
-                    } catch (java.io.IOException e) {
+                    } catch (IOException e) {
                         log.error("发送SSE消息失败", e);
                     }
                 }
@@ -230,7 +233,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 获取并记录 token 使用情况
         Response<AiMessage> response = responseRef.get();
         if (response != null && response.tokenUsage() != null) {
-            dev.langchain4j.model.output.TokenUsage tokenUsage = response.tokenUsage();
+            TokenUsage tokenUsage = response.tokenUsage();
 
             // 保存到 NodeContext
             Map<String, Object> tokenUsageMap = new HashMap<>();

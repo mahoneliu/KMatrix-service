@@ -1,7 +1,9 @@
 package org.dromara.ai.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.Map;
 import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.MapKey;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.dromara.ai.domain.KmQuestionChunkMap;
@@ -55,8 +57,8 @@ public interface KmQuestionChunkMapMapper extends BaseMapper<KmQuestionChunkMap>
             "</foreach> " +
             "GROUP BY question_id" +
             "</script>")
-    @org.apache.ibatis.annotations.MapKey("question_id")
-    java.util.Map<Long, java.util.Map<String, Object>> countByQuestionIds(@Param("questionIds") List<Long> questionIds);
+    @MapKey("question_id")
+    Map<Long, Map<String, Object>> countByQuestionIds(@Param("questionIds") List<Long> questionIds);
 
     /**
      * 根据分块ID列表查询关联记录ID列表

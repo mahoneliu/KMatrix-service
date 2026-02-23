@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.nodes;
 
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.dromara.ai.domain.enums.SseEventType;
@@ -63,7 +64,7 @@ public class EndNode extends AbstractWorkflowNode {
                 emitter.send(SseEmitter.event()
                         .name(SseEventType.WORKFLOW_COMPLETE.getEventName())
                         .data(message));
-            } catch (java.io.IOException e) {
+            } catch (IOException e) {
                 log.error("发送complete事件失败", e);
             }
         }

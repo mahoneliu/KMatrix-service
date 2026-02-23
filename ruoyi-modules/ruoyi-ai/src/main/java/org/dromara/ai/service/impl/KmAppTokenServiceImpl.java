@@ -4,9 +4,11 @@ import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmApp;
 import org.dromara.ai.domain.KmAppToken;
 import org.dromara.ai.domain.bo.KmAppTokenBo;
 import org.dromara.ai.domain.vo.KmAppTokenVo;
+import org.dromara.ai.mapper.KmAppMapper;
 import org.dromara.ai.mapper.KmAppTokenMapper;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.common.core.utils.MapstructUtils;
@@ -28,7 +30,7 @@ import java.util.List;
 public class KmAppTokenServiceImpl implements IKmAppTokenService {
 
     private final KmAppTokenMapper baseMapper;
-    private final org.dromara.ai.mapper.KmAppMapper appMapper;
+    private final KmAppMapper appMapper;
 
     @Override
     public KmAppTokenVo queryByToken(String token) {
@@ -95,7 +97,7 @@ public class KmAppTokenServiceImpl implements IKmAppTokenService {
         }
 
         // 检查公开访问开关
-        org.dromara.ai.domain.KmApp app = appMapper.selectById(tokenVo.getAppId());
+        KmApp app = appMapper.selectById(tokenVo.getAppId());
         if (app == null) {
             log.warn("App Token关联的应用不存在: appId={}", tokenVo.getAppId());
             return null;

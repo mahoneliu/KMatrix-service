@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.ChatSessionTokenInfo;
 import org.dromara.ai.domain.vo.KmAppVo;
+import org.dromara.ai.enums.ChatUserType;
 import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppService;
 import org.dromara.ai.workflow.WorkflowExecutor;
@@ -110,7 +111,7 @@ public class KmWorkflowController extends BaseController {
         if (LoginHelper.isLogin()) {
             ChatSessionTokenInfo info = new ChatSessionTokenInfo();
             info.setUserId(LoginHelper.getUserId());
-            info.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER);
+            info.setUserType(ChatUserType.SYSTEM_USER);
             return info;
         }
 

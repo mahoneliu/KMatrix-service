@@ -1,7 +1,9 @@
 package org.dromara.ai.service;
 
 import org.dromara.ai.domain.bo.KmModelBo;
+import org.dromara.ai.domain.bo.KmModelChatSendBo;
 import org.dromara.ai.domain.vo.KmModelVo;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 
 /**
@@ -64,6 +66,6 @@ public interface IKmModelService {
      * @param bo 发送消息对象
      * @return SseEmitter
      */
-    org.springframework.web.servlet.mvc.method.annotation.SseEmitter streamTestChat(
-            org.dromara.ai.domain.bo.KmModelChatSendBo bo);
+    SseEmitter streamTestChat(
+            KmModelChatSendBo bo);
 }

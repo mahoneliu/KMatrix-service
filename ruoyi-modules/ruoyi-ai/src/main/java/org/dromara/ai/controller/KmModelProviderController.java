@@ -5,12 +5,18 @@ import org.dromara.ai.domain.bo.KmModelProviderBo;
 import org.dromara.ai.domain.vo.KmModelProviderVo;
 import org.dromara.ai.service.IKmModelProviderService;
 import org.dromara.common.core.domain.R;
+import org.dromara.common.core.validate.EditGroup;
+import org.dromara.common.log.annotation.Log;
+import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import java.util.List;
 
 /**
@@ -38,20 +44,20 @@ public class KmModelProviderController extends BaseController {
     /**
      * 获取供应商详细信息
      */
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:provider:query")
+    @SaCheckPermission("ai:provider:query")
     @GetMapping("/{providerId}")
-    public R<KmModelProviderVo> getInfo(@org.springframework.web.bind.annotation.PathVariable Long providerId) {
+    public R<KmModelProviderVo> getInfo(@PathVariable Long providerId) {
         return R.ok(providerService.queryById(providerId));
     }
 
     /**
      * 修改供应商
      */
-    @cn.dev33.satoken.annotation.SaCheckPermission("ai:provider:edit")
-    @org.dromara.common.log.annotation.Log(title = "供应商管理", businessType = org.dromara.common.log.enums.BusinessType.UPDATE)
-    @org.springframework.web.bind.annotation.PutMapping
+    @SaCheckPermission("ai:provider:edit")
+    @Log(title = "供应商管理", businessType = BusinessType.UPDATE)
+    @PutMapping
     public R<Void> edit(
-            @org.springframework.validation.annotation.Validated(org.dromara.common.core.validate.EditGroup.class) @org.springframework.web.bind.annotation.RequestBody KmModelProviderBo bo) {
+            @Validated(EditGroup.class) @RequestBody KmModelProviderBo bo) {
         return toAjax(providerService.updateByBo(bo));
     }
 }

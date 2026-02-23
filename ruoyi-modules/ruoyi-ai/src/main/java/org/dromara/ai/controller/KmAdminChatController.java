@@ -6,6 +6,7 @@ import org.dromara.ai.domain.bo.KmChatSendBo;
 import org.dromara.ai.domain.vo.KmChatMessageVo;
 import org.dromara.ai.domain.vo.KmChatSessionVo;
 import org.dromara.ai.domain.vo.KmNodeExecutionVo;
+import org.dromara.ai.enums.ChatUserType;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.utils.StringUtils;
@@ -42,7 +43,7 @@ public class KmAdminChatController extends BaseController {
     public SseEmitter streamChat(@Valid @RequestBody KmChatSendBo bo) {
         // 管理端始终使用当前登录用户ID
         bo.setUserId(LoginHelper.getUserId());
-        bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
+        bo.setUserType(ChatUserType.SYSTEM_USER.getCode());
         return chatService.streamChat(bo);
     }
 
@@ -54,7 +55,7 @@ public class KmAdminChatController extends BaseController {
     public R<String> send(@Valid @RequestBody KmChatSendBo bo) {
         bo.setStream(false);
         bo.setUserId(LoginHelper.getUserId());
-        bo.setUserType(org.dromara.ai.enums.ChatUserType.SYSTEM_USER.getCode());
+        bo.setUserType(ChatUserType.SYSTEM_USER.getCode());
         return R.ok(chatService.chat(bo));
     }
 
