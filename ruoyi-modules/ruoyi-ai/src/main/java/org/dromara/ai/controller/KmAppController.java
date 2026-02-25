@@ -79,7 +79,6 @@ public class KmAppController extends BaseController {
     /**
      * 修改AI应用
      */
-    @DemoBlock
     @SaCheckPermission("ai:app:edit")
     @Log(title = "AI应用", businessType = BusinessType.UPDATE)
     @PutMapping

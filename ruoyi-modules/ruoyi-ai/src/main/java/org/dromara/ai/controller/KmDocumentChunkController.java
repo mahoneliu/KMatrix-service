@@ -73,7 +73,6 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 删除切片
      */
-    @DemoBlock
     @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")
@@ -143,6 +142,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 批量删除切片
      */
+    @DemoBlock
     @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/batchDelete")

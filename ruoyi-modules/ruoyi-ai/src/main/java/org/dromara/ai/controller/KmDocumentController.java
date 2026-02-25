@@ -184,6 +184,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 批量删除文档
      */
+    @DemoBlock
     @SaCheckPermission("ai:document:remove")
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
     @DeleteMapping("/batchDelete")
