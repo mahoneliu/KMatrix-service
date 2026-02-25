@@ -24,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
+import org.dromara.common.core.annotation.DemoBlock;
 
 import java.util.List;
 import java.util.Map;
@@ -107,6 +108,7 @@ public class KmDocumentController extends BaseController {
     /**
      * 删除文档
      */
+    @DemoBlock
     @SaCheckPermission("ai:document:remove")
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")

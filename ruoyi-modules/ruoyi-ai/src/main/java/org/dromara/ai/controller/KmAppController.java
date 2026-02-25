@@ -14,6 +14,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -78,6 +79,7 @@ public class KmAppController extends BaseController {
     /**
      * 修改AI应用
      */
+    @DemoBlock
     @SaCheckPermission("ai:app:edit")
     @Log(title = "AI应用", businessType = BusinessType.UPDATE)
     @PutMapping
@@ -88,6 +90,7 @@ public class KmAppController extends BaseController {
     /**
      * 删除AI应用
      */
+    @DemoBlock
     @SaCheckPermission("ai:app:remove")
     @Log(title = "AI应用", businessType = BusinessType.DELETE)
     @DeleteMapping("/{appIds}")

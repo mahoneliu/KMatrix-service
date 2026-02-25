@@ -10,6 +10,7 @@ import org.dromara.common.idempotent.annotation.RepeatSubmit;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.system.domain.bo.SysDeptBo;
 import org.dromara.system.domain.vo.SysDeptVo;
 import org.dromara.system.service.ISysDeptService;
@@ -53,7 +54,7 @@ public class SysDeptController extends BaseController {
     public R<List<SysDeptVo>> excludeChild(@PathVariable(value = "deptId", required = false) Long deptId) {
         List<SysDeptVo> depts = deptService.selectDeptList(new SysDeptBo());
         depts.removeIf(d -> d.getDeptId().equals(deptId)
-            || StringUtils.splitList(d.getAncestors()).contains(Convert.toStr(deptId)));
+                || StringUtils.splitList(d.getAncestors()).contains(Convert.toStr(deptId)));
         return R.ok(depts);
     }
 
@@ -86,6 +87,7 @@ public class SysDeptController extends BaseController {
     /**
      * 修改部门
      */
+    @DemoBlock
     @SaCheckPermission("system:dept:edit")
     @Log(title = "部门管理", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
@@ -112,6 +114,7 @@ public class SysDeptController extends BaseController {
      *
      * @param deptId 部门ID
      */
+    @DemoBlock
     @SaCheckPermission("system:dept:remove")
     @Log(title = "部门管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{deptId}")

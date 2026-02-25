@@ -13,6 +13,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -124,6 +125,7 @@ public class KmNodeDefinitionController extends BaseController {
      * @return 操作结果
      */
     @Log(title = "节点定义管理", businessType = BusinessType.UPDATE)
+    @DemoBlock
     @SaCheckPermission("ai:workflow:node:edit")
     @PutMapping("/definition")
     public R<Void> edit(
@@ -139,6 +141,7 @@ public class KmNodeDefinitionController extends BaseController {
      * @return 操作结果
      */
     @Log(title = "节点定义管理", businessType = BusinessType.DELETE)
+    @DemoBlock
     @SaCheckPermission("ai:workflow:node:remove")
     @DeleteMapping("/definition/{nodeDefIds}")
     public R<Void> remove(

@@ -92,6 +92,10 @@ public class KmModelServiceImpl implements IKmModelService {
     @Override
     public Boolean updateByBo(KmModelBo bo) {
         KmModel update = MapstructUtils.convert(bo, KmModel.class);
+        // 如果传入的apiKey包含星号，说明前端由于脱敏没有修改真实值，这时置空以便让mybatis-plus的updateIgnoreNull生效，或者单独查出旧值
+        if (StrUtil.isNotBlank(bo.getApiKey()) && bo.getApiKey().contains("*")) {
+            update.setApiKey(null);
+        }
         return baseMapper.updateById(update) > 0;
     }
 
@@ -169,6 +173,15 @@ public class KmModelServiceImpl implements IKmModelService {
 
             String providerKey = provider.getProviderKey();
             String apiKey = bo.getApiKey();
+
+            // 如果前端传过来的apiKey是脱敏后的（包含*），且是修改情况，获取数据库中真实的apiKey
+            if (StrUtil.isNotBlank(apiKey) && apiKey.contains("*") && bo.getModelId() != null) {
+                KmModel oldModel = baseMapper.selectById(bo.getModelId());
+                if (oldModel != null) {
+                    apiKey = oldModel.getApiKey();
+                }
+            }
+
             String apiBase = StrUtil.isNotBlank(bo.getApiBase()) ? bo.getApiBase() : provider.getDefaultEndpoint();
             String modelKey = bo.getModelKey();
 

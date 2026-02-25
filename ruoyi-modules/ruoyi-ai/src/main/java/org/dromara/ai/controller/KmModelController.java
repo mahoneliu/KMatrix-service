@@ -12,6 +12,7 @@ import org.dromara.common.core.validate.EditGroup;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -70,6 +71,7 @@ public class KmModelController extends BaseController {
     /**
      * 修改模型
      */
+    @DemoBlock
     @SaCheckPermission("ai:model:edit")
     @Log(title = "模型管理", businessType = BusinessType.UPDATE)
     @PutMapping()
@@ -80,9 +82,7 @@ public class KmModelController extends BaseController {
     /**
      * 删除模型
      */
-    /**
-     * 删除模型
-     */
+    @DemoBlock
     @SaCheckPermission("ai:model:remove")
     @Log(title = "模型管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{modelIds}")

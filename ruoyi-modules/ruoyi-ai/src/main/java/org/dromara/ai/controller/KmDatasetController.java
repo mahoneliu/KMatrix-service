@@ -13,6 +13,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -77,6 +78,7 @@ public class KmDatasetController extends BaseController {
     /**
      * 删除数据集
      */
+    @DemoBlock
     @Log(title = "数据集", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
     public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long[] ids) {

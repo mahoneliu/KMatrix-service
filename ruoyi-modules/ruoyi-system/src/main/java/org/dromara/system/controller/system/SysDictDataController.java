@@ -12,6 +12,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.system.domain.bo.SysDictDataBo;
 import org.dromara.system.domain.vo.SysDictDataVo;
 import org.dromara.system.service.ISysDictDataService;
@@ -100,6 +101,7 @@ public class SysDictDataController extends BaseController {
     /**
      * 修改保存字典类型
      */
+    @DemoBlock
     @SaCheckPermission("system:dict:edit")
     @Log(title = "字典数据", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
@@ -117,6 +119,7 @@ public class SysDictDataController extends BaseController {
      *
      * @param dictCodes 字典code串
      */
+    @DemoBlock
     @SaCheckPermission("system:dict:remove")
     @Log(title = "字典类型", businessType = BusinessType.DELETE)
     @DeleteMapping("/{dictCodes}")

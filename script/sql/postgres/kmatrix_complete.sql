@@ -2703,6 +2703,7 @@ insert into sys_config values(2, '用户管理-账号初始密码',         'sys
 insert into sys_config values(3, '主框架页-侧边栏主题',           'sys.index.sideTheme',           'theme-dark',    'Y', 103, 1, now(), null, null, '深色主题theme-dark，浅色主题theme-light' );
 insert into sys_config values(5, '账号自助-是否开启用户注册功能',   'sys.account.registerUser',      'false',         'Y', 103, 1, now(), null, null, '是否开启注册用户功能（true开启，false关闭）');
 insert into sys_config values(11, 'OSS预览列表资源开关',          'sys.oss.previewListResource',   'true',          'Y', 103, 1, now(), null, null, 'true:开启, false:关闭');
+insert into sys_config values(12, '公共演示环境标志',          'sys.demo.enabled',   'true',          'Y', 103, 1, now(), null, null, 'true:开启, false:关闭');
 
 insert into sys_dict_type values(1, '用户性别', 'sys_user_sex',        103, 1, now(), null, null, '用户性别列表');
 insert into sys_dict_type values(2, '菜单状态', 'sys_show_hide',       103, 1, now(), null, null, '菜单状态列表');

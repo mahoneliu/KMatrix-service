@@ -11,6 +11,7 @@ import org.dromara.common.core.validate.EditGroup;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -70,6 +71,7 @@ public class KmDatabaseMetaController extends BaseController {
     /**
      * 修改元数据
      */
+    @DemoBlock
     @SaCheckPermission("ai:datasource:edit")
     @Log(title = "数据库元数据", businessType = BusinessType.UPDATE)
     @PutMapping()
@@ -80,6 +82,7 @@ public class KmDatabaseMetaController extends BaseController {
     /**
      * 删除元数据
      */
+    @DemoBlock
     @SaCheckPermission("ai:datasource:remove")
     @Log(title = "数据库元数据", businessType = BusinessType.DELETE)
     @DeleteMapping("/{metaIds}")

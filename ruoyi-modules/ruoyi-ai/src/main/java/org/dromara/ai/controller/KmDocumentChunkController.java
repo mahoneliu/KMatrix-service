@@ -12,6 +12,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -72,6 +73,7 @@ public class KmDocumentChunkController extends BaseController {
     /**
      * 删除切片
      */
+    @DemoBlock
     @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")

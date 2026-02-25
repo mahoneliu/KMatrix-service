@@ -9,6 +9,7 @@ import org.dromara.common.core.validate.EditGroup;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,6 +54,7 @@ public class KmModelProviderController extends BaseController {
     /**
      * 修改供应商
      */
+    @DemoBlock
     @SaCheckPermission("ai:provider:edit")
     @Log(title = "供应商管理", businessType = BusinessType.UPDATE)
     @PutMapping

@@ -12,6 +12,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.system.domain.bo.SysDictDataBo;
 import org.dromara.system.domain.vo.SysDictDataVo;
 import org.dromara.system.service.ISysDictDataService;
@@ -92,6 +93,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 修改工作流模板 (仅用户模板)
      */
+    @DemoBlock
     @SaCheckPermission("ai:workflowTemplate:edit")
     @Log(title = "工作流模板", businessType = BusinessType.UPDATE)
     @PutMapping
@@ -107,6 +109,7 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 删除工作流模板 (仅用户模板)
      */
+    @DemoBlock
     @SaCheckPermission("ai:workflowTemplate:remove")
     @Log(title = "工作流模板", businessType = BusinessType.DELETE)
     @DeleteMapping("/{templateIds}")

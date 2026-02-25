@@ -12,6 +12,7 @@ import org.dromara.common.log.enums.BusinessType;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.system.domain.SysUserRole;
 import org.dromara.system.domain.bo.SysDeptBo;
 import org.dromara.system.domain.bo.SysRoleBo;
@@ -94,6 +95,7 @@ public class SysRoleController extends BaseController {
     /**
      * 修改保存角色
      */
+    @DemoBlock
     @SaCheckPermission("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
@@ -130,6 +132,7 @@ public class SysRoleController extends BaseController {
     /**
      * 状态修改
      */
+    @DemoBlock
     @SaCheckPermission("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
     @RepeatSubmit()
@@ -145,6 +148,7 @@ public class SysRoleController extends BaseController {
      *
      * @param roleIds 角色ID串
      */
+    @DemoBlock
     @SaCheckPermission("system:role:remove")
     @Log(title = "角色管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{roleIds}")
@@ -230,8 +234,8 @@ public class SysRoleController extends BaseController {
     @GetMapping(value = "/deptTree/{roleId}")
     public R<DeptTreeSelectVo> roleDeptTreeselect(@PathVariable("roleId") Long roleId) {
         DeptTreeSelectVo selectVo = new DeptTreeSelectVo(
-            deptService.selectDeptListByRoleId(roleId),
-            deptService.selectDeptTreeList(new SysDeptBo()));
+                deptService.selectDeptListByRoleId(roleId),
+                deptService.selectDeptTreeList(new SysDeptBo()));
         return R.ok(selectVo);
     }
 
@@ -241,6 +245,7 @@ public class SysRoleController extends BaseController {
      * @param checkedKeys 选中部门列表
      * @param depts       下拉树结构列表
      */
-    public record DeptTreeSelectVo(List<Long> checkedKeys, List<Tree<Long>> depts) {}
+    public record DeptTreeSelectVo(List<Long> checkedKeys, List<Tree<Long>> depts) {
+    }
 
 }

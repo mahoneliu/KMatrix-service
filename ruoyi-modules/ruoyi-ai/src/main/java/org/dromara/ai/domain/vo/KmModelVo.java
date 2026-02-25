@@ -3,6 +3,8 @@ package org.dromara.ai.domain.vo;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import org.dromara.ai.domain.KmModel;
+import org.dromara.common.sensitive.annotation.Sensitive;
+import org.dromara.common.sensitive.core.SensitiveStrategy;
 import org.dromara.common.translation.annotation.Translation;
 import org.dromara.common.translation.constant.TransConstant;
 
@@ -54,6 +56,7 @@ public class KmModelVo implements Serializable {
     /**
      * API Key
      */
+    @Sensitive(strategy = SensitiveStrategy.PASSWORD)
     private String apiKey;
 
     /**
