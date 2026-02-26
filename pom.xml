@@ -13,7 +13,7 @@
     <description>KMatrix管理系统</description>
 
     <properties>
-        <revision>5.5.1</revision>
+        <revision>0.5-beta</revision>
         <spring-boot.version>3.5.7</spring-boot.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -118,7 +118,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- common 的依赖配置-->
+            <!-- common 的依赖配置 -->
             <dependency>
                 <groupId>org.dromara</groupId>
                 <artifactId>ruoyi-common-bom</artifactId>
@@ -481,7 +481,7 @@
                         <project>
                             <name>KMatrix</name>
                             <description>KMatrix Local Document AI Platform</description>
-                            <version>0.5-beta</version>
+                            <version>${project.version}</version>
                         </project>
                         <release>
                             <!-- GitHub 发版配置 -->
