@@ -183,11 +183,12 @@ public class KmModelServiceImpl implements IKmModelService {
             }
 
             String apiBase = StrUtil.isNotBlank(bo.getApiBase()) ? bo.getApiBase() : provider.getDefaultEndpoint();
+            bo.setApiBase(apiBase);
             String modelKey = bo.getModelKey();
 
             // 根据供应商类型调用对应的测试方法
             return switch (providerKey) {
-                case "openai" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "OpenAI");
+                case "openai" -> ModelConnectionTester.testOpenAiCompatible(bo, "OpenAI");
                 case "ollama" -> ModelConnectionTester.testOllama(apiBase, modelKey);
                 case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
                 case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
@@ -196,16 +197,22 @@ public class KmModelServiceImpl implements IKmModelService {
                     // 假设 apiBase 是 endpoint, modelKey 是 deploymentName
                     yield ModelConnectionTester.testAzureOpenAi(apiKey, apiBase, modelKey);
                 }
-                case "zhipu" -> ModelConnectionTester.testZhipu(apiKey, modelKey);
+                case "zhipu" -> {
+                    bo.setApiKey(apiKey);
+                    yield ModelConnectionTester.testZhipu(bo);
+                }
                 case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
                 // 其它兼容 OpenAI 协议的供应商
-                case "deepseek" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "DeepSeek");
-                case "moonshot" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "Moonshot");
-                case "xai" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "X.AI");
-                case "vllm" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "vLLM");
-                case "doubao" -> ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, "Doubao");
-                default ->
-                    ModelConnectionTester.testOpenAiCompatible(apiKey, apiBase, modelKey, provider.getProviderName());
+                case "deepseek" -> ModelConnectionTester.testOpenAiCompatible(bo, "DeepSeek");
+                case "moonshot" -> ModelConnectionTester.testOpenAiCompatible(bo, "Moonshot");
+                case "xai" -> ModelConnectionTester.testOpenAiCompatible(bo, "X.AI");
+                case "vllm" -> ModelConnectionTester.testOpenAiCompatible(bo, "vLLM");
+                case "doubao" -> ModelConnectionTester.testOpenAiCompatible(bo, "Doubao");
+                default -> {
+                    bo.setApiKey(apiKey);
+                    bo.setApiBase(apiBase);
+                    yield ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
+                }
             };
         } catch (Exception e) {
             log.error("模型连接测试失败", e);
@@ -244,6 +251,11 @@ public class KmModelServiceImpl implements IKmModelService {
 
                 // 如果需要实时流式，需修改 ModelBuilder 或在此处自行构建 StreamingModel
                 // ModelBuilder 确实有 buildStreamingChatModel
+
+                // 处理 apiBase
+                String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase()
+                        : provider.getDefaultEndpoint();
+                model.setApiBase(apiBase);
 
                 StreamingChatLanguageModel streamingModel = modelBuilder
                         .buildStreamingChatModel(

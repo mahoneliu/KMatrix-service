@@ -71,7 +71,7 @@ if [ -z "$(ls -A $PG_DATA_DIR)" ]; then
     su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D $PG_DATA_DIR -w start"
     
     # Create database and user
-    su - postgres -c "psql -c \"CREATE USER root WITH SUPERUSER PASSWORD 'root';\""
+    su - postgres -c "psql -c \"CREATE USER root WITH SUPERUSER PASSWORD 'kmatrix#321';\""
     su - postgres -c "psql -c \"CREATE DATABASE \"kmatrix\";\""
     su - postgres -c "psql -d \"kmatrix\" -c \"CREATE EXTENSION IF NOT EXISTS vector;\""
     

@@ -9,7 +9,7 @@ spring:
           # Docker容器内部访问，使用 localhost 连接容器自带的 PostgreSQL
           url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true
           username: root
-          password: root
+          password: kmatrix#321
 
 # AI 模块配置
 ai:
@@ -27,3 +27,14 @@ spring.data:
     host: localhost
     port: 6379
     password: 123456
+
+logging:
+  level:
+    dev.langchain4j: INFO
+    org.dromara.ai: INFO
+
+snail-job:
+  enabled: false
+
+spring.boot.admin.client:
+  enabled: false

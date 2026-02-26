@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.config.KmAiProperties;
 import org.dromara.ai.domain.KmModel;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
+import org.dromara.ai.service.IKmModelProviderService;
 import org.dromara.common.core.exception.ServiceException;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +39,10 @@ public class ModelBuilder {
 
     private final KmAiProperties aiProperties;
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
+    private final IKmModelProviderService kmModelServiceImpl;
+
+    // 将默认超时时间从60秒增加到300秒，以适应DeepSeek等带有长推理过程的模型
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(300);
 
     /**
      * 构建聊天模型
@@ -118,7 +123,7 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaStreamingModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiStreamingModel(model, temperature, maxTokens);
@@ -181,6 +186,10 @@ public class ModelBuilder {
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
             builder.baseUrl(model.getApiBase());
+        } else {
+            // 获取provider的默认apiBase
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
         }
         if (temperature != null) {
             builder.temperature(temperature);

@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.nodes;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -169,6 +170,10 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 log.error("LLM_CHAT节点发送引用事件失败", e);
             }
         }
+
+        // 处理 apiBase 并设置回 model 对象以便 ModelBuilder 使用
+        String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase() : provider.getDefaultEndpoint();
+        model.setApiBase(apiBase);
 
         // 使用流式模型（带参数）
         StreamingChatLanguageModel streamingModel = modelBuilder

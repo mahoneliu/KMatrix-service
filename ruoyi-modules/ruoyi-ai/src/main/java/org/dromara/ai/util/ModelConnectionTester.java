@@ -9,6 +9,7 @@ import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GeminiHarmCategory;
 import dev.langchain4j.model.googleai.GeminiHarmBlockThreshold;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.bo.KmModelBo;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -28,31 +29,31 @@ public class ModelConnectionTester {
     /**
      * 测试 OpenAI 兼容模型连接 (含 DeepSeek, Moonshot, XAI, vLLM 等)
      */
-    public static String testOpenAiCompatible(String apiKey, String apiBase, String modelKey, String providerName) {
+    public static String testOpenAiCompatible(KmModelBo bo, String providerName) {
         try {
-            if (StrUtil.isBlank(apiKey)) {
+            if (StrUtil.isBlank(bo.getApiKey())) {
                 return "API Key 不能为空";
             }
-            if (StrUtil.isBlank(modelKey)) {
+            if (StrUtil.isBlank(bo.getModelKey())) {
                 return "基础模型不能为空";
             }
 
             var builder = OpenAiChatModel.builder()
-                    .apiKey(apiKey)
-                    .modelName(modelKey)
+                    .apiKey(bo.getApiKey())
+                    .modelName(bo.getModelKey())
                     .timeout(DEFAULT_TIMEOUT);
 
-            if (StrUtil.isNotBlank(apiBase)) {
-                builder.baseUrl(apiBase);
+            if (StrUtil.isNotBlank(bo.getApiBase())) {
+                builder.baseUrl(bo.getApiBase());
             }
 
             ChatLanguageModel model = builder.build();
             String response = model.generate(TEST_MESSAGE);
 
-            log.info("{} 连接测试成功: model={}, response={}", providerName, modelKey, response);
+            log.info("{} 连接测试成功: model={}, response={}", providerName, bo.getModelKey(), response);
             return "连接成功";
         } catch (Exception e) {
-            log.error("{} 连接测试失败: model={}", providerName, modelKey, e);
+            log.error("{} 连接测试失败: model={}", providerName, bo.getModelKey(), e);
             return "连接测试失败: " + e.getMessage();
         }
     }
@@ -152,9 +153,10 @@ public class ModelConnectionTester {
     /**
      * 测试智谱AI (Zhipu) 模型连接 - 使用 OpenAI 兼容模式
      */
-    public static String testZhipu(String apiKey, String modelKey) {
+    public static String testZhipu(KmModelBo bo) {
         // 智谱AI 新版接口兼容 OpenAI
-        return testOpenAiCompatible(apiKey, "https://open.bigmodel.cn/api/paas/v4/", modelKey, "智谱AI");
+        bo.setApiBase("https://open.bigmodel.cn/api/paas/v4/");
+        return testOpenAiCompatible(bo, "智谱AI");
     }
 
     /**

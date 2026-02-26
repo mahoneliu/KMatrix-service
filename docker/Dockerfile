@@ -59,6 +59,8 @@ COPY kmatrix-ui/apps/chat/dist /usr/share/nginx/html/chat
 COPY kmatrix-service/docker/redis.conf /etc/redis/redis.conf
 COPY kmatrix-service/docker/nginx.conf /etc/nginx/nginx.conf
 COPY kmatrix-service/docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY kmatrix-service/docker/application-docker.yml /app/config/application-docker.yml
+COPY kmatrix-service/docker/application-prod.yml /app/config/application-prod.yml
 COPY kmatrix-service/docker/entrypoint.sh /app/entrypoint.sh
 
 # Copy SQL Scripts for Init
