@@ -470,6 +470,38 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- JReleaser 发布配置 -->
+            <plugin>
+                <groupId>org.jreleaser</groupId>
+                <artifactId>jreleaser-maven-plugin</artifactId>
+                <version>1.14.0</version>
+                <inherited>false</inherited>
+                <configuration>
+                    <jreleaser>
+                        <project>
+                            <name>KMatrix</name>
+                            <description>KMatrix Local Document AI Platform</description>
+                            <version>${project.version}</version>
+                        </project>
+                        <release>
+                            <!-- Gitee 发版配置 -->
+                            <gitee>
+                                <owner>kyxxjs</owner>
+                                <name>kmatrix-service</name>
+                                <overwrite>true</overwrite>
+                                <token>${env.GITEE_TOKEN}</token>
+                            </gitee>
+                            <!-- GitHub 发版配置 -->
+                            <github>
+                                <owner>mahoneliu</owner>
+                                <name>kmatrix-service</name>
+                                <overwrite>true</overwrite>
+                                <token>${env.GITHUB_TOKEN}</token>
+                            </github>
+                        </release>
+                    </jreleaser>
+                </configuration>
+            </plugin>
         </plugins>
         <resources>
             <resource>
