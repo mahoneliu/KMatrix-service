@@ -85,9 +85,9 @@ public class KmModelController extends BaseController {
     @DemoBlock
     @SaCheckPermission("ai:model:remove")
     @Log(title = "模型管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{modelIds}")
-    public R<Void> remove(@PathVariable List<Long> modelIds) {
-        return toAjax(modelService.deleteByIds(modelIds));
+    @DeleteMapping("/{modelId}")
+    public R<Void> remove(@PathVariable Long modelId) {
+        return toAjax(modelService.deleteById(modelId));
     }
 
     /**

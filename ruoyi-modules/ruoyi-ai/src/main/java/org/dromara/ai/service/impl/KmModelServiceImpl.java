@@ -100,8 +100,8 @@ public class KmModelServiceImpl implements IKmModelService {
     }
 
     @Override
-    public Boolean deleteByIds(List<Long> ids) {
-        return baseMapper.deleteByIds(ids) > 0;
+    public Boolean deleteById(Long id) {
+        return baseMapper.deleteById(id) > 0;
     }
 
     @Override

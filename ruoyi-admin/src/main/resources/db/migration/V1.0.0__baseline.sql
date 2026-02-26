@@ -3069,19 +3069,19 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 (2007, '应用导出', 2002, 5, '', '', 1, 0, 'F', '0', '0', 'ai:app:export', '#', 1, CURRENT_TIMESTAMP, ''),
 (2008, '工作流查询', 2002, 6, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:list', '#', 1, CURRENT_TIMESTAMP, ''),
 (2009, '工作流保存', 2002, 7, '', '', 1, 0, 'F', '0', '0', 'ai:workflow:add,ai:workflow:edit', '#', 1, CURRENT_TIMESTAMP, ''),
-(2010, '工作流编排', 2000, 7, 'workflow', 'ai/workflow/index', 1, 0, 'C', '1', '0', 'ai:app:workflow', '#', 1, CURRENT_TIMESTAMP, '工作流编排页面（隐藏）'),
-(2011, 'AI对话', 2000, 8, 'chat', 'ai/chat/index', 1, 0, 'C', '1', '0', 'ai:chat:view', 'chat', 1, CURRENT_TIMESTAMP, 'AI聊天对话页面'),
+(2010, '工作流编排', 2000, 7, 'workflow', 'ai/workflow/index', 1, 1, 'C', '1', '0', 'ai:app:workflow', '#', 1, CURRENT_TIMESTAMP, '工作流编排页面（隐藏）'),
+(2011, 'AI对话', 2000, 8, 'chat', 'ai/chat/index', 1, 1, 'C', '1', '0', 'ai:chat:view', 'chat', 1, CURRENT_TIMESTAMP, 'AI聊天对话页面'),
 (2012, '发送消息', 2011, 1, '', '', 1, 0, 'F', '0', '0', 'ai:chat:send', '#', 1, CURRENT_TIMESTAMP, ''),
 (2013, '查看历史', 2011, 2, '', '', 1, 0, 'F', '0', '0', 'ai:chat:history', '#', 1, CURRENT_TIMESTAMP, ''),
 (2014, '清空对话', 2011, 3, '', '', 1, 0, 'F', '0', '0', 'ai:chat:clear', '#', 1, CURRENT_TIMESTAMP, ''),
 (2017, 'APP详情', 2000, 9, 'app-detail', 'ai/app-detail/index', 1, 1, 'C', '1', '0', 'ai:appDetail:view', 'mdi-menu', 1, CURRENT_TIMESTAMP,''),
-(2019, '知识库详情', 2000, 10, 'knowledge-detail', 'ai/knowledge-detail/index', 1, 0, 'C', '1', '0', 'ai:knowledge:view', 'mdi-database-search', 1, NOW(), '知识库详情'),
+(2019, '知识库详情', 2000, 10, 'knowledge-detail', 'ai/knowledge-detail/index', 1, 1, 'C', '1', '0', 'ai:knowledge:view', 'mdi-database-search', 1, NOW(), '知识库详情'),
 (2021, '模板查询', 2020, 1, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:query', '#', 1, NOW(), ''),
 (2022, '模板新增', 2020, 2, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:add', '#', 1, NOW(), ''),
 (2023, '模板修改', 2020, 3, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:edit', '#', 1, NOW(), ''),
 (2024, '模板删除', 2020, 4, '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:remove', '#', 1, NOW(), ''),
-(2025, '模板工作流编排', 2000, 11, 'template-editor', 'ai/template-editor/index', '1', '0', 'C', '1', '0', 'ai:templateEditor:view', 'mdi-database-search', 1, NOW(), '模板工作流编排'),
-(2026, '分块管理', 2000, 12, 'chunk-manager', 'ai/chunk-manager/index', '1', '0', 'C', '1', '0', 'ai:chunkManager:list', 'mdi-database-search', 1, NOW(), '分块管理');
+(2025, '模板工作流编排', 2000, 11, 'template-editor', 'ai/template-editor/index', '1', '1', 'C', '1', '0', 'ai:templateEditor:view', 'mdi-database-search', 1, NOW(), '模板工作流编排'),
+(2026, '分块管理', 2000, 12, 'chunk-manager', 'ai/chunk-manager/index', '1', '1', 'C', '1', '0', 'ai:chunkManager:list', 'mdi-database-search', 1, NOW(), '分块管理');
 
 INSERT INTO sys_role_menu (role_id, menu_id) 
 SELECT 1, menu_id FROM sys_menu WHERE menu_id >= 2000 AND menu_id <= 2026;

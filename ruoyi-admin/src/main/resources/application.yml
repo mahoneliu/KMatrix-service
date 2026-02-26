@@ -59,6 +59,10 @@ spring:
     # 开启虚拟线程 仅jdk21可用
     virtual:
       enabled: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1.0.0
   task:
     execution:
       # 从 springboot 3.5 开始 spring自带线程池

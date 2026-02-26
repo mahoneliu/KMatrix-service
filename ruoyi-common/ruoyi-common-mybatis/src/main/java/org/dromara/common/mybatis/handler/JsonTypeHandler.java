@@ -36,6 +36,14 @@ public class JsonTypeHandler extends BaseTypeHandler<Object> {
         // 如果原本就是 String，且已经是 JSON 格式，不应再进行序列化，否则会带双引号
         String json = parameter instanceof String ? (String) parameter : JSONUtil.toJsonStr(parameter);
 
+        // 清理不合法的 UTF-8 字符和 Null 字符，防止 PostgreSQL 报错 invalid byte sequence for encoding
+        // "UTF8"
+        if (json != null) {
+            json = json.replace("\u0000", "");
+            byte[] bytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            json = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        }
+
         // 如果是 PostgreSQL 环境，需要特别处理 jsonb 类型
         // 通过反射判断是否有 PGobject 类，避免对非 PG 环境产生强依赖
         if (isPostgreSQL(ps)) {

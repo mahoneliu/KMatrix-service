@@ -24,6 +24,18 @@
             <version>42.7.5</version>
         </dependency>
 
+        <!-- Flyway核心与数据库支持 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>10.10.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>10.10.0</version>
+        </dependency>
+
         <!-- pgvector Java 支持 -->
         <dependency>
             <groupId>com.pgvector</groupId>

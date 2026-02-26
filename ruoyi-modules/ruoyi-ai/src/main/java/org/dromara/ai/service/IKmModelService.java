@@ -37,7 +37,7 @@ public interface IKmModelService {
     /**
      * 删除
      */
-    Boolean deleteByIds(List<Long> ids);
+    Boolean deleteById(Long id);
 
     /**
      * 测试连接

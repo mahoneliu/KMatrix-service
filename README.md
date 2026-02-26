@@ -30,7 +30,7 @@
 
 KMatrix 不仅仅是一个文档存储库，更是一个 **AI Agent 孵化平台**。用户可以通过拖拽式的工作流设计器，轻松构建基于本地知识库的智能问答助手、客服机器人、文档分析专家或业务辅助机器人，也可以通过自然语言查询数据库以解决长尾业务需求。
 
-kmatrix秉承易用至上的理念，提供 **开箱即用** 的体验，简单操作即可上手，一天至数天即可完成知识库的构建和AI对话App的打造，同时也提供高度自定义的灵活性，满足企业级应用的复杂需求。
+KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单操作即可上手，一天至数天即可完成知识库的构建和AI对话App的打造，同时也提供高度自定义的灵活性，满足企业级应用的复杂需求。
 
 -----------------------------------
 
@@ -105,14 +105,14 @@ KMatrix/
 ### 通过docker部署
 
 - 如果想体验Kmatrix，试用一下，强烈建议使用docker部署，简单快捷。
-- 一键启动，即可体验Kmatrix：
+- 一键启动：
 
 ```bash
 * linux系统：
 docker run -d --name kmatrix-standalone -p 80:80 -v ~/kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
 
 * windows系统：
-docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
+docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
 ```
 
 - 待所有容器状态显示为healthy后，可通过浏览器访问 KMatrix：
@@ -131,11 +131,12 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 - **Node.js**: >= 20.19.0
 - **pnpm**: >= 9.x
 - **Database**: PostgreSQL 15+ (需安装 `vector` 插件和`jieba`分词器)
-- **Redis**: 5.x+
+- **Redis**: 6.x+
 
-1. **数据库准备**:
-    - 安装 PostgreSQL 并启用 vector 扩展和 jieba 分词器。
+1. **环境准备**:
+    - 安装Redis。
     - 下载rerank模型。
+    - 安装 PostgreSQL 并启用 vector 扩展和 jieba 分词器。
     - 初始化数据库，导入项目提供的 SQL 脚本`kmatrix_complete.sql`。  
     注：script目录下有PG部署脚本和rerank模型下载脚本可参考
 
@@ -143,7 +144,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:/kmatrix-data:/kmatrix-dat
 
     ```bash
     cd kmatrix-service
-    # 修改 application-dev.yml 中的数据库和 Redis 配置 、rerank模型配置
+    # 从application-sample.yml拷贝到 application-dev.yml，并修改数据库和 Redis 配置 、rerank模型配置
     mvn clean install
     # 启动 ruoyi-admin 模块
     java -jar ruoyi-admin/target/ruoyi-admin.jar

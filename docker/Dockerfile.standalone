@@ -21,8 +21,6 @@ COPY kmatrix-service/docker/application-docker.yml /app/config/application-docke
 COPY kmatrix-service/docker/application-prod.yml /app/config/application-prod.yml
 COPY kmatrix-service/docker/entrypoint-standalone.sh /app/entrypoint.sh
 
-# Copy SQL Scripts for Init
-COPY kmatrix-service/script/sql /docker-entrypoint-initdb.d/source_sql
 
 # Set permissions
 RUN chmod +x /app/entrypoint.sh

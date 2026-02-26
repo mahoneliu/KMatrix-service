@@ -31,6 +31,11 @@ public class UniversalJsonTypeHandler extends JacksonTypeHandler {
         }
 
         String json = toJson(parameter);
+        if (json != null) {
+            json = json.replace("\u0000", "");
+            byte[] bytes = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            json = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        }
         if (isPostgreSQL(ps)) {
             // PostgreSQL requires JSONB to be set via setObject with Types.OTHER
             ps.setObject(i, json, Types.OTHER);
