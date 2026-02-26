@@ -109,10 +109,10 @@ KMatrix/
 
 ```bash
 * linux系统：
-docker run -d --name kmatrix-standalone -p 80:80 -v ~/kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
+docker run -d --name kmatrix-standalone -p 80:80 -v ~/kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:latest
 
 * windows系统：
-docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
+docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-data registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:latest
 ```
 
 - 待所有容器状态显示为healthy后，可通过浏览器访问 KMatrix：
