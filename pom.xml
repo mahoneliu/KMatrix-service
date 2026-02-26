@@ -13,7 +13,7 @@
     <description>KMatrix管理系统</description>
 
     <properties>
-        <revision>0.5-beta</revision>
+        <revision>5.5.1</revision>
         <spring-boot.version>3.5.7</spring-boot.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -481,7 +481,7 @@
                         <project>
                             <name>KMatrix</name>
                             <description>KMatrix Local Document AI Platform</description>
-                            <version>${project.version}</version>
+                            <version>0.5-beta</version>
                         </project>
                         <release>
                             <!-- GitHub 发版配置 -->
