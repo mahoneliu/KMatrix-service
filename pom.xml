@@ -13,7 +13,7 @@
     <description>KMatrix管理系统</description>
 
     <properties>
-        <revision>5.5.1</revision>
+        <revision>0.5-beta</revision>
         <spring-boot.version>3.5.7</spring-boot.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
