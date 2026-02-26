@@ -484,13 +484,6 @@
                             <version>${project.version}</version>
                         </project>
                         <release>
-                            <!-- Gitee 发版配置 -->
-                            <gitee>
-                                <owner>kyxxjs</owner>
-                                <name>kmatrix-service</name>
-                                <overwrite>true</overwrite>
-                                <token>${env.GITEE_TOKEN}</token>
-                            </gitee>
                             <!-- GitHub 发版配置 -->
                             <github>
                                 <owner>mahoneliu</owner>
