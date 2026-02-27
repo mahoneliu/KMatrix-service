@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmAppTokenBo;
 import org.dromara.ai.domain.vo.KmAppTokenVo;
 import org.dromara.ai.service.IKmAppTokenService;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
 import org.dromara.common.log.enums.BusinessType;
@@ -80,6 +81,7 @@ public class KmAppTokenController extends BaseController {
     /**
      * 刷新Token（重新生成token值）
      */
+    @DemoBlock
     @SaCheckPermission("ai:app:edit")
     @Log(title = "刷新App嵌入Token", businessType = BusinessType.UPDATE)
     @PutMapping("/refresh/{tokenId}")

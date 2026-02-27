@@ -146,9 +146,11 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
                 vo.setChunkId(chunkId);
                 vo.setDocumentId(((Number) row.get("document_id")).longValue());
                 vo.setContent((String) row.get("content"));
-                vo.setTitle((String) row.get("chunk_title"));
+                String chunkTitle = (String) row.get("chunk_title");
+                String documentName = (String) row.get("document_name");
+                vo.setTitle(StrUtil.isNotBlank(chunkTitle) ? chunkTitle : documentName);
                 vo.setMetadata(row.get("metadata"));
-                vo.setDocumentName((String) row.get("document_name"));
+                vo.setDocumentName(documentName);
                 vo.setSourceTypes(new ArrayList<>());
                 // 设置高亮字段(如果存在)
                 String highlight = (String) row.get("highlight");

@@ -23,12 +23,12 @@ public interface KmDocumentChunkMapper extends BaseMapper<KmDocumentChunk> {
          * 批量插入切片 (含向量)
          */
         @Insert("<script>" +
-                        "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, title, create_time) VALUES "
+                        "INSERT INTO km_document_chunk (id, document_id, kb_id, content, metadata, title, create_time, parent_id, chunk_type) VALUES "
                         +
                         "<foreach collection='chunks' item='chunk' separator=','>" +
                         "(#{chunk.id}, #{chunk.documentId}, #{chunk.kbId}, #{chunk.content}, #{chunk.metadata, typeHandler=org.dromara.common.mybatis.handler.JsonTypeHandler}::jsonb, "
                         +
-                        "#{chunk.title}, #{chunk.createTime})"
+                        "#{chunk.title}, #{chunk.createTime}, #{chunk.parentId}, #{chunk.chunkType})"
                         +
                         "</foreach>" +
                         "</script>")

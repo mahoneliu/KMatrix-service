@@ -16,11 +16,6 @@ logging:
     dev.langchain4j: DEBUG
     org.dromara.ai: DEBUG
 
-
---- # AI配置
-ai:
-  log-chat: true
-
 --- # snail-job 配置
 snail-job:
   enabled: false
@@ -299,4 +294,13 @@ ai:
     model-path: F:\reranker\model.onnx
     # Tokenizer 文件路径
     tokenizer-path: F:\reranker\tokenizer.json
+  # 记录log for AI
+  log-chat: true
 
+--- # 知识库分块配置
+km:
+  chunking:
+    # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
+    child-chunk-size: 200
+    # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
+    child-chunk-overlap: 20

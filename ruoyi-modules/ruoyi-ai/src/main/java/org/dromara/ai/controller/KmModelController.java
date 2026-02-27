@@ -71,11 +71,15 @@ public class KmModelController extends BaseController {
     /**
      * 修改模型
      */
-    @DemoBlock
     @SaCheckPermission("ai:model:edit")
     @Log(title = "模型管理", businessType = BusinessType.UPDATE)
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody KmModelBo bo) {
+        // 如果是系统内置模型，就不允许修改
+        KmModelVo existing = modelService.queryById(bo.getModelId());
+        if (existing != null && "Y".equals(existing.getIsBuiltin())) {
+            return R.fail("系统内置模型不允许修改");
+        }
         return toAjax(modelService.updateByBo(bo));
     }
 

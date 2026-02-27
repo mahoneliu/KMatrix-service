@@ -436,6 +436,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunk.setKbId(kbId);
             chunk.setContent(chunkText);
             chunk.setCreateTime(now);
+            chunk.setChunkType(KmDocumentChunk.ChunkType.STANDALONE);
+            chunk.setParentId(null);
 
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("chunkIndex", i);
@@ -452,7 +454,8 @@ public class KmEtlServiceImpl implements IKmEtlService {
             emp.setId(IdUtil.getSnowflakeNextId());
             emp.setKbId(chunk.getKbId());
             emp.setSourceId(chunk.getId());
-            emp.setSourceType(KmEmbedding.SourceType.CONTENT);
+            // 旧逻辑的备用路径也统一使用 CHILD_CONTENT 作为块的检索目标类型，保持检索逻辑一致
+            emp.setSourceType(KmEmbedding.SourceType.CHILD_CONTENT);
             emp.setEmbedding(embedding);
             emp.setEmbeddingString(Arrays.toString(embedding));
             emp.setTextContent(chunkText);
@@ -476,10 +479,11 @@ public class KmEtlServiceImpl implements IKmEtlService {
 
         List<Long> chunkIds = chunks.stream().map(KmDocumentChunk::getId).toList();
 
-        // 1. Delete from km_embedding (SourceType=CONTENT (1))
+        // 1. Delete from km_embedding (SourceType=CONTENT (1) or CHILD_CONTENT (3))
         embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()
                 .in(KmEmbedding::getSourceId, chunkIds)
-                .eq(KmEmbedding::getSourceType, KmEmbedding.SourceType.CONTENT));
+                .in(KmEmbedding::getSourceType,
+                        Arrays.asList(KmEmbedding.SourceType.CONTENT, KmEmbedding.SourceType.CHILD_CONTENT)));
 
         // 2. Delete from km_embedding (SourceType=TITLE (2))
         embeddingMapper.delete(new LambdaQueryWrapper<KmEmbedding>()

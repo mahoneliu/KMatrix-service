@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.bo.ChunkResult;
+import org.dromara.ai.service.IKmChunkingConfigService;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Component;
@@ -32,6 +34,9 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class WebLinkEtlHandler implements EtlHandler {
+
+    private final ChildChunkSplitter childChunkSplitter;
+    private final IKmChunkingConfigService chunkingConfigService;
 
     @Override
     public String getProcessType() {
@@ -57,33 +62,53 @@ public class WebLinkEtlHandler implements EtlHandler {
             throw new RuntimeException("网页内容为空");
         }
 
-        // 3. 获取分块配置
+        // 3. 获取父块分块配置
         int chunkSize = dataset.getMaxChunkSize() != null ? dataset.getMaxChunkSize() : 500;
         int overlap = dataset.getChunkOverlap() != null ? dataset.getChunkOverlap() : 50;
 
-        // 4. 分块
-        List<String> textChunks = splitText(content, chunkSize, overlap);
-        if (CollUtil.isEmpty(textChunks)) {
+        // 4. 父块分块
+        List<String> parentChunks = splitText(content, chunkSize, overlap);
+        if (CollUtil.isEmpty(parentChunks)) {
             throw new RuntimeException("分块失败");
         }
 
-        // 5. 构建ChunkResult列表
+        // 5. 获取子块分块配置
+        int childChunkSize = chunkingConfigService.getChildChunkSize(dataset);
+        int childOverlap = chunkingConfigService.getChildChunkOverlap(dataset);
+
+        // 6. 构建父块+子块结果列表
         List<ChunkResult> results = new ArrayList<>();
-        for (int i = 0; i < textChunks.size(); i++) {
+        for (int i = 0; i < parentChunks.size(); i++) {
+            String parentText = parentChunks.get(i);
+
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("chunkIndex", i);
-            metadata.put("totalChunks", textChunks.size());
+            metadata.put("totalChunks", parentChunks.size());
             metadata.put("documentTitle", title);
             metadata.put("sourceUrl", url);
 
-            results.add(ChunkResult.builder()
-                    .content(textChunks.get(i))
-                    .title(title)
-                    .metadata(metadata)
-                    .build());
+            List<String> childTexts = childChunkSplitter.split(parentText, childChunkSize, childOverlap);
+
+            if (childTexts.isEmpty()) {
+                results.add(ChunkResult.builder()
+                        .content(parentText).title(title).metadata(metadata)
+                        .chunkType(KmDocumentChunk.ChunkType.STANDALONE).build());
+            } else {
+                List<ChunkResult> children = new ArrayList<>(childTexts.size());
+                for (int j = 0; j < childTexts.size(); j++) {
+                    Map<String, Object> childMeta = new HashMap<>(metadata);
+                    childMeta.put("childIndex", j);
+                    children.add(ChunkResult.builder()
+                            .content(childTexts.get(j)).title(title).metadata(childMeta)
+                            .chunkType(KmDocumentChunk.ChunkType.CHILD).build());
+                }
+                results.add(ChunkResult.builder()
+                        .content(parentText).title(title).metadata(metadata)
+                        .chunkType(KmDocumentChunk.ChunkType.PARENT).children(children).build());
+            }
         }
 
-        log.info("WebLinkEtlHandler completed: documentId={}, url={}, chunks={}, title={}",
+        log.info("WebLinkEtlHandler completed: documentId={}, url={}, parentChunks={}, title={}",
                 document.getId(), url, results.size(), title);
 
         return results;

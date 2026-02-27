@@ -1,4 +1,5 @@
 package org.dromara.ai.service;
+
 import java.util.Map;
 import org.dromara.ai.domain.bo.*;
 import org.dromara.ai.domain.enums.EmbeddingOption;
@@ -107,6 +108,15 @@ public interface IKmDocumentService {
          * @return 文档信息
          */
         KmDocumentVo createWebLinkDocument(Long datasetId, String url);
+
+        /**
+         * 批量创建网页链接文档
+         *
+         * @param datasetId 数据集ID
+         * @param urls      网页URL列表
+         * @return 文档信息列表
+         */
+        List<KmDocumentVo> batchCreateWebLinkDocument(Long datasetId, List<String> urls);
 
         /**
          * 分页查询文档列表

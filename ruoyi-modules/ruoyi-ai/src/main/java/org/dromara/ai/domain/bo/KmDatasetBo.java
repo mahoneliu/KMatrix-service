@@ -77,4 +77,14 @@ public class KmDatasetBo implements Serializable {
      * 支持的文件格式 (逗号分隔)
      */
     private String allowedFileTypes;
+
+    /**
+     * 子块大小 (字符数)
+     */
+    private Integer childChunkSize;
+
+    /**
+     * 子块重叠大小 (字符数)
+     */
+    private Integer childChunkOverlap;
 }

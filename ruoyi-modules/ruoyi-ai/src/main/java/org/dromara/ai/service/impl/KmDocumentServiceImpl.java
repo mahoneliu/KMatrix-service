@@ -341,6 +341,52 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<KmDocumentVo> batchCreateWebLinkDocument(Long datasetId, List<String> urls) {
+        // 0. 获取知识库ID
+        KmDataset dataset = datasetMapper.selectById(datasetId);
+        if (dataset == null) {
+            throw new RuntimeException("数据集不存在");
+        }
+
+        List<KmDocument> documents = new java.util.ArrayList<>();
+
+        // 1. 批量创建文档记录
+        for (String url : urls) {
+            KmDocument document = new KmDocument();
+            document.setDatasetId(datasetId);
+            document.setKbId(dataset.getKbId()); // 设置知识库ID
+            document.setUrl(url);
+            document.setOriginalFilename(url); // 使用 URL 作为文件名
+            document.setFileType("url");
+            document.setEmbeddingStatus(1); // 1 = 生成中
+            document.setStatusMeta(
+                    StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                            StatusMetaUtils.STATUS_PENDING));
+
+            documents.add(document);
+        }
+
+        documentMapper.insertBatch(documents);
+
+        List<Long> docIds = documents.stream().map(KmDocument::getId).collect(java.util.stream.Collectors.toList());
+
+        // 2. 异步触发 ETL 处理
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                for (Long docId : docIds) {
+                    etlService.processDocumentAsync(docId, null);
+                }
+            }
+        });
+
+        return documentMapper
+                .selectVoList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<KmDocument>()
+                        .in(KmDocument::getId, docIds));
+    }
+
+    @Override
     public TableDataInfo<KmDocumentVo> pageList(KmDocumentBo bo, PageQuery pageQuery) {
         LambdaQueryWrapper<KmDocument> lqw = new LambdaQueryWrapper<>();
         // 必填条件: 数据集ID

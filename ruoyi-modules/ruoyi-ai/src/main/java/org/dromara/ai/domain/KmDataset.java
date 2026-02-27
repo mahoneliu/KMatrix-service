@@ -83,6 +83,16 @@ public class KmDataset extends BaseEntity {
     private String allowedFileTypes;
 
     /**
+     * 子块大小 (字符数), NULL 表示使用系统默认子块大小
+     */
+    private Integer childChunkSize;
+
+    /**
+     * 子块重叠大小 (字符数), NULL 表示使用系统默认子块重叠大小
+     */
+    private Integer childChunkOverlap;
+
+    /**
      * 数据来源类型常量
      */
     public static final class SourceType {

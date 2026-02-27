@@ -59,7 +59,7 @@ public class ModelBuilder {
         log.info("构建聊天模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot" -> buildOpenAiModel(model);
+            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiModel(model);
             case "ollama", "vllm" -> buildOllamaModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model);
             case "gemini" -> buildGeminiModel(model);
@@ -85,7 +85,7 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot" -> buildOpenAiModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiModel(model, temperature, maxTokens);

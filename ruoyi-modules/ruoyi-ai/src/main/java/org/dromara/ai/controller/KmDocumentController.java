@@ -142,6 +142,17 @@ public class KmDocumentController extends BaseController {
     }
 
     /**
+     * 批量创建网页链接文档
+     */
+    @SaCheckPermission("ai:document:add")
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/batchCreateWebLink")
+    public R<List<KmDocumentVo>> batchCreateWebLink(
+            @Validated @RequestBody org.dromara.ai.domain.bo.BatchWebLinkBo bo) {
+        return R.ok(documentService.batchCreateWebLinkDocument(bo.getDatasetId(), bo.getUrls()));
+    }
+
+    /**
      * 启用文档
      */
     @SaCheckPermission("ai:document:edit")

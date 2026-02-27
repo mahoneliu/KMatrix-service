@@ -13,6 +13,8 @@ import org.dromara.ai.domain.KmQuestionChunkMap;
 import org.dromara.ai.domain.bo.ChunkResult;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmEmbeddingMapper;
+import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
 import org.dromara.ai.mapper.KmQuestionMapper;
 import org.dromara.ai.service.IKmEmbeddingService;
@@ -39,6 +41,7 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
     private final KmDocumentChunkMapper chunkMapper;
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionMapper questionMapper;
+    private final KmDocumentMapper documentMapper;
     private final KmQuestionChunkMapMapper questionChunkMapMapper;
 
     @Override
@@ -49,9 +52,9 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             return;
         }
 
-        log.info("Starting embedding for {} chunks of document {}", chunks.size(), documentId);
+        log.info("Starting parent-child embedding for {} top-level chunks of document {}", chunks.size(), documentId);
 
-        List<KmDocumentChunk> chunkEntities = new ArrayList<>();
+        List<KmDocumentChunk> allChunkEntities = new ArrayList<>();
         List<KmEmbedding> embeddings = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
 
@@ -64,54 +67,108 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
                 continue;
             }
 
-            // 生成向量
-            float[] vector = embeddingModel.embed(chunkText).content().vector();
-            String vectorString = Arrays.toString(vector);
-
-            // 构建分块实体
+            int chunkType = chunkResult.getChunkType();
             Long chunkId = IdUtil.getSnowflakeNextId();
-            KmDocumentChunk chunk = new KmDocumentChunk();
-            chunk.setId(chunkId);
-            chunk.setDocumentId(documentId);
-            chunk.setKbId(kbId);
-            chunk.setTitle(chunkResult.getTitle());
-            chunk.setContent(chunkText);
-            chunk.setCreateTime(now);
+            KmDocumentChunk chunkEntity = new KmDocumentChunk();
+            chunkEntity.setId(chunkId);
+            chunkEntity.setDocumentId(documentId);
+            chunkEntity.setKbId(kbId);
+            chunkEntity.setTitle(chunkResult.getTitle());
+            chunkEntity.setContent(chunkText);
+            chunkEntity.setCreateTime(now);
+            chunkEntity.setChunkType(chunkType);
+            chunkEntity.setParentId(null);
 
-            // 元数据：合并传入的metadata和系统metadata
             Map<String, Object> metadata = new HashMap<>();
             if (chunkResult.getMetadata() != null) {
                 metadata.putAll(chunkResult.getMetadata());
             }
             metadata.put("chunkIndex", i);
             metadata.put("totalChunks", chunks.size());
-            chunk.setMetadata(metadata);
+            chunkEntity.setMetadata(metadata);
 
-            chunk.setEmbeddingStatus(2); // 2 = 已生成
-            chunk.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
-                    StatusMetaUtils.STATUS_SUCCESS));
+            boolean hasChildren = CollUtil.isNotEmpty(chunkResult.getChildren());
 
-            chunkEntities.add(chunk);
+            if (hasChildren) {
+                // PARENT 块：入库但不向量化
+                chunkEntity.setEmbeddingStatus(2);
+                chunkEntity.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_SUCCESS));
+                allChunkEntities.add(chunkEntity);
 
-            // 构建embedding实体
-            KmEmbedding embedding = new KmEmbedding();
-            embedding.setId(IdUtil.getSnowflakeNextId());
-            embedding.setKbId(kbId);
-            embedding.setSourceId(chunkId);
-            embedding.setSourceType(KmEmbedding.SourceType.CONTENT);
-            embedding.setEmbedding(vector);
-            embedding.setEmbeddingString(vectorString);
-            embedding.setTextContent(chunkText);
-            embedding.setCreateTime(now);
+                // 处理子块
+                List<ChunkResult> childResults = chunkResult.getChildren();
+                for (int j = 0; j < childResults.size(); j++) {
+                    ChunkResult childResult = childResults.get(j);
+                    String childText = childResult.getContent();
+                    if (childText == null || childText.isBlank())
+                        continue;
 
-            embeddings.add(embedding);
+                    float[] childVector = embeddingModel.embed(childText).content().vector();
+                    Long childId = IdUtil.getSnowflakeNextId();
+
+                    KmDocumentChunk childEntity = new KmDocumentChunk();
+                    childEntity.setId(childId);
+                    childEntity.setDocumentId(documentId);
+                    childEntity.setKbId(kbId);
+
+                    childEntity.setContent(childText);
+                    childEntity.setCreateTime(now);
+                    childEntity.setChunkType(KmDocumentChunk.ChunkType.CHILD);
+                    childEntity.setParentId(chunkId);
+                    childEntity
+                            .setTitle(childResult.getTitle() != null ? childResult.getTitle() : chunkEntity.getTitle());
+
+                    Map<String, Object> childMeta = new HashMap<>();
+                    if (childResult.getMetadata() != null)
+                        childMeta.putAll(childResult.getMetadata());
+                    childMeta.put("childIndex", j);
+                    childEntity.setMetadata(childMeta);
+                    childEntity.setEmbeddingStatus(2);
+                    childEntity.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                            StatusMetaUtils.STATUS_SUCCESS));
+                    allChunkEntities.add(childEntity);
+
+                    KmEmbedding childEmbedding = new KmEmbedding();
+                    childEmbedding.setId(IdUtil.getSnowflakeNextId());
+                    childEmbedding.setKbId(kbId);
+                    childEmbedding.setSourceId(childId);
+                    childEmbedding.setSourceType(KmEmbedding.SourceType.CHILD_CONTENT);
+                    childEmbedding.setEmbedding(childVector);
+                    childEmbedding.setEmbeddingString(Arrays.toString(childVector));
+                    childEmbedding.setTextContent(childText);
+                    childEmbedding.setCreateTime(now);
+                    embeddings.add(childEmbedding);
+                }
+            } else {
+                // STANDALONE 块：直接向量化
+                float[] vector = embeddingModel.embed(chunkText).content().vector();
+                chunkEntity.setEmbeddingStatus(2);
+                chunkEntity.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
+                        StatusMetaUtils.STATUS_SUCCESS));
+                allChunkEntities.add(chunkEntity);
+
+                KmEmbedding embedding = new KmEmbedding();
+                embedding.setId(IdUtil.getSnowflakeNextId());
+                embedding.setKbId(kbId);
+                embedding.setSourceId(chunkId);
+                embedding.setSourceType(KmEmbedding.SourceType.CHILD_CONTENT);
+                embedding.setEmbedding(vector);
+                embedding.setEmbeddingString(Arrays.toString(vector));
+                embedding.setTextContent(chunkText);
+                embedding.setCreateTime(now);
+                embeddings.add(embedding);
+            }
         }
 
         // 批量插入
-        if (!chunkEntities.isEmpty()) {
-            chunkMapper.insertBatch(chunkEntities);
+        if (!allChunkEntities.isEmpty()) {
+            chunkMapper.insertBatch(allChunkEntities);
+            log.info("Stored {} chunk entities for document {}", allChunkEntities.size(), documentId);
+        }
+        if (!embeddings.isEmpty()) {
             embeddingMapper.insertBatch(embeddings);
-            log.info("Embedded and stored {} chunks for document {}", chunkEntities.size(), documentId);
+            log.info("Embedded {} child/standalone chunks for document {}", embeddings.size(), documentId);
         }
     }
 
@@ -149,10 +206,14 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             KmDocumentChunk chunk = new KmDocumentChunk();
             chunk.setId(chunkId);
             chunk.setDocumentId(documentId);
+            KmDocument document = documentMapper.selectById(documentId);
             chunk.setKbId(kbId);
-            chunk.setTitle(chunkResult.getTitle());
+            chunk.setTitle(chunkResult.getTitle() != null ? chunkResult.getTitle()
+                    : (document != null ? document.getOriginalFilename() : null));
             chunk.setContent(answer);
             chunk.setCreateTime(now);
+            chunk.setChunkType(KmDocumentChunk.ChunkType.STANDALONE);
+            chunk.setParentId(null);
 
             // 元数据（移除questions，避免存储冗余数据）
             Map<String, Object> metadata = new HashMap<>();

@@ -22,6 +22,21 @@ public class KmDocumentChunk {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 块类型常量
+     */
+    public static final class ChunkType {
+        /** 父块 - 不直接向量化，仅存内容供检索后返回给 LLM */
+        public static final int PARENT = 0;
+        /** 子块 - 参与向量化检索，命中后溢源返回父块内容 */
+        public static final int CHILD = 1;
+        /** 独立块 - 内容较短无法细分，或存量数据兼容 */
+        public static final int STANDALONE = 2;
+
+        private ChunkType() {
+        }
+    }
+
+    /**
      * 切片ID
      */
     @TableId(type = IdType.ASSIGN_ID, value = "id")
@@ -84,4 +99,16 @@ public class KmDocumentChunk {
      */
     @TableField(typeHandler = JsonTypeHandler.class)
     private Map<String, Object> statusMeta;
+
+    /**
+     * 块类型: 0=PARENT(父块), 1=CHILD(子块), 2=STANDALONE(独立块)
+     * 默认为 2 (STANDALONE)，兼容存量数据
+     */
+    private Integer chunkType;
+
+    /**
+     * 父块ID，子块指向其所属父块的 ID
+     * 父块和独立块此字段为 NULL
+     */
+    private Long parentId;
 }

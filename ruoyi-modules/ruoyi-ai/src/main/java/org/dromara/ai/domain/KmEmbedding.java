@@ -75,5 +75,7 @@ public class KmEmbedding implements Serializable {
         public static final int QUESTION = 0;
         public static final int CONTENT = 1;
         public static final int TITLE = 2;
+        /** 子块内容（包括 CHILD 和 STANDALONE 类型的 chunk） */
+        public static final int CHILD_CONTENT = 3;
     }
 }

@@ -10,8 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
+import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.bo.ChunkResult;
 import org.dromara.ai.domain.enums.FileStoreType;
+import org.dromara.ai.service.IKmChunkingConfigService;
 import org.dromara.ai.service.ILocalFileService;
 import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
@@ -42,6 +44,8 @@ public class GenericFileEtlHandler implements EtlHandler {
 
     private final ISysOssService ossService;
     private final ILocalFileService localFileService;
+    private final ChildChunkSplitter childChunkSplitter;
+    private final IKmChunkingConfigService chunkingConfigService;
 
     private final DocumentParser documentParser = new ApacheTikaDocumentParser();
 
@@ -63,34 +67,68 @@ public class GenericFileEtlHandler implements EtlHandler {
             throw new RuntimeException("文档内容为空");
         }
 
-        // 2. 获取分块配置 (优先从实体字段读取，兼容旧 config JSON)
+        // 2. 获取父块分块配置 (优先从实体字段读取，兼容旧 config JSON)
         int chunkSize = dataset.getMaxChunkSize() != null ? dataset.getMaxChunkSize()
                 : getConfigInt(dataset, "chunkSize", 500);
         int overlap = dataset.getChunkOverlap() != null ? dataset.getChunkOverlap()
                 : getConfigInt(dataset, "overlap", 50);
 
-        // 3. 分块
-        List<String> textChunks = splitText(content, chunkSize, overlap);
-        if (CollUtil.isEmpty(textChunks)) {
+        // 3. 父块分块
+        List<String> parentChunks = splitText(content, chunkSize, overlap);
+        if (CollUtil.isEmpty(parentChunks)) {
             throw new RuntimeException("分块失败");
         }
 
-        // 4. 构建ChunkResult列表
+        // 4. 获取子块分块配置
+        int childChunkSize = chunkingConfigService.getChildChunkSize(dataset);
+        int childOverlap = chunkingConfigService.getChildChunkOverlap(dataset);
+
+        // 5. 构建父块+子块结果列表
         List<ChunkResult> results = new ArrayList<>();
-        for (int i = 0; i < textChunks.size(); i++) {
+        for (int i = 0; i < parentChunks.size(); i++) {
+            String parentText = parentChunks.get(i);
+
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("chunkIndex", i);
-            metadata.put("totalChunks", textChunks.size());
+            metadata.put("totalChunks", parentChunks.size());
             metadata.put("documentTitle", title);
 
-            results.add(ChunkResult.builder()
-                    .content(textChunks.get(i))
-                    .title(title)
-                    .metadata(metadata)
-                    .build());
+            // 对父块执行子块分割
+            List<String> childTexts = childChunkSplitter.split(parentText, childChunkSize, childOverlap);
+
+            if (childTexts.isEmpty()) {
+                // 父块内容较短，标记为 STANDALONE
+                results.add(ChunkResult.builder()
+                        .content(parentText)
+                        .title(title)
+                        .metadata(metadata)
+                        .chunkType(KmDocumentChunk.ChunkType.STANDALONE)
+                        .build());
+            } else {
+                // 构建子块列表
+                List<ChunkResult> children = new ArrayList<>(childTexts.size());
+                for (int j = 0; j < childTexts.size(); j++) {
+                    Map<String, Object> childMeta = new HashMap<>(metadata);
+                    childMeta.put("childIndex", j);
+                    children.add(ChunkResult.builder()
+                            .content(childTexts.get(j))
+                            .title(title)
+                            .metadata(childMeta)
+                            .chunkType(KmDocumentChunk.ChunkType.CHILD)
+                            .build());
+                }
+                // 父块标记为 PARENT
+                results.add(ChunkResult.builder()
+                        .content(parentText)
+                        .title(title)
+                        .metadata(metadata)
+                        .chunkType(KmDocumentChunk.ChunkType.PARENT)
+                        .children(children)
+                        .build());
+            }
         }
 
-        log.info("GenericFileEtlHandler completed: documentId={}, chunks={}, title={}",
+        log.info("GenericFileEtlHandler completed: documentId={}, parentChunks={}, title={}",
                 document.getId(), results.size(), title);
 
         return results;

@@ -98,9 +98,10 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         "  SELECT " +
                         "    bm.score, " +
                         "    CASE " +
-                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " + // QUESTION
-                        "      WHEN bm.source_type = 1 THEN bm.source_id " + // CONTENT
-                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " + // TITLE
+                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " +
+                        "      WHEN bm.source_type = 1 THEN bm.source_id " +
+                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " +
+                        "      WHEN bm.source_type = 3 THEN bm.source_id " +
                         "    END as chunk_id, " +
                         "    CASE " +
                         "      WHEN bm.source_type = 0 THEN qcm.question_id " +
@@ -110,24 +111,26 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         "      WHEN bm.source_type = 0 THEN 'QUESTION' " +
                         "      WHEN bm.source_type = 1 THEN 'CONTENT' " +
                         "      WHEN bm.source_type = 2 THEN 'TITLE' " +
+                        "      WHEN bm.source_type = 3 THEN 'CONTENT' " +
                         "    END as source_type_label " +
                         "  FROM base_matches bm " +
                         "  LEFT JOIN km_question_chunk_map qcm ON bm.source_type = 0 AND bm.source_id = qcm.id " +
                         "  LEFT JOIN title_first_chunks tfc ON bm.source_type = 2 AND bm.source_id = tfc.source_id " +
                         ") " +
-                        // Step 3: 最终查询，关联 chunk 和 document 数据
+                        // Step 3: 最终查询，关联 chunk 和 document 数据，处理父子分块向上溯源
                         "SELECT " +
                         "  em.chunk_id, " +
                         "  em.score, " +
                         "  em.source_type_label, " +
                         "  em.question_id, " +
-                        "  dc.content, " +
-                        "  dc.title as chunk_title, " +
-                        "  dc.metadata, " +
+                        "  COALESCE(parent.content, dc.content) as content, " +
+                        "  COALESCE(parent.title, dc.title, d.original_filename) as chunk_title, " +
+                        "  COALESCE(parent.metadata, dc.metadata) as metadata, " +
                         "  dc.document_id, " +
                         "  d.original_filename as document_name " +
                         "FROM enriched_matches em " +
                         "JOIN km_document_chunk dc ON em.chunk_id = dc.id " +
+                        "LEFT JOIN km_document_chunk parent ON dc.parent_id = parent.id " +
                         "JOIN km_document d ON dc.document_id = d.id " +
                         "ORDER BY em.score DESC " +
                         "</script>")
@@ -187,9 +190,10 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         "    bm.score, " +
                         "    bm.highlight, " +
                         "    CASE " +
-                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " + // QUESTION
-                        "      WHEN bm.source_type = 1 THEN bm.source_id " + // CONTENT
-                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " + // TITLE
+                        "      WHEN bm.source_type = 0 THEN qcm.chunk_id " +
+                        "      WHEN bm.source_type = 1 THEN bm.source_id " +
+                        "      WHEN bm.source_type = 2 THEN tfc.first_chunk_id " +
+                        "      WHEN bm.source_type = 3 THEN bm.source_id " +
                         "    END as chunk_id, " +
                         "    CASE " +
                         "      WHEN bm.source_type = 0 THEN qcm.question_id " +
@@ -199,25 +203,27 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         "      WHEN bm.source_type = 0 THEN 'QUESTION' " +
                         "      WHEN bm.source_type = 1 THEN 'CONTENT' " +
                         "      WHEN bm.source_type = 2 THEN 'TITLE' " +
+                        "      WHEN bm.source_type = 3 THEN 'CONTENT' " +
                         "    END as source_type_label " +
                         "  FROM base_matches bm " +
                         "  LEFT JOIN km_question_chunk_map qcm ON bm.source_type = 0 AND bm.source_id = qcm.id " +
                         "  LEFT JOIN title_first_chunks tfc ON bm.source_type = 2 AND bm.source_id = tfc.source_id " +
                         ") " +
-                        // Step 3: 最终查询,关联 chunk 和 document 数据
+                        // Step 3: 最终查询,关联 chunk 和 document 数据，处理父子分块向上溯源
                         "SELECT " +
                         "  em.chunk_id, " +
                         "  em.score, " +
                         "  em.source_type_label, " +
                         "  em.question_id, " +
                         "  em.highlight, " +
-                        "  dc.content, " +
-                        "  dc.title as chunk_title, " +
-                        "  dc.metadata, " +
+                        "  COALESCE(parent.content, dc.content) as content, " +
+                        "  COALESCE(parent.title, dc.title, d.original_filename) as chunk_title, " +
+                        "  COALESCE(parent.metadata, dc.metadata) as metadata, " +
                         "  dc.document_id, " +
                         "  d.original_filename as document_name " +
                         "FROM enriched_matches em " +
                         "JOIN km_document_chunk dc ON em.chunk_id = dc.id " +
+                        "LEFT JOIN km_document_chunk parent ON dc.parent_id = parent.id " +
                         "JOIN km_document d ON dc.document_id = d.id " +
                         "ORDER BY em.score DESC " +
                         "</script>")

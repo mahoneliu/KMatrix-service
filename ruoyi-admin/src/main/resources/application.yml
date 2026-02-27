@@ -280,3 +280,10 @@ ai:
     # Tokenizer 文件路径
     tokenizer-path: F:\reranker\tokenizer.json
 
+--- # 知识库分块配置
+km:
+  chunking:
+    # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
+    child-chunk-size: 200
+    # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
+    child-chunk-overlap: 20

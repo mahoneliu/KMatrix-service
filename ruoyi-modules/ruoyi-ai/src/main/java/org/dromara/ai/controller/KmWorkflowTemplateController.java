@@ -93,7 +93,6 @@ public class KmWorkflowTemplateController extends BaseController {
     /**
      * 修改工作流模板 (仅用户模板)
      */
-    @DemoBlock
     @SaCheckPermission("ai:workflowTemplate:edit")
     @Log(title = "工作流模板", businessType = BusinessType.UPDATE)
     @PutMapping
