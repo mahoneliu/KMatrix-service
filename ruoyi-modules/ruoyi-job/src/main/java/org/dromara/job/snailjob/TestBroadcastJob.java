@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @JobExecutor(name = "testBroadcastJob")
 public class TestBroadcastJob {
 
-    @Value("${snail-job.port}")
+    @Value("${snail-job.port:1789}")
     private int clientPort;
 
     public ExecuteResult jobExecute(JobArgs jobArgs) {
