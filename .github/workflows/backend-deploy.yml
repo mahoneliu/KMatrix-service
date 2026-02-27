@@ -54,6 +54,8 @@ jobs:
         strip_components: 3
         # 强制覆盖已有文件
         overwrite: true
+        # 延长超时时间以应对体积较大的 jar 包和跨境网络拥堵，这里设为 10 分钟
+        timeout: 10m
 
     - name: SSH 连接到 Ubuntu 并执行重启命令
       uses: appleboy/ssh-action@v1.0.3
