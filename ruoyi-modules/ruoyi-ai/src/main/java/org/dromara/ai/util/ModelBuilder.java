@@ -144,6 +144,10 @@ public class ModelBuilder {
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
             builder.baseUrl(model.getApiBase());
+        } else {
+            // 获取provider的默认apiBase
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
         }
 
         return builder.build();
@@ -162,6 +166,10 @@ public class ModelBuilder {
 
         if (StrUtil.isNotBlank(model.getApiBase())) {
             builder.baseUrl(model.getApiBase());
+        } else {
+            // 获取provider的默认apiBase
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
         }
         if (temperature != null) {
             builder.temperature(temperature);
