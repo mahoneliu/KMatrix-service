@@ -83,6 +83,8 @@ jobs:
         target: "${{ secrets.UBUNTU_TARGET_DIR }}"
         # 剥离 kmatrix-service/ruoyi-admin/target 这一共 3 层结构
         strip_components: 3
+        # 强制覆盖已有文件，解决 tar: Cannot open: File exists 问题
+        overwrite: true
 
     - name: SSH 连接到 Ubuntu 并执行重启命令
       uses: appleboy/ssh-action@v1.0.3
