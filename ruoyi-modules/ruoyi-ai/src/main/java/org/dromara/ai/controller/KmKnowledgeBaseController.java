@@ -58,7 +58,7 @@ public class KmKnowledgeBaseController extends BaseController {
      */
     @SaCheckPermission("ai:knowledge:query")
     @GetMapping("/{id}")
-    public R<KmKnowledgeBaseVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<KmKnowledgeBaseVo> getInfo(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return R.ok(knowledgeBaseService.queryById(id));
     }
 
@@ -76,7 +76,7 @@ public class KmKnowledgeBaseController extends BaseController {
      */
     @SaCheckPermission("ai:knowledge:query")
     @GetMapping("/{id}/statistics")
-    public R<KmStatisticsVo> getStatistics(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<KmStatisticsVo> getStatistics(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return R.ok(knowledgeBaseService.getStatistics(id));
     }
 
@@ -107,7 +107,7 @@ public class KmKnowledgeBaseController extends BaseController {
     @SaCheckPermission("ai:knowledge:remove")
     @Log(title = "知识库", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long[] ids) {
+    public R<Void> remove(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long[] ids) {
         return toAjax(knowledgeBaseService.deleteWithValidByIds(List.of(ids), true));
     }
 }

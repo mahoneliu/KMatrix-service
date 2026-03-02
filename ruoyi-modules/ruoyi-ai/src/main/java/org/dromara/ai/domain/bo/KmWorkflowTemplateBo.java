@@ -25,19 +25,19 @@ public class KmWorkflowTemplateBo extends BaseEntity {
     /**
      * 模板ID
      */
-    @NotNull(message = "模板ID不能为空", groups = { EditGroup.class })
+    @NotNull(message = "{ai.val.template.id_required}", groups = { EditGroup.class })
     private Long templateId;
 
     /**
      * 模板名称
      */
-    @NotBlank(message = "模板名称不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{ai.val.template.name_required}", groups = { AddGroup.class, EditGroup.class })
     private String templateName;
 
     /**
      * 模板编码
      */
-    @NotBlank(message = "模板编码不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "{ai.val.template.code_required}", groups = { AddGroup.class, EditGroup.class })
     private String templateCode;
 
     /**

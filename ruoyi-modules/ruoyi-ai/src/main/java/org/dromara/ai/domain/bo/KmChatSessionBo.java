@@ -35,8 +35,8 @@ public class KmChatSessionBo extends BaseEntity {
     /**
      * 会话标题
      */
-    @NotBlank(message = "会话标题不能为空")
-    @Size(min = 0, max = 200, message = "会话标题长度不能超过200个字符")
+    @NotBlank(message = "{ai.val.chat.session_title_required}")
+    @Size(min = 0, max = 200, message = "{ai.val.chat.session_title_too_long}")
     private String title;
 
     /**

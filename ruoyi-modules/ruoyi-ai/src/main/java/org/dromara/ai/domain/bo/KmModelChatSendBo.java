@@ -16,13 +16,13 @@ public class KmModelChatSendBo {
     /**
      * 模型ID
      */
-    @NotNull(message = "模型ID不能为空")
+    @NotNull(message = "{ai.val.model.id_required}")
     private Long modelId;
 
     /**
      * 用户消息内容
      */
-    @NotBlank(message = "消息内容不能为空")
+    @NotBlank(message = "{ai.val.chat.message_content_required}")
     private String message;
 
     /**

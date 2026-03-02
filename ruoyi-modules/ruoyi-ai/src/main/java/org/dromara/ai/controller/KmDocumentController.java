@@ -50,7 +50,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/upload")
     public R<KmDocumentVo> upload(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
             @RequestParam("file") MultipartFile file) {
         return R.ok(documentService.uploadDocument(datasetId, file));
     }
@@ -62,7 +62,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadBatch")
     public R<List<KmDocumentVo>> uploadBatch(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
             @RequestParam("files") MultipartFile[] files) {
         return R.ok(documentService.uploadDocuments(datasetId, files));
     }
@@ -73,7 +73,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:list")
     @GetMapping("/listByDataset/{datasetId}")
     public R<List<KmDocumentVo>> listByDataset(
-            @NotNull(message = "数据集ID不能为空") @PathVariable Long datasetId) {
+            @NotNull(message = "{ai.val.dataset.id_required}") @PathVariable Long datasetId) {
         return R.ok(documentService.listByDatasetId(datasetId));
     }
 
@@ -83,7 +83,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:list")
     @GetMapping("/listByKb/{kbId}")
     public R<List<KmDocumentVo>> listByKb(
-            @NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
+            @NotNull(message = "{ai.val.kb.id_required}") @PathVariable Long kbId) {
         return R.ok(documentService.listByKbId(kbId));
     }
 
@@ -101,7 +101,7 @@ public class KmDocumentController extends BaseController {
      */
     @SaCheckPermission("ai:document:query")
     @GetMapping("/{id:\\d+}")
-    public R<KmDocumentVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<KmDocumentVo> getInfo(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return R.ok(documentService.queryById(id));
     }
 
@@ -112,7 +112,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:remove")
     @Log(title = "知识库文档", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")
-    public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> remove(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(documentService.deleteById(id));
     }
 
@@ -123,9 +123,9 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/createOnlineDoc")
     public R<KmDocumentVo> createOnlineDoc(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
-            @NotNull(message = "标题不能为空") @RequestParam String title,
-            @NotNull(message = "内容不能为空") @RequestParam String content) {
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.common.title_required}") @RequestParam String title,
+            @NotNull(message = "{ai.val.common.content_required}") @RequestParam String content) {
         return R.ok(documentService.createOnlineDocument(datasetId, title, content));
     }
 
@@ -136,8 +136,8 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/createWebLink")
     public R<KmDocumentVo> createWebLink(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
-            @NotNull(message = "URL不能为空") @RequestParam String url) {
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.url.required}") @RequestParam String url) {
         return R.ok(documentService.createWebLinkDocument(datasetId, url));
     }
 
@@ -158,7 +158,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/enable/{id:\\d+}")
-    public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> enable(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(documentService.enableDocument(id, true));
     }
 
@@ -168,7 +168,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:edit")
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/disable/{id:\\d+}")
-    public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> disable(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(documentService.enableDocument(id, false));
     }
 
@@ -210,8 +210,8 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.UPDATE)
     @PutMapping("/{id:\\d+}")
     public R<Void> updateDocumentName(
-            @NotNull(message = "主键不能为空") @PathVariable Long id,
-            @NotNull(message = "名称不能为空") @RequestParam String originalFilename) {
+            @NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id,
+            @NotNull(message = "{ai.val.common.name_required}") @RequestParam String originalFilename) {
         return toAjax(documentService.updateDocumentName(id, originalFilename));
     }
 
@@ -234,7 +234,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/embedding/{id:\\d+}")
     public R<Void> embedding(
-            @NotNull(message = "主键不能为空") @PathVariable Long id,
+            @NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id,
             @RequestParam(defaultValue = "UNEMBEDDED_ONLY") EmbeddingOption option) {
         return toAjax(documentService.embeddingDocument(id, option));
     }
@@ -257,7 +257,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadTemp")
     public R<TempFileVo> uploadTemp(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
             @RequestParam("file") MultipartFile file) {
         return R.ok(documentService.uploadTempFile(datasetId, file));
     }
@@ -269,7 +269,7 @@ public class KmDocumentController extends BaseController {
     @Log(title = "知识库文档", businessType = BusinessType.INSERT)
     @PostMapping("/uploadTempBatch")
     public R<List<TempFileVo>> uploadTempBatch(
-            @NotNull(message = "数据集ID不能为空") @RequestParam Long datasetId,
+            @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
             @RequestParam("files") MultipartFile[] files) {
         return R.ok(documentService.uploadTempFiles(datasetId, files));
     }
@@ -306,7 +306,7 @@ public class KmDocumentController extends BaseController {
     @SaCheckPermission("ai:document:download")
     @Log(title = "知识库文档", businessType = BusinessType.EXPORT)
     @GetMapping("/download/{id:\\d+}")
-    public void download(@NotNull(message = "主键不能为空") @PathVariable Long id, HttpServletResponse response) {
+    public void download(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id, HttpServletResponse response) {
         documentService.downloadDocument(id, response);
     }
 }

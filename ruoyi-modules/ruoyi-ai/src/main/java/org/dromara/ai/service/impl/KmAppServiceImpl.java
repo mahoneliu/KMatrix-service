@@ -1,5 +1,7 @@
 package org.dromara.ai.service.impl;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
@@ -134,7 +136,7 @@ public class KmAppServiceImpl implements IKmAppService {
         // 找到应用数据
         KmApp app = baseMapper.selectById(update.getAppId());
         if (app == null) {
-            throw new RuntimeException("应用不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.app.not_found"));
         }
         // 如果是工作流类型应用,校验工作流配置 -- 改在发布逻辑校验，保存草稿放行
         // if ("2".equals(app.getAppType()) &&
@@ -234,7 +236,7 @@ public class KmAppServiceImpl implements IKmAppService {
                 String normalizedCurrent = currentDslData.replaceAll("\\s+", "");
 
                 if (normalizedLast.equals(normalizedCurrent)) {
-                    throw new RuntimeException("工作流配置无变更,无需发布");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.workflow.no_changes"));
                 }
             }
         }

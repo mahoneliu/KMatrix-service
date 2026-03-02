@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
@@ -104,7 +106,7 @@ public class KmAdminChatController extends BaseController {
     public R<Void> updateSessionTitle(@PathVariable Long sessionId, @RequestBody Map<String, String> body) {
         String title = body.get("title");
         if (StringUtils.isBlank(title)) {
-            return R.fail("标题不能为空");
+            return R.fail(MessageUtils.message("ai.val.common.title_required"));
         }
         return toAjax(chatService.updateSessionTitle(sessionId, title, LoginHelper.getUserId()));
     }

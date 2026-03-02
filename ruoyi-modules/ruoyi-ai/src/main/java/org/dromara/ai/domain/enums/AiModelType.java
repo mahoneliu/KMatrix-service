@@ -1,5 +1,7 @@
 package org.dromara.ai.domain.enums;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -14,7 +16,7 @@ public enum AiModelType {
     /**
      * 语言模型
      */
-    LLM("1", "语言模型"),
+    LLM("1", MessageUtils.message("ai.enum.model_type.llm")),
     /**
      * 向量模型
      */

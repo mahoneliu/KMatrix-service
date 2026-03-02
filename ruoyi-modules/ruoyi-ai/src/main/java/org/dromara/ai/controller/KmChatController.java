@@ -1,4 +1,6 @@
 package org.dromara.ai.controller;
+
+import org.dromara.common.core.utils.MessageUtils;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmChatSendBo;
@@ -172,9 +174,9 @@ public class KmChatController extends BaseController {
         }
 
         if (StringUtils.isBlank(token)) {
-            throw new ServiceException("访问受限：未提供 Token");
+            throw new ServiceException(MessageUtils.message("ai.msg.auth.token_missing"));
         } else {
-            throw new ServiceException("访问受限：无效的 Token");
+            throw new ServiceException(MessageUtils.message("ai.msg.auth.access_denied_token"));
         }
     }
 

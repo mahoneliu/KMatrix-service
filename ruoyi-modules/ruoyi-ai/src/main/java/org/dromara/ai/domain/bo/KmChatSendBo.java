@@ -30,7 +30,7 @@ public class KmChatSendBo {
     /**
      * 用户消息内容
      */
-    @NotBlank(message = "消息内容不能为空")
+    @NotBlank(message = "{ai.val.chat.message_content_required}")
     private String message;
 
     /**

@@ -17,12 +17,12 @@ public class BatchWebLinkBo {
     /**
      * 数据集ID
      */
-    @NotNull(message = "数据集ID不能为空")
+    @NotNull(message = "{ai.val.dataset.id_required}")
     private Long datasetId;
 
     /**
      * 网页URL列表
      */
-    @NotEmpty(message = "URL列表不能为空")
+    @NotEmpty(message = "{ai.val.url.list_required}")
     private List<String> urls;
 }

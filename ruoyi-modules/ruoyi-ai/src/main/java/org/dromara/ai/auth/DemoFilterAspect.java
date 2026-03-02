@@ -1,5 +1,7 @@
 package org.dromara.ai.auth;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -35,7 +37,7 @@ public class DemoFilterAspect {
                 if ("true".equals(isDemoEnabled)) {
                         if (!LoginHelper.isSuperAdmin()) {
                                 // 如果是演示环境且不是超级管理员，则拦截
-                                return R.fail("演示环境，不允许操作敏感数据！");
+                                return R.fail(MessageUtils.message("ai.msg.common.demo_restriction"));
                         }
                 }
                 return pjp.proceed();

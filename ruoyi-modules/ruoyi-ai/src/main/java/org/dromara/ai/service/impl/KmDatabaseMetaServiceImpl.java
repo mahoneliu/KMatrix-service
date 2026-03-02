@@ -1,5 +1,7 @@
 package org.dromara.ai.service.impl;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -121,7 +123,7 @@ public class KmDatabaseMetaServiceImpl implements IKmDatabaseMetaService {
 
         KmDataSource ds = dataSourceMapper.selectById(dataSourceId);
         if (ds == null) {
-            throw new RuntimeException("数据源不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.datasource.not_found"));
         }
 
         Connection conn = null;

@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.IdUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +49,7 @@ public class EmbedController {
         // 1. 验证 appToken
         Long appId = appTokenService.validateToken(bo.getAppToken(), null);
         if (appId == null) {
-            return R.fail("无效的应用 Token");
+            return R.fail(MessageUtils.message("ai.msg.auth.invalid_app_token"));
         }
 
         // 2. 生成 userId (雪花 ID)
@@ -85,7 +87,7 @@ public class EmbedController {
         // 2. 尝试验证 App Token
         Long appId = appTokenService.validateToken(token, null);
         if (appId == null) {
-            return R.fail("无效的 Token");
+            return R.fail(MessageUtils.message("ai.msg.auth.invalid_token"));
         }
         return R.ok(appService.queryById(appId));
     }

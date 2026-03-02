@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -88,7 +90,7 @@ public class KmAppTokenController extends BaseController {
     public R<KmAppTokenVo> refresh(@PathVariable Long tokenId) {
         KmAppTokenVo result = appTokenService.refreshToken(tokenId);
         if (result == null) {
-            return R.fail("Token不存在或已删除");
+            return R.fail(MessageUtils.message("ai.msg.auth.token_not_found"));
         }
         return R.ok(result);
     }

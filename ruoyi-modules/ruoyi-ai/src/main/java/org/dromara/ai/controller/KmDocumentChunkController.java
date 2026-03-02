@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +40,7 @@ public class KmDocumentChunkController extends BaseController {
      */
     @SaCheckPermission("ai:chunk:list")
     @GetMapping("/listByDocument/{documentId}")
-    public R<List<KmDocumentChunkVo>> listByDocument(@NotNull(message = "文档ID不能为空") @PathVariable Long documentId) {
+    public R<List<KmDocumentChunkVo>> listByDocument(@NotNull(message = "{ai.val.document.id_required}") @PathVariable Long documentId) {
         return R.ok(chunkService.listByDocumentId(documentId));
     }
 
@@ -47,7 +49,7 @@ public class KmDocumentChunkController extends BaseController {
      */
     @SaCheckPermission("ai:chunk:query")
     @GetMapping("/{id:\\d+}")
-    public R<KmDocumentChunkVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<KmDocumentChunkVo> getInfo(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return R.ok(chunkService.queryById(id));
     }
 
@@ -60,7 +62,7 @@ public class KmDocumentChunkController extends BaseController {
     public R<Void> edit(@RequestBody Map<String, Object> body) {
         Object idObj = body.get("id");
         if (idObj == null) {
-            return R.fail("ID不能为空");
+            return R.fail(MessageUtils.message("ai.msg.common.id_required"));
         }
         Long id = Long.valueOf(idObj.toString());
 
@@ -76,7 +78,7 @@ public class KmDocumentChunkController extends BaseController {
     @SaCheckPermission("ai:chunk:remove")
     @Log(title = "知识库切片", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id:\\d+}")
-    public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> remove(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(chunkService.deleteById(id));
     }
 
@@ -105,7 +107,7 @@ public class KmDocumentChunkController extends BaseController {
     @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/enable/{id:\\d+}")
-    public R<Void> enable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> enable(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(chunkService.enableChunk(id, true));
     }
 
@@ -115,7 +117,7 @@ public class KmDocumentChunkController extends BaseController {
     @SaCheckPermission("ai:chunk:edit")
     @Log(title = "知识库切片", businessType = BusinessType.UPDATE)
     @PutMapping("/disable/{id:\\d+}")
-    public R<Void> disable(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> disable(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(chunkService.enableChunk(id, false));
     }
 

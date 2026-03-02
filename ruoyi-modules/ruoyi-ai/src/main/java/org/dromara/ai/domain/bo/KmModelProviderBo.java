@@ -22,7 +22,7 @@ public class KmModelProviderBo extends BaseEntity {
     /**
      * 供应商ID
      */
-    @NotNull(message = "供应商ID不能为空", groups = {
+    @NotNull(message = "{ai.val.provider.id_required}", groups = {
             EditGroup.class })
     private Long providerId;
 

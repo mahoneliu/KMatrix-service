@@ -1,5 +1,7 @@
 package org.dromara.ai.workflow;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +61,7 @@ public class WorkflowExecutor {
         // 1. 解析工作流配置
         WorkflowConfig config = objectMapper.readValue(app.getDslData(), WorkflowConfig.class);
         if (config == null || config.getNodes() == null) {
-            throw new RuntimeException("工作流配置无效");
+            throw new RuntimeException(MessageUtils.message("ai.msg.workflow.invalid_config"));
         }
 
         log.info("执行工作流: appId={}, debug={}", app.getAppId(), debug);

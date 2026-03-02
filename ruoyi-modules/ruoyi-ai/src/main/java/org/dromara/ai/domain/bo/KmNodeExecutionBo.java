@@ -27,19 +27,19 @@ public class KmNodeExecutionBo {
     /**
      * 实例ID
      */
-    @NotNull(message = "实例ID不能为空")
+    @NotNull(message = "{ai.val.common.instance_id_required}")
     private Long instanceId;
 
     /**
      * 节点ID
      */
-    @NotBlank(message = "节点ID不能为空")
+    @NotBlank(message = "{ai.val.node.id_required}")
     private String nodeId;
 
     /**
      * 节点类型
      */
-    @NotBlank(message = "节点类型不能为空")
+    @NotBlank(message = "{ai.val.node.type_required}")
     private String nodeType;
 
     /**

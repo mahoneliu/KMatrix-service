@@ -1,5 +1,7 @@
 package org.dromara.ai.workflow.nodes;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -80,7 +82,7 @@ public class SqlGenerateNode extends AbstractWorkflowNode {
                 new LambdaQueryWrapper<KmDatabaseMeta>()
                         .eq(KmDatabaseMeta::getDataSourceId, dataSourceId));
         if (metas.isEmpty()) {
-            throw new RuntimeException("数据源没有配置元数据，请先添加表结构信息");
+            throw new RuntimeException(MessageUtils.message("ai.msg.datasource.meta_missing"));
         }
 
         // 4. 选择相关表

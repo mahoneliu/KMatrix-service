@@ -29,7 +29,7 @@ public class KmDocumentBo implements Serializable {
     /**
      * 数据集ID（必填）
      */
-    @NotNull(message = "数据集ID不能为空")
+    @NotNull(message = "{ai.val.dataset.id_required}")
     private Long datasetId;
 
     /**

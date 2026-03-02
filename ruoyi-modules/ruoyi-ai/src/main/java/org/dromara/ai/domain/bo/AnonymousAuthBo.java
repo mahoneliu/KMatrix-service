@@ -15,6 +15,6 @@ public class AnonymousAuthBo {
     /**
      * 应用 Token
      */
-    @NotBlank(message = "appToken 不能为空")
+    @NotBlank(message = "{ai.val.auth.app_token_required}")
     private String appToken;
 }

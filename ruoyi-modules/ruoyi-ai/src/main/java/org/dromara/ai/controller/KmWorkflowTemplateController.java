@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmWorkflowTemplateBo;
@@ -133,7 +135,7 @@ public class KmWorkflowTemplateController extends BaseController {
             @RequestBody Map<String, String> body) {
         String appName = body.get("appName");
         if (appName == null || appName.isBlank()) {
-            throw new ServiceException("应用名称不能为空");
+            throw new ServiceException(MessageUtils.message("ai.msg.app.name_required"));
         }
         Long appId = templateService.createAppFromTemplate(templateId, appName);
         return R.ok(appId);

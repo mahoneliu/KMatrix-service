@@ -22,13 +22,13 @@ public class BatchChunkPreviewBo implements Serializable {
     /**
      * 临时文件ID列表
      */
-    @NotNull(message = "临时文件ID列表不能为空")
+    @NotNull(message = "{ai.val.file.temp_id_list_required}")
     private List<Long> tempFileIds;
 
     /**
      * 分块策略 (AUTO=自动, CUSTOM=自定义)
      */
-    @NotNull(message = "分块策略不能为空")
+    @NotNull(message = "{ai.val.chunk.strategy_required}")
     private String chunkStrategy;
 
     /**

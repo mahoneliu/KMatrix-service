@@ -23,19 +23,19 @@ public class ChunkSubmitBo implements Serializable {
     /**
      * 临时文件ID
      */
-    @NotNull(message = "临时文件ID不能为空")
+    @NotNull(message = "{ai.val.file.temp_id_required}")
     private Long tempFileId;
 
     /**
      * 数据集ID
      */
-    @NotNull(message = "数据集ID不能为空")
+    @NotNull(message = "{ai.val.dataset.id_required}")
     private Long datasetId;
 
     /**
      * 分块列表
      */
-    @NotEmpty(message = "分块列表不能为空")
+    @NotEmpty(message = "{ai.val.chunk.list_required}")
     private List<ChunkItem> chunks;
 
     /**
@@ -55,7 +55,7 @@ public class ChunkSubmitBo implements Serializable {
         /**
          * 内容
          */
-        @NotNull(message = "分块内容不能为空")
+        @NotNull(message = "{ai.val.chunk.content_required}")
         private String content;
     }
 }

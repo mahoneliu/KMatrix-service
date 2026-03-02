@@ -1,5 +1,7 @@
 package org.dromara.ai.service.impl;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -133,7 +135,7 @@ public class KmModelServiceImpl implements IKmModelService {
         // 1. 验证模型是否存在且为语言模型
         KmModel model = baseMapper.selectById(modelId);
         if (model == null) {
-            throw new ServiceException("模型不存在");
+            throw new ServiceException(MessageUtils.message("ai.msg.model.not_found"));
         }
         if (!"1".equals(model.getModelType())) {
             throw new ServiceException("只能将语言模型设置为默认模型");
@@ -233,7 +235,7 @@ public class KmModelServiceImpl implements IKmModelService {
                 // 获取模型
                 KmModel model = baseMapper.selectById(bo.getModelId());
                 if (model == null) {
-                    sendError(emitter, "模型不存在");
+                    sendError(emitter, MessageUtils.message("ai.msg.model.not_found"));
                     return;
                 }
 

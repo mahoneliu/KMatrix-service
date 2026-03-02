@@ -1,5 +1,7 @@
 package org.dromara.ai.service.impl;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.AiMessage;
@@ -373,7 +375,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private KmAppVo loadApp(Long appId) {
         KmAppVo app = appService.queryById(appId);
         if (app == null) {
-            throw new ServiceException("应用不存在");
+            throw new ServiceException(MessageUtils.message("ai.msg.app.not_found"));
         }
 
         // 如果是工作流类型或固定模板应用,从最新发布版本加载 DSL
@@ -405,7 +407,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private KmModel loadModel(Long modelId) {
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
-            throw new ServiceException("模型不存在");
+            throw new ServiceException(MessageUtils.message("ai.msg.model.not_found"));
         }
         if (!"0".equals(model.getStatus())) {
             throw new ServiceException("模型已停用");
@@ -645,7 +647,7 @@ public class KmChatServiceImpl implements IKmChatService {
             // 直接从数据库获取应用记录，使用dslData和graphData字段（草稿）
             KmApp appEntity = appMapper.selectById(bo.getAppId());
             if (appEntity == null) {
-                throw new ServiceException("应用不存在");
+                throw new ServiceException(MessageUtils.message("ai.msg.app.not_found"));
             }
 
             // 2. 校验草稿DSL是否存在

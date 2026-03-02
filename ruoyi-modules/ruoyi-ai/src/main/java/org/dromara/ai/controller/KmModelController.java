@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.bo.KmModelBo;
@@ -78,7 +80,7 @@ public class KmModelController extends BaseController {
         // 如果是系统内置模型，就不允许修改
         KmModelVo existing = modelService.queryById(bo.getModelId());
         if (existing != null && "Y".equals(existing.getIsBuiltin())) {
-            return R.fail("系统内置模型不允许修改");
+            return R.fail(MessageUtils.message("ai.msg.model.builtin_readonly"));
         }
         return toAjax(modelService.updateByBo(bo));
     }

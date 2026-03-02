@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +48,7 @@ public class KmQuestionController extends BaseController {
      */
     @SaCheckPermission("ai:question:list")
     @GetMapping("/listByChunk/{chunkId}")
-    public R<List<KmQuestionVo>> listByChunk(@NotNull(message = "切片ID不能为空") @PathVariable Long chunkId) {
+    public R<List<KmQuestionVo>> listByChunk(@NotNull(message = "{ai.val.chunk.id_required}") @PathVariable Long chunkId) {
         return R.ok(questionService.listByChunkId(chunkId));
     }
 
@@ -55,7 +57,7 @@ public class KmQuestionController extends BaseController {
      */
     @SaCheckPermission("ai:question:list")
     @GetMapping("/listByDocument/{documentId}")
-    public R<List<KmQuestionVo>> listByDocument(@NotNull(message = "文档ID不能为空") @PathVariable Long documentId) {
+    public R<List<KmQuestionVo>> listByDocument(@NotNull(message = "{ai.val.document.id_required}") @PathVariable Long documentId) {
         return R.ok(questionService.listByDocumentId(documentId));
     }
 
@@ -69,7 +71,7 @@ public class KmQuestionController extends BaseController {
         Object chunkIdObj = body.get("chunkId");
         Object contentObj = body.get("content");
         if (chunkIdObj == null || contentObj == null) {
-            return R.fail("参数不完整");
+            return R.fail(MessageUtils.message("ai.msg.common.params_incomplete"));
         }
         Long chunkId = Long.valueOf(chunkIdObj.toString());
         String content = contentObj.toString();
@@ -87,7 +89,7 @@ public class KmQuestionController extends BaseController {
         Object questionIdObj = body.get("questionId");
 
         if (chunkIdObj == null || questionIdObj == null) {
-            return R.fail("参数不完整");
+            return R.fail(MessageUtils.message("ai.msg.common.params_incomplete"));
         }
 
         Long chunkId = Long.valueOf(chunkIdObj.toString());
@@ -107,7 +109,7 @@ public class KmQuestionController extends BaseController {
         Object questionIdObj = body.get("questionId");
 
         if (chunkIdObj == null || questionIdObj == null) {
-            return R.fail("参数不完整");
+            return R.fail(MessageUtils.message("ai.msg.common.params_incomplete"));
         }
 
         Long chunkId = Long.valueOf(chunkIdObj.toString());
@@ -122,7 +124,7 @@ public class KmQuestionController extends BaseController {
     @SaCheckPermission("ai:question:remove")
     @Log(title = "知识库问题", businessType = BusinessType.DELETE)
     @DeleteMapping("/{id}")
-    public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<Void> remove(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return toAjax(questionService.deleteById(id));
     }
 
@@ -135,7 +137,7 @@ public class KmQuestionController extends BaseController {
     public R<List<KmQuestionVo>> generate(@RequestBody Map<String, Object> body) {
         Object chunkIdObj = body.get("chunkId");
         if (chunkIdObj == null) {
-            return R.fail("切片ID不能为空");
+            return R.fail(MessageUtils.message("ai.val.chunk.id_required"));
         }
         Long chunkId = Long.valueOf(chunkIdObj.toString());
 
@@ -184,7 +186,7 @@ public class KmQuestionController extends BaseController {
      */
     @SaCheckPermission("ai:question:list")
     @GetMapping("/listByKb/{kbId}")
-    public R<List<KmQuestionVo>> listByKb(@NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
+    public R<List<KmQuestionVo>> listByKb(@NotNull(message = "{ai.val.kb.id_required}") @PathVariable Long kbId) {
         return R.ok(questionService.listByKbId(kbId));
     }
 
@@ -194,7 +196,7 @@ public class KmQuestionController extends BaseController {
     @SaCheckPermission("ai:question:edit")
     @Log(title = "知识库问题", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}")
-    public R<Void> update(@NotNull(message = "问题ID不能为空") @PathVariable Long id,
+    public R<Void> update(@NotNull(message = "{ai.val.qa.question_id_required}") @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         Object contentObj = body.get("content");
         if (contentObj == null) {
@@ -228,7 +230,7 @@ public class KmQuestionController extends BaseController {
         Object contentsObj = body.get("contents");
 
         if (kbIdObj == null || contentsObj == null) {
-            return R.fail("参数不完整");
+            return R.fail(MessageUtils.message("ai.msg.common.params_incomplete"));
         }
 
         Long kbId = Long.valueOf(kbIdObj.toString());
@@ -243,7 +245,7 @@ public class KmQuestionController extends BaseController {
      */
     @SaCheckPermission("ai:question:query")
     @GetMapping("/{id}/chunks")
-    public R<List<Map<String, Object>>> getLinkedChunks(@NotNull(message = "问题ID不能为空") @PathVariable Long id) {
+    public R<List<Map<String, Object>>> getLinkedChunks(@NotNull(message = "{ai.val.qa.question_id_required}") @PathVariable Long id) {
         return R.ok(questionService.getLinkedChunks(id));
     }
 
@@ -258,7 +260,7 @@ public class KmQuestionController extends BaseController {
         Object chunkIdsObj = body.get("chunkIds");
 
         if (questionIdObj == null || chunkIdsObj == null) {
-            return R.fail("参数不完整");
+            return R.fail(MessageUtils.message("ai.msg.common.params_incomplete"));
         }
 
         Long questionId = Long.valueOf(questionIdObj.toString());

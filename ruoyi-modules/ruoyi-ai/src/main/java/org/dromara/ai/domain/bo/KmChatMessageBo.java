@@ -28,19 +28,19 @@ public class KmChatMessageBo extends BaseEntity {
     /**
      * 会话ID
      */
-    @NotNull(message = "会话ID不能为空")
+    @NotNull(message = "{ai.val.chat.session_id_required}")
     private Long sessionId;
 
     /**
      * 角色(user/assistant)
      */
-    @NotBlank(message = "角色不能为空")
+    @NotBlank(message = "{ai.val.common.role_required}")
     private String role;
 
     /**
      * 内容
      */
-    @NotBlank(message = "消息内容不能为空")
+    @NotBlank(message = "{ai.val.chat.message_content_required}")
     private String content;
 
     /**

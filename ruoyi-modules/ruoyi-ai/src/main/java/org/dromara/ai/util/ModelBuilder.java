@@ -1,5 +1,7 @@
 package org.dromara.ai.util;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -53,7 +55,7 @@ public class ModelBuilder {
      */
     public ChatLanguageModel buildChatModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
-            throw new ServiceException("模型配置或供应商标识为空");
+            throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
 
         log.info("构建聊天模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
@@ -78,7 +80,7 @@ public class ModelBuilder {
      */
     public ChatLanguageModel buildChatModel(KmModel model, String providerKey, Double temperature, Integer maxTokens) {
         if (model == null || StrUtil.isBlank(providerKey)) {
-            throw new ServiceException("模型配置或供应商标识为空");
+            throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
 
         log.info("构建聊天模型(带参数): providerKey={}, modelKey={}, temperature={}, maxTokens={}",
@@ -116,7 +118,7 @@ public class ModelBuilder {
     public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey,
             Double temperature, Integer maxTokens) {
         if (model == null || StrUtil.isBlank(providerKey)) {
-            throw new ServiceException("模型配置或供应商标识为空");
+            throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
 
         log.info("构建流式聊天模型: providerKey={}, modelKey={}, temperature={}, maxTokens={}",

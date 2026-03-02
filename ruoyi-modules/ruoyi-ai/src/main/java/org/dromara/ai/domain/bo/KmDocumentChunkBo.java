@@ -43,7 +43,7 @@ public class KmDocumentChunkBo implements Serializable {
     /**
      * 分块内容
      */
-    @NotBlank(message = "分块内容不能为空")
+    @NotBlank(message = "{ai.val.chunk.content_required}")
     private String content;
 
     /**

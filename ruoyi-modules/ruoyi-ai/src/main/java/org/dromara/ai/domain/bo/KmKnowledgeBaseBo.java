@@ -27,7 +27,7 @@ public class KmKnowledgeBaseBo implements Serializable {
     /**
      * 知识库名称
      */
-    @NotBlank(message = "知识库名称不能为空")
+    @NotBlank(message = "{ai.val.kb.name_required}")
     private String name;
 
     /**

@@ -34,13 +34,13 @@ public class KmNodeDefinitionBo extends BaseEntity {
     /**
      * 节点类型标识 (如 LLM_CHAT)
      */
-    @NotBlank(message = "节点类型不能为空")
+    @NotBlank(message = "{ai.val.node.type_required}")
     private String nodeType;
 
     /**
      * 节点显示名称
      */
-    @NotBlank(message = "节点名称不能为空")
+    @NotBlank(message = "{ai.val.node.name_required}")
     private String nodeLabel;
 
     /**
@@ -56,7 +56,7 @@ public class KmNodeDefinitionBo extends BaseEntity {
     /**
      * 节点分类 (basic/ai/logic/action)
      */
-    @NotBlank(message = "节点分类不能为空")
+    @NotBlank(message = "{ai.val.node.category_required}")
     private String category;
 
     /**

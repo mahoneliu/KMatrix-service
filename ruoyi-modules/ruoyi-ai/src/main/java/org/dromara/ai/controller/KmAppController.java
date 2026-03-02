@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +75,7 @@ public class KmAppController extends BaseController {
     @PostMapping
     public R<String> add(@Validated @RequestBody KmAppBo bo) {
         String appId = appService.insertByBo(bo);
-        return R.ok("操作成功", appId);
+        return R.ok(MessageUtils.message("ai.msg.common.success"), appId);
     }
 
     /**

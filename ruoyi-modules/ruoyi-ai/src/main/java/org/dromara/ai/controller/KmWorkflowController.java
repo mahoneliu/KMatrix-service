@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.bo.KmChatSendBo;
@@ -56,7 +58,7 @@ public class KmWorkflowController extends BaseController {
             String message = (String) params.get("message");
 
             if (appId == null) {
-                throw new RuntimeException("AppID 不能为空");
+                throw new RuntimeException(MessageUtils.message("ai.msg.app.id_required"));
             }
 
             // 构造 ChatSendBo
@@ -71,7 +73,7 @@ public class KmWorkflowController extends BaseController {
             // 获取 App 信息
             KmAppVo appVo = appService.queryById(appId);
             if (appVo == null) {
-                throw new ServiceException("应用不存在");
+                throw new ServiceException(MessageUtils.message("ai.msg.app.not_found"));
             }
 
             // 执行
@@ -116,9 +118,9 @@ public class KmWorkflowController extends BaseController {
         }
 
         if (StringUtils.isBlank(token)) {
-            throw new ServiceException("访问受限：未提供 Token");
+            throw new ServiceException(MessageUtils.message("ai.msg.auth.token_missing"));
         } else {
-            throw new ServiceException("访问受限：无效的 Token");
+            throw new ServiceException(MessageUtils.message("ai.msg.auth.access_denied_token"));
         }
     }
 

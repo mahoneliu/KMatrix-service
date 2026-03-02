@@ -1,5 +1,7 @@
 package org.dromara.ai.controller;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +49,7 @@ public class KmAdminWorkflowController extends BaseController {
             String dslData = (String) params.get("dslData");
 
             if (appId == null && dslData == null) {
-                throw new RuntimeException("AppID 或 DSL 数据不能为空");
+                throw new RuntimeException(MessageUtils.message("ai.msg.app.id_or_dsl_required"));
             }
 
             // 构造 ChatSendBo

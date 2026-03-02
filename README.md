@@ -1,4 +1,5 @@
 <p align="center"><img src="https://download.kykms.cn/logo_keyi.png" alt="kmatrix" width="100" /></p>
+[English](./README-en.md)
 <h1 align="center">KMatrix - AI 增强型企业知识库平台</h1>
 
 <p align="center">

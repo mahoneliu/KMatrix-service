@@ -1,5 +1,7 @@
 package org.dromara.ai.domain.enums;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -19,7 +21,7 @@ public enum TaskState {
     /**
      * 执行中
      */
-    STARTED(1, "执行中"),
+    STARTED(1, MessageUtils.message("ai.enum.status.running")),
     /**
      * 成功
      */

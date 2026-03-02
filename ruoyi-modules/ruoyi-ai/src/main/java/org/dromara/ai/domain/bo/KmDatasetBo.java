@@ -29,13 +29,13 @@ public class KmDatasetBo implements Serializable {
     /**
      * 所属知识库ID
      */
-    @NotNull(message = "知识库ID不能为空")
+    @NotNull(message = "{ai.val.kb.id_required}")
     private Long kbId;
 
     /**
      * 数据集名称
      */
-    @NotBlank(message = "数据集名称不能为空")
+    @NotBlank(message = "{ai.val.dataset.name_required}")
     private String name;
 
     /**

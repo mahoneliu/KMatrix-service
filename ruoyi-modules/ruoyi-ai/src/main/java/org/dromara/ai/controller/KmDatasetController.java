@@ -45,7 +45,7 @@ public class KmDatasetController extends BaseController {
      * 查询知识库下的所有数据集
      */
     @GetMapping("/listByKb/{kbId}")
-    public R<List<KmDatasetVo>> listByKb(@NotNull(message = "知识库ID不能为空") @PathVariable Long kbId) {
+    public R<List<KmDatasetVo>> listByKb(@NotNull(message = "{ai.val.kb.id_required}") @PathVariable Long kbId) {
         return R.ok(datasetService.queryListByKbId(kbId));
     }
 
@@ -53,7 +53,7 @@ public class KmDatasetController extends BaseController {
      * 获取数据集详细信息
      */
     @GetMapping("/{id}")
-    public R<KmDatasetVo> getInfo(@NotNull(message = "主键不能为空") @PathVariable Long id) {
+    public R<KmDatasetVo> getInfo(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long id) {
         return R.ok(datasetService.queryById(id));
     }
 
@@ -81,7 +81,7 @@ public class KmDatasetController extends BaseController {
     @DemoBlock
     @Log(title = "数据集", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
-    public R<Void> remove(@NotNull(message = "主键不能为空") @PathVariable Long[] ids) {
+    public R<Void> remove(@NotNull(message = "{ai.val.common.pk_required}") @PathVariable Long[] ids) {
         return toAjax(datasetService.deleteWithValidByIds(List.of(ids), true));
     }
 }

@@ -1,5 +1,7 @@
 package org.dromara.ai.domain.enums;
 
+import org.dromara.common.core.utils.MessageUtils;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -14,11 +16,11 @@ public enum AiAppType {
     /**
      * 固定模板
      */
-    FIXED_TEMPLATE("1", "固定模板"),
+    FIXED_TEMPLATE("1", MessageUtils.message("ai.enum.app_type.fixed_template")),
     /**
      * 自定义工作流
      */
-    CUSTOM_WORKFLOW("2", "自定义工作流"),
+    CUSTOM_WORKFLOW("2", MessageUtils.message("ai.enum.app_type.custom_workflow")),
     /**
      * 智能体
      */

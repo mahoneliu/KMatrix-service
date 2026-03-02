@@ -37,7 +37,7 @@ public class KmAppTokenBo implements Serializable {
     /**
      * Token名称
      */
-    @NotBlank(message = "Token名称不能为空")
+    @NotBlank(message = "{ai.val.auth.token_name_required}")
     private String tokenName;
 
     /**
