@@ -98,7 +98,7 @@ KMatrix/
 └── docker/                   # Container deployment scripts
 ```
 
-This repository contains the backend project. Link to the frontend project: [https://gitee.com/kyxxjs/kmatrix-ui](https://gitee.com/kyxxjs/kmatrix-ui)
+This repository contains the backend project. Link to the frontend project: [https://github.com/mahoneliu/Kmatrix-ui](https://github.com/mahoneliu/Kmatrix-ui)
 
 -----------------------------------
 
@@ -167,8 +167,8 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 
 ## 🔗 Links and Contact
 
-- **Online Demo**: [http://kmatrix.kykms.cn](http://kmatrix.kykms.cn) (Credentials: test/666666 or admin1/admin123)
-- **Floating Window Demo**: Visit the [Keyi Official Website](http://www.kykms.cn), check the chat icon in the bottom-right corner.
+- **Online Demo**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) (Credentials: test/666666 or testadmin/admin123)
+- **Floating Window Demo**: Visit the [KMatrix Official Website](http://kmatrix.kykms.cn), check the chat icon in the bottom-right corner.
 - **Tech Documentation**: [Quick Start](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **WeChat**: Scan to join the community or for business cooperation.
 
