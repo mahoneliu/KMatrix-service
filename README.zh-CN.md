@@ -1,6 +1,6 @@
 <p align="center"><img src="https://download.kykms.cn/logo_keyi.png" alt="kmatrix" width="100" /></p>
 
-[English](./README.md)
+Other languages: [English](./README.md)
 <h1 align="center">KMatrix - AI 增强型企业知识库平台</h1>
 
 <p align="center">
@@ -38,10 +38,17 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 
 ## ✨ 核心亮点
 
-- **🚀 现代技术栈**：后端基于 **RuoYi-Vue-Plus (Spring Boot 3 + JDK 17)**，前端基于 **Soybean Admin (Vue 3 + Vite + Naive UI)**，紧跟技术潮流，性能卓越，开发体验极佳。
+- **🚀 现代技术栈**：后端基于 **RuoYi-Vue-Plus** (Spring Boot 3 + JDK 17)，前端基于 **Soybean Admin** (Vue 3 + Vite + Naive UI)，紧跟技术潮流，性能卓越，开发体验极佳。
 - **🧠 强大的 AI 引擎**：深度集成 **LangChain4j** 和 **LangGraph4j**，提供 Java 领域最强的 AI 应用开发体验。
+- **📚 增强型 RAG**：
+  - 通过 **PostgreSQL + pgvector** 向量技术，实现余弦相似度检索，提供精准的自然语言问答能力。
+  - 通过全文检索，支持 **GIN** 索引，实现关键字精准匹配和评分。
+  - 支持混合检索，结合向量检索和全文检索，通过 **RRF** (Reciprocal Rank Fusion, 倒数排序融合) 算法，综合两种检索方式的优势，既实现了语义相似度检索的灵活，又兼顾了关键字检索的精准。
+  - 采用 **BGE-Reranker** (交叉编码器) 进行重排序，进一步提升检索精度。
+  - **父子分块**策略，子分块匹配更加精准，减少噪音，同时返回父分块，提供更完整、连贯的上下文。
+  - 支持QA对，为精准问题提供更有针对性的答案；同时支持为自然文件分块提供AI问题生成，自动获得QA对的效果。
+  - 支持 PDF、Word、PPT、Xls、Markdown 等多种格式解析，支持手工调整分块内容。
 - **⛓️ 可视化工作流 (Workflow)**：内置基于 **Vue Flow** 的工作流编排引擎，支持节点拖拽、连线配置。用户可自定义 AI 处理流程（如：知识检索 -> LLM 思考 -> 结果格式化）。
-- **📚 增强型 RAG**：支持 **PostgreSQL + pgvector** 高效向量检索，结合 **Elasticsearch** (计划中) 混合检索，提供精准的文档问答能力。支持 PDF、Word、Markdown 等多种格式解析。
 - **🔌 无缝嵌入**：拷贝一行脚本即可嵌入到第三方业务系统，让已有系统快速拥有智能问答能力。
 - **🌍 模型中立**：支持对接各种大模型，包括本地私有大模型（DeepSeek R1 / Llama 3 / Qwen 2 等）、国内公共大模型（通义千问 / 字节豆包 / 智谱 AI / Kimi 等）和国外公共大模型（OpenAI / Gemini 等）。
 - **🧩 模块化设计**：前后端完全分离。
@@ -59,8 +66,8 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 
 - **基础框架**: Spring Boot 3.5.7
 - **编程语言**: Java 17+
-- **ORM 框架**: MyBatis Plus 3.5.14 + Dynamic Datasource
-- **数据库**: PostgreSQL (推荐, 需开启 pgvector 插件) / MySQL / Oracle
+- **ORM 框架**: MyBatis Plus 3.5.14 + Dynamic Datasource 
+- **数据库**: PostgreSQL (推荐, 需开启 pgvector 插件) / MySQL / Oracle + Flyway升级管理
 - **AI 框架**: LangChain4j, LangGraph4j
 - **权限认证**: Sa-Token 1.44.0 (JWT)
 - **缓存**: Redis 5+ (Redisson)
@@ -138,9 +145,8 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 1. **环境准备**:
     - 安装Redis。
     - 下载rerank模型。
-    - 安装 PostgreSQL 并启用 vector 扩展和 jieba 分词器。
-    - 初始化数据库，导入项目提供的 SQL 脚本`kmatrix_complete.sql`。  
-    注：script目录下有PG部署脚本和rerank模型下载脚本可参考
+    - 安装 PostgreSQL 并启用 vector 扩展和 jieba 分词器。  
+    注：script目录下有PG部署脚本和rerank模型下载脚本可参考。项目初始化sql脚本在/kmatrix-admin/src/resources/sql，启动项目会自动执行初始化sql。
 
 2. **后端启动 (kmatrix-service)**:
 

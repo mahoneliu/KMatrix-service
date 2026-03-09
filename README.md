@@ -1,6 +1,6 @@
 <p align="center"><img src="https://download.kykms.cn/logo_keyi.png" alt="kmatrix" width="100" /></p>
 
-[中文](./README.zh-CN.md)
+其他语言: [中文](./README.zh-CN.md)
 <h1 align="center">KMatrix - AI-Enhanced Enterprise Knowledge Base Platform</h1>
 
 <p align="center">
@@ -40,8 +40,15 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 
 - **🚀 Modern Tech Stack**: Backend based on **RuoYi-Vue-Plus (Spring Boot 3 + JDK 17)**, frontend based on **Soybean Admin (Vue 3 + Vite + Naive UI)**, keeping up with technical trends with excellent performance and development experience.
 - **🧠 Powerful AI Engine**: Deeply integrated with **LangChain4j** and **LangGraph4j**, providing the strongest AI application development experience in the Java ecosystem.
+- **📚 Enhanced RAG**:
+  - Uses **PostgreSQL + pgvector** for cosine similarity search, providing accurate natural language Q&A capabilities.
+  - Supports full-text search with **GIN** indexing for precise keyword matching and scoring.
+  - Supports hybrid search, combining vector and full-text search via the **RRF** (Reciprocal Rank Fusion) algorithm to balance semantic flexibility and keyword precision.
+  - Uses **BGE-Reranker** (Cross-Encoder) for re-ranking to further improve retrieval accuracy.
+  - Implements **parent-child chunking**: child chunks for precise matching and noise reduction, parent chunks for complete and coherent context.
+  - Supports QA pairs for targeted answers and AI-generated questions for document chunks to automatically improve retrieval.
+  - Supports parsing of various formats including PDF, Word, PPT, Excel, and Markdown, and supports manual adjustment of chunk content.
 - **⛓️ Visual Workflow**: Built-in workflow orchestration engine based on **Vue Flow**, supporting node drag-and-drop and connection configuration. Users can customize AI processing flows (e.g., Knowledge Retrieval -> LLM Reasoning -> Result Formatting).
-- **📚 Enhanced RAG**: Supports efficient vector retrieval with **PostgreSQL + pgvector**, combined with **Elasticsearch** (planned) hybrid search for precise document Q&A. Supports parsing of various formats including PDF, Word, and Markdown.
 - **🔌 Seamless Embedding**: Embed an intelligent Q&A assistant into third-party business systems by copying just one line of script.
 - **🌍 Model Agnostic**: Supports integration with various LLMs, including local private models (DeepSeek R1 / Llama 3 / Qwen 2, etc.) and public cloud models from both domestic (Tongyi Qianwen / ByteDance Doubao / Zhipu AI / Kimi, etc.) and international providers (OpenAI / Gemini, etc.).
 - **🧩 Modular Design**: Complete separation of frontend and backend.
@@ -60,7 +67,7 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 - **Core Framework**: Spring Boot 3.5.7
 - **Language**: Java 17+
 - **ORM Framework**: MyBatis Plus 3.5.14 + Dynamic Datasource
-- **Database**: PostgreSQL (Recommended, requires pgvector plugin) / MySQL / Oracle
+- **Database**: PostgreSQL (Recommended, requires pgvector plugin) / MySQL / Oracle + Flyway upgrade management
 - **AI Framework**: LangChain4j, LangGraph4j
 - **Authentication**: Sa-Token 1.44.0 (JWT)
 - **Cache**: Redis 5+ (Redisson)
@@ -139,8 +146,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
     - Install Redis.
     - Download the rerank model.
     - Install PostgreSQL and enable pgvector extension and jieba tokenizer.
-    - Initialize the database by importing the provided SQL script `kmatrix_complete.sql`.
-    Note: PG deployment scripts and rerank model download scripts are available in the `script` directory.
+    Note: PG deployment scripts and rerank model download scripts are available in the `script` directory. The project uses flyway to manage SQL. The startup project will automatically execute the initialization SQL. The SQL directory is: /kmatrix-admin/src/resources/sql.
 
 2. **Backend Startup (kmatrix-service)**:
 
