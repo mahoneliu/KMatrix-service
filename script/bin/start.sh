@@ -3,11 +3,26 @@
 AppName=ruoyi-admin.jar
 
 # JVM参数
-JVM_OPTS="-Dname=$AppName  -Duser.timezone=Asia/Shanghai -Xms512m -Xmx1024m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -XX:+UseZGC"
+# JVM_OPTS="-Dname=$AppName  -Duser.timezone=Asia/Shanghai -Xms512m -Xmx1024m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -XX:+UseZGC"
 APP_HOME=`pwd`
 LOG_DIR=$APP_HOME/logs
 LOG_PATH=$LOG_DIR/$AppName.log
 PROFILES="--spring.profiles.active=prod"
+
+# 优化后的 JVM 参数：换成 G1 + 开启 NMT 追踪
+JVM_OPTS="-Dname=$AppName \
+-Duser.timezone=Asia/Shanghai \
+-Xms512m \
+-Xmx1024m \
+-XX:MaxDirectMemorySize=256m \
+-XX:MetaspaceSize=128m \
+-XX:MaxMetaspaceSize=256m \
+-XX:+HeapDumpOnOutOfMemoryError \
+-XX:HeapDumpPath=$LOG_DIR/heapdump.hprof \
+-XX:+UseG1GC \
+-XX:G1PeriodicGCInterval=60000 \
+-XX:MaxGCPauseMillis=200 \
+-XX:NativeMemoryTracking=detail"
 
 # 如果不存在 logs 目录则创建
 if [ ! -d "$LOG_DIR" ]; then

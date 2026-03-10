@@ -54,7 +54,7 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 - **🧩 模块化设计**：前后端完全分离。
   - **kmatrix-service**: 强大的后端服务，支持RBAC 权限。
   - **kmatrix-ui**: Monorepo 架构，包含管理端 (`@km/admin`) 和 嵌入式聊天窗口 (`@km/chat`)。
-- **🎨 极致 UI 体验**：使用 Naive UI 组件库，精心打磨的界面交互，支持暗黑模式、主题定制，提供类 Dify 的流畅编排体验。
+- **🎨 极致 UI 体验**：使用 Naive UI 组件库，精心打磨的界面交互，提供类 Dify 的流畅编排体验；支持暗黑模式、主题定制、多语言。
 - **🔒 安全可控**：支持完全私有化部署，结合 Sa-Token 认证与精细化权限控制，确保企业知识资产安全。
 - 更详细的功能介绍，请参考 👉🏻 [KMatrix spec](http://docs.kykms.cn/docs/kmatrix/spec)。
 

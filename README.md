@@ -54,7 +54,7 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 - **🧩 Modular Design**: Complete separation of frontend and backend.
   - **kmatrix-service**: Robust backend services with RBAC permission support.
   - **kmatrix-ui**: Monorepo architecture containing the management dashboard (`@km/admin`) and embedded chat window (`@km/chat`).
-- **🎨 Ultimate UI Experience**: Uses Naive UI components for meticulously crafted interface interactions. Supports dark mode, theme customization, and provides a smooth, Dify-like orchestration experience.
+- **🎨 Ultimate UI Experience**: Uses Naive UI components for meticulously crafted interface interactions. Provides a smooth, Dify-like orchestration experience; supports dark mode, theme customization, and multi-language.
 - **🔒 Secure and Controllable**: Supports full on-premise deployment. Combined with Sa-Token authentication and granular permission control, it ensures the security of enterprise knowledge assets.
 - For more detailed features, please refer to 👉🏻 [KMatrix spec](http://docs.kykms.cn/docs/kmatrix/spec).
 

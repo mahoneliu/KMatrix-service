@@ -21,7 +21,7 @@
         <!-- LangGraph4j版本 -->
         <langgraph4j.version>1.7.9</langgraph4j.version>
         <!-- 匹配服务端 ES 版本 -->
-        <elasticsearch.version>8.9.0</elasticsearch.version>
+        <!-- <elasticsearch.version>8.9.0</elasticsearch.version> -->
     </properties>
 
     <dependencyManagement>
@@ -104,17 +104,17 @@
         </dependency>
 
         <!-- LangChain4j Elasticsearch 集成 -->
-        <dependency>
+        <!-- <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-elasticsearch</artifactId>
-        </dependency>
+        </dependency> -->
 
         <!-- Elasticsearch Java Client (匹配服务端 8.9.0) -->
-        <dependency>
+        <!-- <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
             <version>${elasticsearch.version}</version>
-        </dependency>
+        </dependency> -->
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

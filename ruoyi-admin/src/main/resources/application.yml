@@ -63,6 +63,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 1.0.0
+    placeholder-replacement: false
   task:
     execution:
       # 从 springboot 3.5 开始 spring自带线程池
