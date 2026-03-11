@@ -16,6 +16,7 @@ import org.dromara.ai.service.IKmRerankService;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +43,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
     @Override
     public List<KmRetrievalResultVo> search(KmRetrievalBo bo) {
+        long startTime = System.currentTimeMillis();
         if (StrUtil.isBlank(bo.getQuery())) {
             return Collections.emptyList();
         }
@@ -85,7 +87,8 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
             results = rerankService.rerank(bo.getQuery(), results, topK);
         }
 
-        log.info("Search Results: count={}", results != null ? results.size() : 0);
+        long totalTime = System.currentTimeMillis() - startTime;
+        log.info("Search Results: count={}, total_time={}ms", results != null ? results.size() : 0, totalTime);
 
         return results;
     }
@@ -103,15 +106,26 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      */
     public List<KmRetrievalResultVo> multiSourceVectorSearch(String query, List<Long> kbIds, int retrievalCount,
             double threshold) {
+        long start = System.currentTimeMillis();
         // 生成查询向量
         float[] queryEmbedding = embeddingModel.embed(query).content().vector();
         String vectorStr = floatArrayToString(queryEmbedding);
+        long vectorizationTime = System.currentTimeMillis() - start;
 
+        long searchStart = System.currentTimeMillis();
         // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
         List<Map<String, Object>> results = embeddingMapper.vectorSearch(
                 vectorStr, kbIds, retrievalCount, threshold);
+        long searchTime = System.currentTimeMillis() - searchStart;
 
-        return processSearchResults(results, retrievalCount);
+        long processStart = System.currentTimeMillis();
+        List<KmRetrievalResultVo> finalResults = processSearchResults(results, retrievalCount);
+        long processTime = System.currentTimeMillis() - processStart;
+
+        log.info("【性能分析】向量检索总耗时: {}ms (向量化: {}ms, SQL查询: {}ms, 结果处理: {}ms)",
+                System.currentTimeMillis() - start, vectorizationTime, searchTime, processTime);
+
+        return finalResults;
     }
 
     /**
@@ -182,7 +196,13 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
         // 批量更新问题命中次数（不阻塞主流程）
         if (CollUtil.isNotEmpty(questionIds)) {
-            questionMapper.batchIncrementHitNum(new ArrayList<>(questionIds));
+            CompletableFuture.runAsync(() -> {
+                try {
+                    questionMapper.batchIncrementHitNum(new ArrayList<>(questionIds));
+                } catch (Exception e) {
+                    log.error("批量更新问题命中次数异常", e);
+                }
+            });
         }
 
         // 批量查询问题内容并填充 matchedQuestions
@@ -227,11 +247,20 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      * @return 检索结果
      */
     public List<KmRetrievalResultVo> multiSourceKeywordSearch(String query, List<Long> kbIds, int retrievalCount) {
+        long start = System.currentTimeMillis();
         // 使用优化后的多表关联查询，一次性获取所有数据（始终查询所有源类型）
         List<Map<String, Object>> results = embeddingMapper.keywordSearch(
                 query, kbIds, retrievalCount);
+        long searchTime = System.currentTimeMillis() - start;
 
-        return processSearchResults(results, retrievalCount);
+        long processStart = System.currentTimeMillis();
+        List<KmRetrievalResultVo> finalResults = processSearchResults(results, retrievalCount);
+        long processTime = System.currentTimeMillis() - processStart;
+
+        log.info("【性能分析】全文检索总耗时: {}ms (SQL查询: {}ms, 结果处理: {}ms)",
+                System.currentTimeMillis() - start, searchTime, processTime);
+
+        return finalResults;
     }
 
     /**
@@ -245,10 +274,29 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
      */
     public List<KmRetrievalResultVo> multiSourceHybridSearch(String query, List<Long> kbIds, int retrievalCount,
             double threshold) {
-        // 1. 多源向量检索
-        List<KmRetrievalResultVo> vectorResults = multiSourceVectorSearch(query, kbIds, retrievalCount, 0);
-        // 2. 多源关键词检索
-        List<KmRetrievalResultVo> keywordResults = multiSourceKeywordSearch(query, kbIds, retrievalCount);
+        long start = System.currentTimeMillis();
+
+        // 1. 异步执行多源向量检索
+        CompletableFuture<List<KmRetrievalResultVo>> vectorFuture = CompletableFuture.supplyAsync(
+                () -> multiSourceVectorSearch(query, kbIds, retrievalCount, 0));
+
+        // 2. 异步执行多源关键词检索
+        CompletableFuture<List<KmRetrievalResultVo>> keywordFuture = CompletableFuture.supplyAsync(
+                () -> multiSourceKeywordSearch(query, kbIds, retrievalCount));
+
+        List<KmRetrievalResultVo> vectorResults;
+        List<KmRetrievalResultVo> keywordResults;
+        try {
+            CompletableFuture.allOf(vectorFuture, keywordFuture).join();
+            vectorResults = vectorFuture.get();
+            keywordResults = keywordFuture.get();
+        } catch (Exception e) {
+            log.error("混合检索异步执行异常", e);
+            throw new RuntimeException("混合检索执行失败", e);
+        }
+        long parallelSearchTime = System.currentTimeMillis() - start;
+
+        long rrfStart = System.currentTimeMillis();
 
         // 3. RRF 融合
         Map<Long, Double> rrfScores = new HashMap<>();
@@ -304,10 +352,17 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
 
         // 5. 归一化并过滤
         double maxScore = results.isEmpty() ? 1 : results.get(0).getScore();
-        return results.stream()
+        List<KmRetrievalResultVo> finalResults = results.stream()
                 .peek(r -> r.setScore(r.getScore() / maxScore))
                 .filter(r -> r.getScore() >= threshold)
                 .collect(Collectors.toList());
+
+        long rrfTime = System.currentTimeMillis() - rrfStart;
+
+        log.info("【性能分析】混合检索总耗时: {}ms (并行检索耗时: {}ms, RRF融合排序耗时: {}ms)",
+                System.currentTimeMillis() - start, parallelSearchTime, rrfTime);
+
+        return finalResults;
     }
 
     /**

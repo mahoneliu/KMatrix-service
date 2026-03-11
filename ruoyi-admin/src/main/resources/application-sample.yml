@@ -56,7 +56,7 @@ spring:
           # password: xxxxxx
           # PostgreSQL 连接配置 - 请根据实际环境修改
           driverClassName: org.postgresql.Driver
-          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true"
+          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true&sslmode=disable"
           username: postgres
           password: password
 #        # MySQL 数据源 (已注释)
@@ -289,8 +289,8 @@ ai:
   reranker:
     # 是否启用 ONNX BGE-Reranker 模型
     enabled: true
-    # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
-    # 可选 bge-reranker-v2-m3 或 bge-reranker-base
+    # ONNX 模型文件路径 (需要下载 https://huggingface.co/corto-ai/bge-reranker-large-onnx)
+    # 可选 https://huggingface.co/BAAI/bge-reranker-v2-m3 或 https://huggingface.co/BAAI/bge-reranker-base
     model-path: F:\reranker\model.onnx
     # Tokenizer 文件路径
     tokenizer-path: F:\reranker\tokenizer.json

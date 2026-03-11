@@ -173,7 +173,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 
 ## 🔗 链接与交流
 
-- **在线试用**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) 账密：test/666666  或 testadmin/admin123
+- **在线试用**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) 账密：test/666666  或 testadmin/admin123,  注：数据每天会重置。
 - **浮窗嵌入效果**: 访问[KMatrix官网](http://kmatrix.kykms.cn)，右下角的聊天入口图标。
 - **技术文档**: [快速开始](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **微信**: 加群或者商业合作洽谈，可扫码

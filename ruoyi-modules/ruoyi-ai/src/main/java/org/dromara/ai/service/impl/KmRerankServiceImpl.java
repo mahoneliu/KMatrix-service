@@ -102,6 +102,7 @@ public class KmRerankServiceImpl implements IKmRerankService {
      * 使用 ONNX 模型进行重排序
      */
     private List<KmRetrievalResultVo> rerankWithModel(String query, List<KmRetrievalResultVo> results, int topK) {
+        long start = System.currentTimeMillis();
         try {
             List<TextSegment> segments = results.stream()
                     .map(r -> TextSegment.from(r.getContent()))
@@ -116,10 +117,13 @@ public class KmRerankServiceImpl implements IKmRerankService {
                 scored.add(vo);
             }
 
-            return scored.stream()
+            List<KmRetrievalResultVo> finalResults = scored.stream()
                     .sorted(Comparator.comparing(KmRetrievalResultVo::getRerankScore).reversed())
                     .limit(topK)
                     .collect(Collectors.toList());
+
+            log.info("【性能分析】模型重排序(Rerank)耗时: {}ms", System.currentTimeMillis() - start);
+            return finalResults;
 
         } catch (Exception e) {
             log.error("Model rerank failed, using keyword fallback: {}", e.getMessage());
@@ -132,6 +136,7 @@ public class KmRerankServiceImpl implements IKmRerankService {
      * 结合原始相似度分数和关键词匹配度进行重排
      */
     private List<KmRetrievalResultVo> rerankWithKeywords(String query, List<KmRetrievalResultVo> results, int topK) {
+        long start = System.currentTimeMillis();
         String[] keywords = query.toLowerCase().split("\\s+");
 
         for (KmRetrievalResultVo r : results) {
@@ -157,9 +162,12 @@ public class KmRerankServiceImpl implements IKmRerankService {
             r.setRerankScore(rerankScore);
         }
 
-        return results.stream()
+        List<KmRetrievalResultVo> finalResults = results.stream()
                 .sorted(Comparator.comparing(KmRetrievalResultVo::getRerankScore).reversed())
                 .limit(topK)
                 .collect(Collectors.toList());
+
+        log.info("【性能分析】基于关键词重排序(Fallback Rerank)耗时: {}ms", System.currentTimeMillis() - start);
+        return finalResults;
     }
 }

@@ -47,7 +47,45 @@ public class GenericFileEtlHandler implements EtlHandler {
     private final ChildChunkSplitter childChunkSplitter;
     private final IKmChunkingConfigService chunkingConfigService;
 
-    private final DocumentParser documentParser = new ApacheTikaDocumentParser();
+    private final DocumentParser documentParser = createDocumentParser();
+
+    private static DocumentParser createDocumentParser() {
+        org.apache.tika.parser.Parser parser;
+        try (InputStream is = GenericFileEtlHandler.class.getResourceAsStream("/tika-config.xml")) {
+            if (is != null) {
+                org.apache.tika.config.TikaConfig tikaConfig = new org.apache.tika.config.TikaConfig(is);
+                parser = new org.apache.tika.parser.AutoDetectParser(tikaConfig);
+            } else {
+                parser = new org.apache.tika.parser.AutoDetectParser();
+            }
+        } catch (Exception e) {
+            log.error("Failed to load tika-config.xml", e);
+            parser = new org.apache.tika.parser.AutoDetectParser();
+        }
+
+        final org.apache.tika.parser.Parser finalParser = parser;
+        java.util.function.Supplier<org.apache.tika.parser.Parser> parserSupplier = () -> finalParser;
+
+        return new ApacheTikaDocumentParser(
+                parserSupplier,
+                ApacheTikaDocumentParser.DEFAULT_CONTENT_HANDLER_SUPPLIER,
+                ApacheTikaDocumentParser.DEFAULT_METADATA_SUPPLIER,
+                () -> {
+                    org.apache.tika.parser.ParseContext context = new org.apache.tika.parser.ParseContext();
+                    try {
+                        // Double protection against Tesseract OCR
+                        Class<?> tesseractConfigClass = Class.forName("org.apache.tika.parser.ocr.TesseractOCRConfig");
+                        Object config = tesseractConfigClass.getDeclaredConstructor().newInstance();
+                        tesseractConfigClass.getMethod("setSkipOcr", boolean.class).invoke(config, true);
+                        @SuppressWarnings("unchecked")
+                        Class<Object> clazz = (Class<Object>) tesseractConfigClass;
+                        context.set(clazz, config);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                    return context;
+                });
+    }
 
     @Override
     public String getProcessType() {

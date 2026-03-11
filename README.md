@@ -173,7 +173,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 
 ## 🔗 Links and Contact
 
-- **Online Demo**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) (Credentials: test/666666 or testadmin/admin123)
+- **Online Demo**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) (Credentials: test/666666 or testadmin/admin123), Note: Data will be reset daily.
 - **Floating Window Demo**: Visit the [KMatrix Official Website](http://kmatrix.kykms.cn), check the chat icon in the bottom-right corner.
 - **Tech Documentation**: [Quick Start](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **WeChat**: Scan to join the community or for business cooperation.
