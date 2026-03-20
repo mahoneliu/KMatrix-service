@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -25,6 +26,12 @@ import org.dromara.ai.util.ModelBuilder;
 import org.dromara.ai.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.core.NodeContext;
 import org.dromara.ai.workflow.core.NodeOutput;
+import org.dromara.ai.workflow.nodes.tool.ToolBinding;
+import org.dromara.ai.workflow.nodes.tool.ToolExecutionDispatcher;
+import org.dromara.ai.workflow.nodes.tool.ToolProviderService;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -52,6 +59,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
     private final KmModelProviderMapper providerMapper;
     private final ModelBuilder modelBuilder;
     private final KmChatMessageMapper chatMessageMapper;
+    private final ToolProviderService toolProviderService;
 
     /** 默认历史消息条数限制 */
     private static final int DEFAULT_HISTORY_LIMIT = 10;
@@ -175,68 +183,169 @@ public class LlmChatNode extends AbstractWorkflowNode {
         String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase() : provider.getDefaultEndpoint();
         model.setApiBase(apiBase);
 
-        // 使用流式模型（带参数）
-        StreamingChatLanguageModel streamingModel = modelBuilder
-                .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
+        // 解析并绑定工具
+        List<Map<String, Object>> toolRefs = new ArrayList<>();
 
-        // StringBuilder fullResponse = new StringBuilder();
-        // SseEmitter emitter = context.getSseEmitter(); // Moved up
+        // 1. 兼容旧的 tools 配置
+        Object toolsObj = context.getConfig("tools");
+        if (toolsObj instanceof List) {
+            toolRefs.addAll((List<Map<String, Object>>) toolsObj);
+        }
 
-        // 使用 AtomicReference 保存 Response 对象以便在流式完成后访问
-        CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
-        AtomicReference<Exception> errorRef = new AtomicReference<>();
+        // 2. 处理 builtinToolIds
+        Object builtinIdsObj = context.getConfig("builtinToolIds");
+        if (builtinIdsObj instanceof List) {
+            List<?> builtinIds = (List<?>) builtinIdsObj;
+            for (Object id : builtinIds) {
+                Map<String, Object> ref = new HashMap<>();
+                ref.put("type", "builtin");
+                ref.put("id", id);
+                toolRefs.add(ref);
+            }
+        }
 
-        streamingModel.generate(messages, new StreamingResponseHandler<AiMessage>() {
-            @Override
-            public void onNext(String token) {
-                // fullResponse.append(token);
-                if (emitter != null) {
-                    try {
-                        // 如果开启流式输出，发送THINKING事件
-                        // if (Boolean.TRUE.equals(streamOutput)) {
-                        // emitter.send(SseEmitter.event()
-                        // .name(SseEventType.THINKING.getEventName())
-                        // .data(token));
-                        // } else {
-                        // 默认行为：发送普通消息
-                        emitter.send(SseEmitter.event().data(token));
-                        // }
-                    } catch (IOException e) {
-                        log.error("发送SSE消息失败", e);
+        // 3. 处理 mcpServerIds
+        Object mcpIdsObj = context.getConfig("mcpServerIds");
+        if (mcpIdsObj instanceof List) {
+            List<?> mcpIds = (List<?>) mcpIdsObj;
+            for (Object id : mcpIds) {
+                Map<String, Object> ref = new HashMap<>();
+                ref.put("type", "mcp");
+                ref.put("id", id);
+                toolRefs.add(ref);
+            }
+        }
+
+        List<ToolBinding> toolBindings = toolProviderService.resolveBindings(toolRefs);
+        List<ToolSpecification> toolSpecs = toolBindings.stream().map(ToolBinding::getSpecification).toList();
+        Boolean enableToolTrace = context.getConfigAsBoolean("enableToolTrace", false);
+
+        ChatLanguageModel chatModel = null;
+        StreamingChatLanguageModel streamingModel = null;
+        if (Boolean.TRUE.equals(streamOutput)) {
+            streamingModel = modelBuilder.buildStreamingChatModel(model, provider.getProviderKey(), temperature,
+                    maxTokens);
+        } else {
+            chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature, maxTokens);
+        }
+
+        Response<AiMessage> response = null;
+
+        while (true) {
+            if (Boolean.TRUE.equals(streamOutput)) {
+                CountDownLatch latch = new CountDownLatch(1);
+                AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
+                AtomicReference<Exception> errorRef = new AtomicReference<>();
+
+                StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
+                    @Override
+                    public void onNext(String token) {
+                        if (emitter != null) {
+                            try {
+                                emitter.send(SseEmitter.event().data(token));
+                            } catch (IOException e) {
+                                log.error("发送SSE消息失败", e);
+                            }
+                        }
                     }
+
+                    @Override
+                    public void onComplete(Response<AiMessage> r) {
+                        responseRef.set(r);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        errorRef.set(new RuntimeException(error));
+                        latch.countDown();
+                    }
+                };
+
+                if (toolSpecs.isEmpty()) {
+                    streamingModel.generate(messages, handler);
+                } else {
+                    streamingModel.generate(messages, toolSpecs, handler);
+                }
+
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("流式生成被中断", e);
+                }
+
+                if (errorRef.get() != null) {
+                    throw errorRef.get();
+                }
+
+                response = responseRef.get();
+            } else {
+                if (toolSpecs.isEmpty()) {
+                    response = chatModel.generate(messages);
+                } else {
+                    response = chatModel.generate(messages, toolSpecs);
                 }
             }
 
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                responseRef.set(response);
-                latch.countDown();
+            AiMessage aiMessage = response.content();
+            messages.add(aiMessage);
+            log.info("LLM_CHAT节点 - IMPORTANT - : aiMessage={}", aiMessage);
+
+            List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
+
+            // ================== 增加 JSON 回退（Fallback）解析机制 ==================
+            // 有些大模型即使支持工具，也可能不走底层的 toolRequests 而是以普通 JSON 文本的格式输出
+            if ((toolRequests == null || toolRequests.isEmpty()) && !toolSpecs.isEmpty()
+                    && cn.hutool.core.util.StrUtil.isNotBlank(aiMessage.text())) {
+                toolRequests = parseFallbackToolRequests(aiMessage.text(), toolSpecs);
+                if (toolRequests != null && !toolRequests.isEmpty()) {
+                    log.info("LLM_CHAT节点 - 触发Fallback解析, 成功从纯文本中提取了ToolExecutionRequest: {}", toolRequests);
+                    // 为了保证 Langchain4j 历史消息结构正确，我们将这个带有解析结果的全新 AiMessage 替换进入 message 队列
+                    messages.remove(messages.size() - 1);
+                    AiMessage fallbackAiMsg = AiMessage.from(aiMessage.text(), toolRequests);
+                    messages.add(fallbackAiMsg);
+                }
             }
+            // ====================================================================
 
-            @Override
-            public void onError(Throwable error) {
-                errorRef.set(new RuntimeException(error));
-                latch.countDown();
+            if (toolRequests != null && !toolRequests.isEmpty()) {
+                log.info("LLM_CHAT节点 - : toolExecutionRequests={}", toolRequests);
+                for (ToolExecutionRequest toolExecutionRequest : toolRequests) {
+                    if (Boolean.TRUE.equals(enableToolTrace) && emitter != null) {
+                        try {
+                            Map<String, Object> traceData = new HashMap<>();
+                            traceData.put("type", "tool_call_start");
+                            traceData.put("toolName", toolExecutionRequest.name());
+                            traceData.put("arguments", toolExecutionRequest.arguments());
+                            emitter.send(SseEmitter.event().name("TOOL_TRACE").data(traceData));
+                        } catch (IOException e) {
+                            log.error("发送工具追踪SSE事件失败", e);
+                        }
+                    }
+
+                    ToolExecutionResultMessage toolResult = ToolExecutionDispatcher.dispatch(toolExecutionRequest,
+                            toolBindings);
+                    messages.add(toolResult);
+
+                    if (Boolean.TRUE.equals(enableToolTrace) && emitter != null) {
+                        try {
+                            Map<String, Object> traceData = new HashMap<>();
+                            traceData.put("type", "tool_call_result");
+                            traceData.put("toolName", toolExecutionRequest.name());
+                            traceData.put("result", toolResult.text());
+                            emitter.send(SseEmitter.event().name("TOOL_TRACE").data(traceData));
+                        } catch (IOException e) {
+                            log.error("发送工具追踪结果SSE事件失败", e);
+                        }
+                    }
+                }
+            } else {
+                break; // 无需执行工具，跳出循环
             }
-        });
-
-        // 等待流式完成
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("流式生成被中断", e);
         }
-
-        if (errorRef.get() != null) {
-            throw errorRef.get();
-        }
-
-        // String aiResponse = fullResponse.toString();
 
         // 获取并记录 token 使用情况
-        Response<AiMessage> response = responseRef.get();
         if (response != null && response.tokenUsage() != null) {
             TokenUsage tokenUsage = response.tokenUsage();
 
@@ -350,6 +459,63 @@ public class LlmChatNode extends AbstractWorkflowNode {
     @Override
     public String getNodeName() {
         return "LLM对话";
+    }
+
+    /**
+     * Fallback 工具调用解析器
+     * 如果大模型未走官方 Tool 函数格式返回，而是直接在文本里返回 JSON，则尝试从文本中解析出来。
+     */
+    private List<ToolExecutionRequest> parseFallbackToolRequests(String text, List<ToolSpecification> toolSpecs) {
+        try {
+            String jsonStr = text;
+            if (text.contains("```json")) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("```json\\s*([\\s\\S]*?)\\s*```")
+                        .matcher(text);
+                if (m.find()) {
+                    jsonStr = m.group(1);
+                }
+            } else if (text.contains("```")) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("```\\s*([\\s\\S]*?)\\s*```").matcher(text);
+                if (m.find()) {
+                    jsonStr = m.group(1);
+                }
+            }
+
+            jsonStr = jsonStr.trim();
+
+            if (cn.hutool.json.JSONUtil.isTypeJSONObject(jsonStr)) {
+                cn.hutool.json.JSONObject jsonObj = cn.hutool.json.JSONUtil.parseObj(jsonStr);
+                String toolName = jsonObj.getStr("name");
+                Object args = jsonObj.get("arguments");
+
+                // 常见的非标准回退格式： {"tool": "weather", "parameters": {"city": "beijing"}}
+                if (toolName == null) {
+                    toolName = jsonObj.getStr("tool");
+                    args = jsonObj.get("parameters");
+                }
+
+                if (toolName != null) {
+                    String finalToolName = toolName;
+                    boolean exists = toolSpecs.stream().anyMatch(spec -> spec.name().equals(finalToolName));
+                    if (exists) {
+                        String argumentsStr = (args instanceof String) ? (String) args
+                                : cn.hutool.json.JSONUtil.toJsonStr(args);
+                        if (argumentsStr == null) {
+                            argumentsStr = "{}";
+                        }
+                        return Collections.singletonList(
+                                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                                        .id("call_" + System.currentTimeMillis())
+                                        .name(toolName)
+                                        .arguments(argumentsStr)
+                                        .build());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Fallback提取工具调用失败: {}", e.getMessage());
+        }
+        return null;
     }
 
 }

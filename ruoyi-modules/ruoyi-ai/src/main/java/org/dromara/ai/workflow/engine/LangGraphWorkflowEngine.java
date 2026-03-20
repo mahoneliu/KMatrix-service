@@ -358,6 +358,31 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 获取节点的输入参数定义（用于类型转换）
             List<ParamDefinition> inputParamDefs = node.getInputParamDefs();
 
+            // 增强逻辑: 尝试从 nodeConfig 的 config 里读取 customInputParams
+            if (nodeConfig.getConfig() != null && nodeConfig.getConfig().containsKey("customInputParams")) {
+                Object customObj = nodeConfig.getConfig().get("customInputParams");
+                if (customObj instanceof List) {
+                    List<?> customList = (List<?>) customObj;
+                    List<ParamDefinition> customDefs = new ArrayList<>();
+                    for (Object item : customList) {
+                        if (item instanceof Map) {
+                            Map<?, ?> map = (Map<?, ?>) item;
+                            ParamDefinition def = new ParamDefinition();
+                            def.setKey((String) map.get("key"));
+                            def.setType((String) map.get("type"));
+                            customDefs.add(def);
+                        }
+                    }
+                    if (inputParamDefs == null || inputParamDefs.isEmpty()) {
+                        inputParamDefs = customDefs;
+                    } else {
+                        List<ParamDefinition> merged = new ArrayList<>(inputParamDefs);
+                        merged.addAll(customDefs);
+                        inputParamDefs = merged;
+                    }
+                }
+            }
+
             // 准备输入参数（带类型转换）
             Map<String, Object> inputs = VariableResolver.resolveInputsOrConfig(nodeConfig.getInputs(), state,
                     inputParamDefs, null);

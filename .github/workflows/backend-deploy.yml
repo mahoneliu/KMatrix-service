@@ -29,33 +29,31 @@ jobs:
       run: mvn clean package -DskipTests
       working-directory: ./kmatrix-service
 
-    - name: 预清理旧的服务程序文件 (使用 sudo 防止权限问题)
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.UBUNTU_HOST }}
-        username: ${{ secrets.UBUNTU_USERNAME }}
-        password: ${{ secrets.UBUNTU_PASSWORD }}
-        port: ${{ secrets.UBUNTU_PORT || '22' }}
-        script: |
-          cd ${{ secrets.UBUNTU_TARGET_DIR }}
-          # 强制清理被 root 用户创建的老旧文件，避免 SCP 传输时报 Cannot open (File exists)
-          sudo rm -rf ruoyi-admin.jar lib/*
 
-    - name: 准备目标服务器运行环境 (上传 Jar 文件)
-      uses: appleboy/scp-action@v0.1.4
+
+    - name: 准备目标服务器运行环境 (Rsync 增量同步)
+      uses: easingthemes/ssh-deploy@v5.1.0
       with:
-        host: ${{ secrets.UBUNTU_HOST }}
-        username: ${{ secrets.UBUNTU_USERNAME }}
-        password: ${{ secrets.UBUNTU_PASSWORD }}
-        port: ${{ secrets.UBUNTU_PORT || '22' }}
-        source: "kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar,kmatrix-service/ruoyi-admin/target/lib/*"
-        target: "${{ secrets.UBUNTU_TARGET_DIR }}"
-        # 剥离 kmatrix-service/ruoyi-admin/target 这一共 3 层结构
-        strip_components: 3
-        # 强制覆盖已有文件
-        overwrite: true
-        # 延长超时时间以应对体积较大的 jar 包和跨境网络拥堵，这里设为 10 分钟
-        timeout: 10m
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        REMOTE_HOST: ${{ secrets.UBUNTU_HOST }}
+        REMOTE_USER: ${{ secrets.UBUNTU_USERNAME }}
+        REMOTE_PORT: ${{ secrets.UBUNTU_PORT || '22' }}
+        SOURCE: "kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar"
+        TARGET: "${{ secrets.UBUNTU_TARGET_DIR }}/"
+        ARGS: "-avz --delete"
+
+    - name: 准备目标服务器依赖库 (Rsync 增量同步 lib)
+      uses: easingthemes/ssh-deploy@v5.1.0
+      with:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        REMOTE_HOST: ${{ secrets.UBUNTU_HOST }}
+        REMOTE_USER: ${{ secrets.UBUNTU_USERNAME }}
+        REMOTE_PORT: ${{ secrets.UBUNTU_PORT || '22' }}
+        SOURCE: "kmatrix-service/ruoyi-admin/target/lib/"
+        TARGET: "${{ secrets.UBUNTU_TARGET_DIR }}/lib/"
+        ARGS: "-avz --delete"
+
+
 
     - name: SSH 连接到 Ubuntu 并执行重启命令
       uses: appleboy/ssh-action@v1.0.3

@@ -59,6 +59,16 @@ public enum SseEventType {
     CITATION("citation", "引用信息"),
 
     /**
+     * 工具调用（LLM 请求调用工具）
+     */
+    TOOL_CALL("tool_call", "工具调用"),
+
+    /**
+     * 工具执行完成（工具返回结果）
+     */
+    TOOL_RESULT("tool_result", "工具执行结果"),
+
+    /**
      * 会话信息更新
      */
     SESSION_UPDATE("session_update", "会话信息更新");
