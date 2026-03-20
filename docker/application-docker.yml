@@ -18,7 +18,7 @@ ai:
     local-path: /data/uploads
   reranker:
     # 容器内的模型路径
-    model-path: /opt/models/model.onnx
+    model-path: /opt/models/onnx/model_int8.onnx
     tokenizer-path: /opt/models/tokenizer.json
 
 # Redis 配置 (虽然 dev 也是 localhost，但在 docker profile 里显式配置更安全)

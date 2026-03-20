@@ -283,6 +283,6 @@ ai:
     # 是否启用 ONNX BGE-Reranker 模型
     enabled: true
     # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
-    model-path: /ky/kmatrix/models/bge-reranker-large-onnx/model.onnx
+    model-path: /ky/kmatrix/models/bge-reranker-v2-m3-ONNX/onnx/model_int8.onnx
     # Tokenizer 文件路径
-    tokenizer-path: /ky/kmatrix/models/bge-reranker-large-onnx/tokenizer.json
+    tokenizer-path: /ky/kmatrix/models/bge-reranker-v2-m3-ONNX/tokenizer.json
