@@ -44,6 +44,7 @@ public class ToolProviderService {
 
     private final KmBuiltinToolMapper builtinToolMapper;
     private final KmMcpServerMapper mcpServerMapper;
+    private final org.dromara.ai.mapper.KmSkillMapper skillMapper;
 
     /**
      * 根据节点 tools 配置解析工具绑定列表
@@ -52,7 +53,6 @@ public class ToolProviderService {
      *                 {"type":"mcp","id":456}]
      * @return 工具绑定列表（可直接用于注入 LLM）
      */
-    @SuppressWarnings("unchecked")
     public List<ToolBinding> resolveBindings(List<Map<String, Object>> toolRefs) {
         List<ToolBinding> bindings = new ArrayList<>();
         if (toolRefs == null || toolRefs.isEmpty()) {
@@ -80,8 +80,12 @@ public class ToolProviderService {
                     // MCP Server 工具
                     List<ToolBinding> mcpBindings = resolveMcpTools(id, restTemplate);
                     bindings.addAll(mcpBindings);
+                } else if ("skill".equalsIgnoreCase(type)) {
+                    // Skill (由多个工具组合或者包装的技能)
+                    List<ToolBinding> skillBindings = resolveSkill(id, restTemplate);
+                    bindings.addAll(skillBindings);
                 } else {
-                    log.warn("未知工具类型: type={}", type);
+                    log.warn("未知工具/技能类型: type={}", type);
                 }
             } catch (Exception e) {
                 log.error("解析工具绑定失败: type={}, id={}", type, id, e);
@@ -93,7 +97,7 @@ public class ToolProviderService {
     }
 
     /**
-     * 解析内置 Python 工具绑定（任务 7.3）
+     * 解析内置 Python 工具绑定
      */
     private List<ToolBinding> resolveBuiltinTool(Long toolId) {
         List<ToolBinding> result = new ArrayList<>();
@@ -130,9 +134,99 @@ public class ToolProviderService {
     }
 
     /**
-     * 动态拉取 MCP Server 工具列表并创建工具绑定（任务 7.2）
+     * 解析技能绑定 (Skill)
+     * 将技能整体包装为一个 ToolSpecification（以 skillName 为函数名，spec 为给大模型的描述），
+     * 大模型决定调用该技能后，内部顺序执行所有绑定的底层工具并汇总结果。
+     * 与 builtin tool 的 spec 字段命名保持一致。
      */
-    @SuppressWarnings("unchecked")
+    private List<ToolBinding> resolveSkill(Long skillId, RestTemplate restTemplate) {
+        List<ToolBinding> result = new ArrayList<>();
+
+        org.dromara.ai.domain.KmSkill skill = skillMapper.selectById(skillId);
+        if (skill == null) {
+            log.error("技能不存在 (DB查询失败): skillId={}", skillId);
+            return result;
+        }
+
+        if (!"0".equals(skill.getStatus())) {
+            log.warn("技能已停用: skillId={}, skillName={}", skillId, skill.getSkillName());
+            return result;
+        }
+
+        String toolBindingsJson = skill.getToolBindings();
+        if (StrUtil.isBlank(toolBindingsJson)) {
+            log.warn("技能未绑定任何工具: skillId={}", skillId);
+            return result;
+        }
+
+        try {
+            List<Map<String, Object>> innerToolRefs = MAPPER.readValue(toolBindingsJson,
+                    new TypeReference<List<Map<String, Object>>>() {});
+            List<ToolBinding> innerBindings = resolveBindings(innerToolRefs);
+
+            if (innerBindings.isEmpty()) {
+                log.warn("技能内未能解析出任何可用工具: skillId={}", skillId);
+                return result;
+            }
+
+            // 以 spec 作为 LLM 可见的描述（与内置工具字段命名保持一致）
+            String specText = StrUtil.isNotBlank(skill.getSpec()) ? skill.getSpec()
+                    : ("技能：" + skill.getSkillName());
+            ToolSpecification skillSpec = ToolJsonSchemaUtils.buildToolSpecification(
+                    skill.getSkillName(), specText, skill.getInputSchema());
+
+            // SkillExecutor：顺序执行内部工具并汇总结果
+            ToolExecutor skillExecutor = request -> {
+                StringBuilder sb = new StringBuilder();
+                for (ToolBinding inner : innerBindings) {
+                    try {
+                        String innerResult = inner.getExecutor().execute(request);
+                        sb.append("[").append(inner.getToolName()).append("]: ")
+                          .append(innerResult).append("\n");
+                    } catch (Exception ex) {
+                        sb.append("[").append(inner.getToolName()).append(" 执行失败]: ")
+                          .append(ex.getMessage()).append("\n");
+                        log.error("技能内工具执行失败: skillId={}, innerTool={}", skillId, inner.getToolName(), ex);
+                    }
+                }
+                return sb.toString().trim();
+            };
+
+            result.add(ToolBinding.builder()
+                    .toolName(skill.getSkillName())
+                    .specification(skillSpec)
+                    .executor(skillExecutor)
+                    .build());
+
+            log.info("技能解析成功: skillName={}, 底层工具数={}", skill.getSkillName(), innerBindings.size());
+        } catch (Exception e) {
+            log.error("解析技能绑定失败: skillId={}", skillId, e);
+        }
+
+        return result;
+    }
+
+    /**
+     * 获取指定技能的底层工具集合，绕除字符串拼接的包裹类，方便直接提取原生 JSON
+     */
+    public List<ToolBinding> resolveSkillInnerBindings(Long skillId) {
+        org.dromara.ai.domain.KmSkill skill = skillMapper.selectById(skillId);
+        if (skill == null || !"0".equals(skill.getStatus()) || cn.hutool.core.util.StrUtil.isBlank(skill.getToolBindings())) {
+            return new ArrayList<>();
+        }
+        try {
+            List<Map<String, Object>> innerToolRefs = MAPPER.readValue(skill.getToolBindings(),
+                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+            return resolveBindings(innerToolRefs);
+        } catch (Exception e) {
+            log.error("提取技能底层工具失败: skillId={}", skillId, e);
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * 动态拉取 MCP Server 工具列表并创建工具绑定
+     */
     private List<ToolBinding> resolveMcpTools(Long serverId, RestTemplate restTemplate) {
         List<ToolBinding> result = new ArrayList<>();
 
@@ -193,14 +287,12 @@ public class ToolProviderService {
     /**
      * 从 serverConfig JSON 中提取 url 字段
      */
-    @SuppressWarnings("unchecked")
     private String extractServerUrl(String serverConfig) {
         if (StrUtil.isBlank(serverConfig)) {
             return null;
         }
         try {
-            Map<String, Object> config = MAPPER.readValue(serverConfig, new TypeReference<Map<String, Object>>() {
-            });
+            Map<String, Object> config = MAPPER.readValue(serverConfig, new TypeReference<Map<String, Object>>() {});
             return (String) config.get("url");
         } catch (Exception e) {
             log.error("解析 serverConfig 失败: {}", serverConfig, e);
@@ -209,7 +301,7 @@ public class ToolProviderService {
     }
 
     /**
-     * 发送 MCP tools/list 请求获取工具定义列表（任务 7.2）
+     * 发送 MCP tools/list 请求获取工具定义列表
      */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> fetchMcpToolList(String serverUrl, Long serverId, RestTemplate restTemplate) {
@@ -229,8 +321,7 @@ public class ToolProviderService {
             String responseStr = restTemplate.postForObject(serverUrl, entity, String.class);
             log.debug("MCP tools/list 响应: serverId={}, response={}", serverId, responseStr);
 
-            Map<String, Object> response = MAPPER.readValue(responseStr, new TypeReference<Map<String, Object>>() {
-            });
+            Map<String, Object> response = MAPPER.readValue(responseStr, new TypeReference<Map<String, Object>>() {});
 
             if (response.containsKey("error")) {
                 log.error("MCP tools/list 返回错误: serverId={}, error={}", serverId, response.get("error"));

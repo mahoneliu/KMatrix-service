@@ -216,6 +216,19 @@ public class LlmChatNode extends AbstractWorkflowNode {
             }
         }
 
+        // 4. 处理 skillIds
+        Object skillIdsObj = context.getConfig("skillIds");
+        if (skillIdsObj instanceof List) {
+            List<?> skillIds = (List<?>) skillIdsObj;
+            for (Object id : skillIds) {
+                Map<String, Object> ref = new HashMap<>();
+                ref.put("type", "skill");
+                ref.put("id", id);
+                toolRefs.add(ref);
+            }
+        }
+
+
         List<ToolBinding> toolBindings = toolProviderService.resolveBindings(toolRefs);
         List<ToolSpecification> toolSpecs = toolBindings.stream().map(ToolBinding::getSpecification).toList();
         Boolean enableToolTrace = context.getConfigAsBoolean("enableToolTrace", false);
