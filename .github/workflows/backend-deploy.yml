@@ -31,27 +31,29 @@ jobs:
 
 
 
-    - name: 准备目标服务器运行环境 (Rsync 增量同步)
-      uses: easingthemes/ssh-deploy@v5.1.0
+    - name: 准备目标服务器运行环境 (SCP 同步)
+      uses: appleboy/scp-action@v0.1.7
       with:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        REMOTE_HOST: ${{ secrets.UBUNTU_HOST }}
-        REMOTE_USER: ${{ secrets.UBUNTU_USERNAME }}
-        REMOTE_PORT: ${{ secrets.UBUNTU_PORT || '22' }}
-        SOURCE: "kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar"
-        TARGET: "${{ secrets.UBUNTU_TARGET_DIR }}/"
-        ARGS: "-avz --delete"
+        host: ${{ secrets.UBUNTU_HOST }}
+        username: ${{ secrets.UBUNTU_USERNAME }}
+        password: ${{ secrets.UBUNTU_PASSWORD }}
+        port: ${{ secrets.UBUNTU_PORT || '22' }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar"
+        target: "${{ secrets.UBUNTU_TARGET_DIR }}"
+        strip_components: 3
 
-    - name: 准备目标服务器依赖库 (Rsync 增量同步 lib)
-      uses: easingthemes/ssh-deploy@v5.1.0
+    - name: 准备目标服务器依赖库 (SCP 同步 lib)
+      uses: appleboy/scp-action@v0.1.7
       with:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        REMOTE_HOST: ${{ secrets.UBUNTU_HOST }}
-        REMOTE_USER: ${{ secrets.UBUNTU_USERNAME }}
-        REMOTE_PORT: ${{ secrets.UBUNTU_PORT || '22' }}
-        SOURCE: "kmatrix-service/ruoyi-admin/target/lib/"
-        TARGET: "${{ secrets.UBUNTU_TARGET_DIR }}/lib/"
-        ARGS: "-avz --delete"
+        host: ${{ secrets.UBUNTU_HOST }}
+        username: ${{ secrets.UBUNTU_USERNAME }}
+        password: ${{ secrets.UBUNTU_PASSWORD }}
+        port: ${{ secrets.UBUNTU_PORT || '22' }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "kmatrix-service/ruoyi-admin/target/lib/*"
+        target: "${{ secrets.UBUNTU_TARGET_DIR }}/lib"
+        strip_components: 4
 
 
 
