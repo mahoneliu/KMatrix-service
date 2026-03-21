@@ -52,32 +52,6 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
                         "</script>")
         int batchIncrementHitNum(@Param("questionIds") List<Long> questionIds);
 
-        /**
-         * 关键词全文检索 (支持 PostgreSQL)
-         */
-        @Select("<script>" +
-                        "SELECT id as question_id, kb_id, content, hit_num, " +
-                        "       ts_rank(content_search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score "
-                        +
-                        "FROM km_question " +
-                        "<where>" +
-                        "  content_search_vector @@ to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')) "
-                        +
-                        "  AND del_flag = '0' " +
-                        "  <if test='kbIds != null and kbIds.size() > 0'>" +
-                        "    AND kb_id IN " +
-                        "    <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +
-                        "      #{id}" +
-                        "    </foreach>" +
-                        "  </if>" +
-                        "</where>" +
-                        "ORDER BY score DESC " +
-                        "LIMIT #{topK}" +
-                        "</script>")
-        List<Map<String, Object>> keywordSearch(
-                        @Param("query") String query,
-                        @Param("kbIds") List<Long> kbIds,
-                        @Param("topK") int topK);
 
         /**
          * 分页查询问题列表（含分段数量）- 单次JOIN查询优化
