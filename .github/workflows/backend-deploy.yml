@@ -31,29 +31,20 @@ jobs:
 
 
 
-    - name: 准备目标服务器运行环境 (SCP 同步)
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.UBUNTU_HOST }}
-        username: ${{ secrets.UBUNTU_USERNAME }}
-        password: ${{ secrets.UBUNTU_PASSWORD }}
-        port: ${{ secrets.UBUNTU_PORT || '22' }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar"
-        target: "${{ secrets.UBUNTU_TARGET_DIR }}"
-        strip_components: 3
-
-    - name: 准备目标服务器依赖库 (SCP 同步 lib)
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.UBUNTU_HOST }}
-        username: ${{ secrets.UBUNTU_USERNAME }}
-        password: ${{ secrets.UBUNTU_PASSWORD }}
-        port: ${{ secrets.UBUNTU_PORT || '22' }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "kmatrix-service/ruoyi-admin/target/lib/*"
-        target: "${{ secrets.UBUNTU_TARGET_DIR }}/lib"
-        strip_components: 4
+    - name: 增量同步 Jar 包和依赖库 (RSYNC)
+      run: |
+        sudo apt-get update && sudo apt-get install -y sshpass rsync
+        # 同步 Jar 包
+        sshpass -p "${{ secrets.UBUNTU_PASSWORD }}" rsync -avz \
+          -e "ssh -o StrictHostKeyChecking=no -p ${{ secrets.UBUNTU_PORT || '22' }}" \
+          kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar \
+          ${{ secrets.UBUNTU_USERNAME }}@${{ secrets.UBUNTU_HOST }}:${{ secrets.UBUNTU_TARGET_DIR }}/
+          
+        # 增量同步 lib 目录 (关键优化)
+        sshpass -p "${{ secrets.UBUNTU_PASSWORD }}" rsync -avz --delete \
+          -e "ssh -o StrictHostKeyChecking=no -p ${{ secrets.UBUNTU_PORT || '22' }}" \
+          kmatrix-service/ruoyi-admin/target/lib/ \
+          ${{ secrets.UBUNTU_USERNAME }}@${{ secrets.UBUNTU_HOST }}:${{ secrets.UBUNTU_TARGET_DIR }}/lib/
 
 
 
@@ -69,7 +60,7 @@ jobs:
           cd ${{ secrets.UBUNTU_TARGET_DIR }}
           
           echo "执行重启命令..."
-          bash sudo start.sh restart
+          sudo bash start.sh restart
           
           echo "部署命令执行完毕！"
 

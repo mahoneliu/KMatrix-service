@@ -296,6 +296,8 @@ public class KmDocumentController extends BaseController {
      * 提交分块并入库 (分块预览流程第三步)
      */
     @SaCheckPermission("ai:document:add")
+    @Log(title = "知识库文档", businessType = BusinessType.INSERT)
+    @PostMapping("/submitChunks")
     public R<KmDocumentVo> submitChunks(@RequestBody ChunkSubmitBo bo) {
         return R.ok(documentService.submitChunks(bo));
     }
