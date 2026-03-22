@@ -47,20 +47,21 @@ public class KmBuiltinToolServiceImpl implements IKmBuiltinToolService {
     @Override
     public Boolean insertByBo(KmBuiltinToolBo bo) {
         KmBuiltinTool add = MapstructUtils.convert(bo, KmBuiltinTool.class);
-        // 根据 initParams 自动生成 inputSchema（JSON Schema for LLM）
-        add.setInputSchema(ToolJsonSchemaUtils.generateInputSchema(bo.getInitParams()));
-        boolean result = baseMapper.insert(add) > 0;
-        log.info("新增内置工具 [{}]，inputSchema 已自动生成", bo.getToolName());
-        return result;
+        // 如果用户没有提供 inputSchema，则根据 initParams 自动生成（JSON Schema for LLM）
+        if (StrUtil.isBlank(bo.getInputSchema()) && StrUtil.isNotBlank(bo.getInitParams())) {
+            add.setInputSchema(ToolJsonSchemaUtils.generateInputSchema(bo.getInitParams()));
+            log.info("新增内置工具 [{}]，inputSchema 已根据 initParams 自动生成", bo.getToolName());
+        }
+        return baseMapper.insert(add) > 0;
     }
 
     @Override
     public Boolean updateByBo(KmBuiltinToolBo bo) {
         KmBuiltinTool update = MapstructUtils.convert(bo, KmBuiltinTool.class);
-        // 如果 initParams 有更新，则重新生成 inputSchema
-        if (StrUtil.isNotBlank(bo.getInitParams())) {
+        // 如果用户没有提供 inputSchema，且 initParams 有内容，则尝试自动生成
+        if (StrUtil.isBlank(bo.getInputSchema()) && StrUtil.isNotBlank(bo.getInitParams())) {
             update.setInputSchema(ToolJsonSchemaUtils.generateInputSchema(bo.getInitParams()));
-            log.info("更新内置工具 [{}]，inputSchema 已重新生成", bo.getToolName());
+            log.info("更新内置工具 [{}]，inputSchema 已根据 initParams 重新生成", bo.getToolName());
         }
         return baseMapper.updateById(update) > 0;
     }

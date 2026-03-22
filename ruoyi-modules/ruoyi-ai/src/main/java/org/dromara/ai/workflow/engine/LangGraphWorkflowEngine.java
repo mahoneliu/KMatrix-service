@@ -113,7 +113,11 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             StateGraph<WorkflowState> graph = buildGraph(config, emitter);
 
             // 3. 编译并执行
-            var compiled = graph.compile();
+            // 默认 LangGraph4j 会限制 maxIterations(recursionLimit) 为 25。将其调大以支持长循环。
+            org.bsc.langgraph4j.CompileConfig compileConfig = org.bsc.langgraph4j.CompileConfig.builder()
+                    .recursionLimit(1000)
+                    .build();
+            var compiled = graph.compile(compileConfig);
             // LangGraph4j 的 invoke 方法接受 Map 参数，返回 Optional<State>
             WorkflowState finalState = compiled.invoke(chatWorkflowState.data())
                     .orElseThrow(() -> new RuntimeException("工作流执行失败：未返回结果"));
@@ -163,7 +167,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                     .orElse(null);
 
             boolean isConditionNode = fromNode != null &&
-                    ("CONDITION".equals(fromNode.getType()) || "INTENT_CLASSIFIER".equals(fromNode.getType()));
+                    ("CONDITION".equals(fromNode.getType()) || "INTENT_CLASSIFIER".equals(fromNode.getType()) || "LOOP".equals(fromNode.getType()));
 
             if (isConditionNode) {
                 // 条件节点的所有出边都作为条件边处理
