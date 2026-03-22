@@ -12,6 +12,9 @@ import org.dromara.ai.enums.ChatUserType;
 import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.ai.service.IKmChatService;
+import org.dromara.ai.service.IKmSkillService;
+import org.dromara.ai.domain.bo.KmSkillBo;
+import org.dromara.ai.domain.vo.KmSkillVo;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.StringUtils;
@@ -40,6 +43,7 @@ public class KmChatController extends BaseController {
     private final IKmChatService chatService;
     private final IKmAppTokenService appTokenService;
     private final IChatSessionTokenService chatSessionTokenService;
+    private final IKmSkillService skillService;
 
     /**
      * 流式对话 (SSE)
@@ -115,6 +119,18 @@ public class KmChatController extends BaseController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
         return toAjax(chatService.clearHistory(sessionId, info.getUserId()));
+    }
+
+    /**
+     * 获取可用技能列表
+     */
+    @GetMapping("/skills")
+    public R<List<KmSkillVo>> getSkills(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        validateAndParseToken(authHeader); // just validate
+        KmSkillBo bo = new KmSkillBo();
+        bo.setStatus("0");
+        return R.ok(skillService.queryList(bo));
     }
 
     /**
