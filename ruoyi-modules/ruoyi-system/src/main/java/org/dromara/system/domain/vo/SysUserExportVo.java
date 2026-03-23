@@ -93,4 +93,10 @@ public class SysUserExportVo implements Serializable {
     @ExcelProperty(value = "部门负责人")
     private String leaderName;
 
+    /**
+     * AI 频率限制配置
+     */
+    @ExcelProperty(value = "AI 频率限制配置")
+    private String rateLimitConfig;
+
 }

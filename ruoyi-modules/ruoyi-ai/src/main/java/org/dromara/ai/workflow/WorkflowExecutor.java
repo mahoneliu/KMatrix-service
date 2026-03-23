@@ -102,7 +102,8 @@ public class WorkflowExecutor {
 
         try {
             // 4. 执行工作流
-            finalResponse = langGraphEngine.execute(config, chatWorkflowState, emitter);
+            WorkflowState finalState = langGraphEngine.execute(config, chatWorkflowState, emitter);
+            finalResponse = finalState.getFinalResponse();
 
             // 5. 标记实例完成（调试模式：跳过）
             if (!debug) {
@@ -115,10 +116,10 @@ public class WorkflowExecutor {
 
             if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
-                Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
-                doneData.put("totalTokens", totalTokens != null ? totalTokens : 0);
                 doneData.put("durationMs", durationMs);
             }
+            Integer tokensTotal = (Integer) finalState.data().get(WorkflowState.KEY_TOTAL_TOKENS);
+            doneData.put(WorkflowState.KEY_TOTAL_TOKENS, tokensTotal != null ? tokensTotal : 0);
 
             sendSseEvent(emitter, SseEventType.DONE, doneData);
 
@@ -127,11 +128,12 @@ public class WorkflowExecutor {
             result.put("instanceId", instanceId);
             result.put("finalResponse", finalResponse != null ? finalResponse : "");
 
+            Integer totalTokens = (Integer) finalState.data().get(WorkflowState.KEY_TOTAL_TOKENS);
+            result.put(WorkflowState.KEY_TOTAL_TOKENS, totalTokens != null ? totalTokens : 0);
+
             // 调试模式：返回额外的统计信息
             if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
-                Integer totalTokens = (Integer) chatWorkflowState.data().get("totalTokens");
-                result.put("totalTokens", totalTokens != null ? totalTokens : 0);
                 result.put("durationMs", durationMs);
             }
 

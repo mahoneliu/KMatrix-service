@@ -13,7 +13,7 @@
 
     <select id="selectUserExportList" resultMap="SysUserExportResult">
         select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex,
-            u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark,
+            u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, u.rate_limit_config,
             d.dept_name, d.leader, u1.user_name as leaderName
         from sys_user u
             left join sys_dept d on u.dept_id = d.dept_id
@@ -22,7 +22,7 @@
     </select>
 
     <select id="selectAllocatedList" resultMap="SysUserResult">
-        select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
+        select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time, u.rate_limit_config
         from sys_user u
              left join sys_dept d on u.dept_id = d.dept_id
              left join sys_user_role sur on u.user_id = sur.user_id
@@ -31,7 +31,7 @@
     </select>
 
     <select id="selectUnallocatedList" resultMap="SysUserResult">
-        select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
+        select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time, u.rate_limit_config
         from sys_user u
              left join sys_dept d on u.dept_id = d.dept_id
              left join sys_user_role sur on u.user_id = sur.user_id

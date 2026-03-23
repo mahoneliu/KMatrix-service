@@ -21,7 +21,7 @@ public interface WorkflowEngine {
      * @param emitter           SSE推送器（用于实时事件推送）
      * @return 最终响应
      */
-    String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter) throws Exception;
+    WorkflowState execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter) throws Exception;
 
     /**
      * 获取引擎类型

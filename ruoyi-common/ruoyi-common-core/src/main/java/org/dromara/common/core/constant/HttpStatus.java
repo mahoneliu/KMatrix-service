@@ -90,4 +90,9 @@ public interface HttpStatus {
      * 系统警告消息
      */
     int WARN = 601;
+
+    /**
+     * 请求过于频繁
+     */
+    int TOO_MANY_REQUESTS = 429;
 }

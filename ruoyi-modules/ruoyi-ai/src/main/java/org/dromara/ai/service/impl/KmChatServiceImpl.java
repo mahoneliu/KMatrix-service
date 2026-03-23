@@ -41,6 +41,7 @@ import org.dromara.ai.util.ModelBuilder;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
+import org.dromara.ai.service.IChatRateLimitService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -73,6 +74,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final WorkflowExecutor workflowExecutor;
     private final ModelBuilder modelBuilder;
     private final KmAppMapper appMapper;
+    private final IChatRateLimitService rateLimitService;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -154,7 +156,11 @@ public class KmChatServiceImpl implements IKmChatService {
                 }
                 final Long effectiveUserId = tempUserId;
 
-                // 4. 获取或创建会话
+                // 4. 限流校验
+                rateLimitService.checkRequestLimit(effectiveUserId.toString());
+                rateLimitService.checkTokenLimit(effectiveUserId.toString());
+
+                // 5. 获取或创建会话
                 Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId,
                         bo.getUserType());
 
@@ -176,6 +182,12 @@ public class KmChatServiceImpl implements IKmChatService {
 
                         String aiResponse = (String) result.get("finalResponse");
                         Long instanceId = (Long) result.get("instanceId");
+                        Integer totalTokens = (Integer) result.get("totalTokens");
+
+                        // 记录 Token 消耗
+                        if (totalTokens != null && totalTokens > 0) {
+                            rateLimitService.recordTokenUsage(effectiveUserId.toString(), totalTokens);
+                        }
 
                         // 保存用户消息（带 instanceId）
                         saveMessage(sessionId, "user", bo.getMessage(), instanceId, effectiveUserId);
@@ -224,7 +236,7 @@ public class KmChatServiceImpl implements IKmChatService {
             } catch (Exception e) {
                 log.error("流式对话处理失败", e);
                 try {
-                    emitter.send(SseEmitter.event().name("error").data("对话失败: " + e.getMessage()));
+                    emitter.send(SseEmitter.event().name("error").data(MessageUtils.message("ai.msg.chat.failed") + ": " + e.getMessage()));
                 } catch (IOException ioException) {
                     log.error("发送错误消息失败", ioException);
                 }
@@ -252,7 +264,11 @@ public class KmChatServiceImpl implements IKmChatService {
             userId = LoginHelper.getUserId();
         }
 
-        // 2. 获取或创建会话
+        // 2. 限流校验
+        rateLimitService.checkRequestLimit(userId.toString());
+        rateLimitService.checkTokenLimit(userId.toString());
+
+        // 3. 获取或创建会话
         Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId, bo.getUserType());
 
         // 3. 保存用户消息
@@ -275,6 +291,9 @@ public class KmChatServiceImpl implements IKmChatService {
                     tokenUsage.inputTokenCount(),
                     tokenUsage.outputTokenCount(),
                     tokenUsage.totalTokenCount());
+
+            // 记录 Token 消耗
+            rateLimitService.recordTokenUsage(userId.toString(), tokenUsage.totalTokenCount());
         }
 
         // 8. 保存AI响应

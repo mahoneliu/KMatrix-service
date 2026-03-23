@@ -113,6 +113,11 @@ public class SysUserBo extends BaseEntity {
      */
     private String excludeUserIds;
 
+    /**
+     * 聊天限流配置 (JSON)
+     */
+    private String rateLimitConfig;
+
     public SysUserBo(Long userId) {
         this.userId = userId;
     }

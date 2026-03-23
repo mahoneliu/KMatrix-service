@@ -104,7 +104,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
     }
 
     @Override
-    public String execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter)
+    public WorkflowState execute(WorkflowConfig config, WorkflowState chatWorkflowState, SseEmitter emitter)
             throws Exception {
         log.info("使用 LangGraph 引擎执行工作流");
 
@@ -128,8 +128,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 throw new RuntimeException(errorMessage);
             }
 
-            // 5. 返回最终响应
-            return finalState.getFinalResponse();
+            // 5. 返回最终状态
+            return finalState;
         } catch (Exception e) {
             log.error("LangGraph 工作流执行失败", e);
             throw e;
@@ -471,6 +471,18 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             updates.put("finished", finished);
             if (finalResponse != null) {
                 updates.put("finalResponse", finalResponse);
+            }
+
+            // 累加 Token 消耗
+            Map<String, Object> tokenUsage = context.getTokenUsage();
+            if (tokenUsage != null && tokenUsage.get("totalTokenCount") != null) {
+                try {
+                    int nodeTokens = ((Number) tokenUsage.get("totalTokenCount")).intValue();
+                    int currentTotalTokens = state.getTotalTokens();
+                    updates.put(WorkflowState.KEY_TOTAL_TOKENS, currentTotalTokens + nodeTokens);
+                } catch (Exception e) {
+                    log.warn("无法解析节点 Token 使用量: {}", nodeConfig.getId());
+                }
             }
 
             return updates;

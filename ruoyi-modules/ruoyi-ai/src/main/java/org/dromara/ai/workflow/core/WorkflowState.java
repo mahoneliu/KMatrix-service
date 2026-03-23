@@ -41,6 +41,7 @@ public class WorkflowState extends AgentState implements Serializable {
     public static final String KEY_CURRENT_NODE_ID = "currentNodeId";
     public static final String KEY_FINISHED = "finished";
     public static final String KEY_GLOBAL_STATE = "globalState";
+    public static final String KEY_TOTAL_TOKENS = "totalTokens";
 
     public WorkflowState() {
         super(new HashMap<>());
@@ -62,7 +63,8 @@ public class WorkflowState extends AgentState implements Serializable {
             KEY_FINAL_RESPONSE, Channels.<String>base(() -> null),
             KEY_CURRENT_NODE_ID, Channels.<String>base(() -> ""),
             KEY_GLOBAL_STATE, Channels.<Map<String, Object>>base(() -> new HashMap<>()),
-            KEY_FINISHED, Channels.<Boolean>base(() -> false));
+            KEY_FINISHED, Channels.<Boolean>base(() -> false),
+            KEY_TOTAL_TOKENS, Channels.<Integer>base(() -> 0));
 
     // ========== 执行状态 ==========
 
@@ -172,5 +174,9 @@ public class WorkflowState extends AgentState implements Serializable {
     public Boolean getShowExecutionInfo() {
         Object value = getGlobalState().get(KEY_SHOW_EXECUTION_INFO);
         return value != null ? (Boolean) value : null;
+    }
+
+    public Integer getTotalTokens() {
+        return this.<Integer>value(KEY_TOTAL_TOKENS).orElse(0);
     }
 }

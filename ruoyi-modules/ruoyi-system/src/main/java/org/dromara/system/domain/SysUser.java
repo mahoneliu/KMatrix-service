@@ -103,6 +103,13 @@ public class SysUser extends BaseEntity {
      */
     private String remark;
 
+    /**
+     * 聊天限流配置（JSON）
+     * 结构: {"minute":{"requests":N,"tokens":N},"hour":{...},"day":{...}}
+     * 为空时使用系统 sys_config: chat.rate.limit.default 配置
+     */
+    private String rateLimitConfig;
+
 
     public SysUser(Long userId) {
         this.userId = userId;

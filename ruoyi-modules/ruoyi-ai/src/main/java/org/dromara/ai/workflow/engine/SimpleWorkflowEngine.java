@@ -36,7 +36,7 @@
 
 // @Deprecated
 // @Override
-// public String execute(WorkflowConfig config, WorkflowState chatWorkflowState,
+// public WorkflowState execute(WorkflowConfig config, WorkflowState chatWorkflowState,
 // SseEmitter emitter)
 // throws Exception {
 // Long instanceId = chatWorkflowState.getInstanceId();

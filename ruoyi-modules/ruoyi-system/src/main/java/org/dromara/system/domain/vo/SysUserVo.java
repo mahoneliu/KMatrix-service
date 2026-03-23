@@ -134,4 +134,9 @@ public class SysUserVo implements Serializable {
      */
     private Long roleId;
 
+    /**
+     * 聊天限流配置 (JSON)
+     */
+    private String rateLimitConfig;
+
 }
