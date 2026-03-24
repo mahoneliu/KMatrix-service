@@ -47,4 +47,14 @@ public class KmChatMessage extends BaseEntity {
      * 工作流实例ID
      */
     private Long instanceId;
+
+    /**
+     * 用户反馈状态: 0=无, 1=赞同, -1=踩
+     */
+    private Integer feedbackStatus;
+
+    /**
+     * 消耗的 Token 总数
+     */
+    private Integer totalTokens;
 }

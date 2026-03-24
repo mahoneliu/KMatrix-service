@@ -190,11 +190,13 @@ public class KmChatServiceImpl implements IKmChatService {
                         }
 
                         // 保存用户消息（带 instanceId）
-                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, effectiveUserId);
+                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, null, effectiveUserId);
 
                         // 保存AI响应
                         if (aiResponse != null) {
-                            saveMessage(sessionId, "assistant", aiResponse, instanceId, effectiveUserId);
+                            KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId, totalTokens, effectiveUserId);
+                            // 发送消息ID给前端，以便进行评价
+                            sendSseEvent(emitter, SseEventType.DONE, Map.of("messageId", assistantMessage.getMessageId().toString()));
                         }
 
                         // 异步生成标题（仅在首次对话时）
@@ -209,7 +211,7 @@ public class KmChatServiceImpl implements IKmChatService {
                             }
                         }
 
-                        // 工作流完成（executeWorkflow内部已发送done事件）
+                        // 工作流完成
                         emitter.complete();
 
                     } catch (Exception e) {
@@ -253,7 +255,7 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public String chat(KmChatSendBo bo) {
+    public KmChatMessageVo chat(KmChatSendBo bo) {
         // 1. 加载应用和模型配置
         KmAppVo app = loadApp(bo.getAppId());
         KmModel model = loadModel(app.getModelId());
@@ -297,9 +299,10 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 8. 保存AI响应
-        saveMessage(sessionId, "assistant", aiResponse, userId);
+        Integer totalTokenCount = tokenUsage != null ? tokenUsage.totalTokenCount() : null;
+        KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, null, totalTokenCount, userId);
 
-        return aiResponse;
+        return MapstructUtils.convert(assistantMessage, KmChatMessageVo.class);
     }
 
     /**
@@ -510,19 +513,20 @@ public class KmChatServiceImpl implements IKmChatService {
     /**
      * 保存消息
      */
-    private void saveMessage(Long sessionId, String role, String content, Long userId) {
-        saveMessage(sessionId, role, content, null, userId);
+    private KmChatMessage saveMessage(Long sessionId, String role, String content, Long userId) {
+        return saveMessage(sessionId, role, content, null, null, userId);
     }
 
     /**
-     * 保存带有进度实例的消息
+     * 保存带有进度实例和 Token 使用情况的消息
      */
-    private void saveMessage(Long sessionId, String role, String content, Long instanceId, Long userId) {
+    private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens, Long userId) {
         KmChatMessage message = new KmChatMessage();
         message.setSessionId(sessionId);
         message.setRole(role);
         message.setContent(content);
         message.setInstanceId(instanceId);
+        message.setTotalTokens(totalTokens);
         message.setCreateTime(new Date());
 
         // 手动设置BaseEntity字段
@@ -531,6 +535,15 @@ public class KmChatServiceImpl implements IKmChatService {
         message.setUpdateTime(new Date());
 
         messageMapper.insert(message);
+        
+        // 更新统计数据
+        if ("user".equals(role)) {
+            appService.updateAccessStat(sessionMapper.selectById(sessionId).getAppId(), userId, 0L, 0, 0, 1);
+        } else if ("assistant".equals(role) && totalTokens != null && totalTokens > 0) {
+            appService.updateAccessStat(sessionMapper.selectById(sessionId).getAppId(), userId, totalTokens.longValue(), 0, 0, 0);
+        }
+
+        return message;
     }
 
     /**
@@ -617,6 +630,76 @@ public class KmChatServiceImpl implements IKmChatService {
     }
 
     /**
+     * 提交消息评价
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean submitFeedback(Long messageId, Integer feedbackStatus, Long userId) {
+        if (feedbackStatus == null || (feedbackStatus != 0 && feedbackStatus != 1 && feedbackStatus != -1)) {
+            throw new ServiceException("无效的评价状态");
+        }
+
+        KmChatMessage message = messageMapper.selectById(messageId);
+        if (message == null) {
+            throw new ServiceException("消息不存在");
+        }
+
+        KmChatSession session = sessionMapper.selectById(message.getSessionId());
+        if (session == null || !session.getUserId().equals(userId)) {
+            throw new ServiceException("无权限评价此消息");
+        }
+
+        Integer oldStatus = message.getFeedbackStatus() == null ? 0 : message.getFeedbackStatus();
+        if (oldStatus.equals(feedbackStatus)) {
+            return true;
+        }
+
+        // 更新消息评价状态
+        message.setFeedbackStatus(feedbackStatus);
+        message.setUpdateTime(new Date());
+        message.setUpdateBy(userId);
+        messageMapper.updateById(message);
+
+        // 安全更新应用的计数字段
+        Long appId = session.getAppId();
+        if (appId != null) {
+            int likeDiff = 0;
+            int dislikeDiff = 0;
+
+            if (oldStatus == 1) likeDiff -= 1;
+            else if (oldStatus == -1) dislikeDiff -= 1;
+
+            if (feedbackStatus == 1) likeDiff += 1;
+            else if (feedbackStatus == -1) dislikeDiff += 1;
+
+            if (likeDiff != 0 || dislikeDiff != 0) {
+                // 1. 更新 km_app (保留旧逻辑，或可逐步废弃)
+                com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<KmApp> wrapper = 
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+                wrapper.eq(KmApp::getAppId, appId);
+                
+                if (likeDiff > 0) {
+                    wrapper.setSql("like_count = COALESCE(like_count, 0) + " + likeDiff);
+                } else if (likeDiff < 0) {
+                    wrapper.setSql("like_count = GREATEST(COALESCE(like_count, 0) - " + Math.abs(likeDiff) + ", 0)");
+                }
+                
+                if (dislikeDiff > 0) {
+                    wrapper.setSql("dislike_count = COALESCE(dislike_count, 0) + " + dislikeDiff);
+                } else if (dislikeDiff < 0) {
+                    wrapper.setSql("dislike_count = GREATEST(COALESCE(dislike_count, 0) - " + Math.abs(dislikeDiff) + ", 0)");
+                }
+                
+                appMapper.update(null, wrapper);
+
+                // 2. 更新 km_app_access_stat (新统计体系)
+                appService.updateAccessStat(appId, userId, 0L, likeDiff, dislikeDiff, 0);
+            }
+        }
+        return true;
+    }
+
+    /**
      * 获取会话的执行详情
      */
     @Override
@@ -698,6 +781,14 @@ public class KmChatServiceImpl implements IKmChatService {
             } catch (Exception ex) {
                 log.error("发送调试错误事件失败", ex);
             }
+        }
+    }
+
+    private void sendSseEvent(SseEmitter emitter, SseEventType eventType, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(eventType.getEventName()).data(data));
+        } catch (Exception e) {
+            log.error("发送SSE事件失败: {}", eventType, e);
         }
     }
 }

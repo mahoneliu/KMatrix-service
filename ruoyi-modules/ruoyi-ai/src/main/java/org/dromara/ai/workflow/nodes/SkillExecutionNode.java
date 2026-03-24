@@ -1,5 +1,7 @@
 package org.dromara.ai.workflow.nodes;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,8 +72,8 @@ public class SkillExecutionNode extends AbstractWorkflowNode {
                 // 将结果追加和合并
                 combinedText.append(resultStr).append("\n");
                 
-                if (cn.hutool.core.util.StrUtil.isNotBlank(resultStr) && JSONUtil.isTypeJSONObject(resultStr)) {
-                    cn.hutool.json.JSONObject jsonObj = JSONUtil.parseObj(resultStr);
+                if (StrUtil.isNotBlank(resultStr) && JSONUtil.isTypeJSONObject(resultStr)) {
+                    JSONObject jsonObj = JSONUtil.parseObj(resultStr);
                     jsonObj.forEach(combinedResult::put);
                 }
             } catch (Exception e) {

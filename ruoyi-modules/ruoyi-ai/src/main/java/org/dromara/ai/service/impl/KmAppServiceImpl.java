@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +50,7 @@ public class KmAppServiceImpl implements IKmAppService {
     private final IKmAppTokenService appTokenService;
     private final KmChatSessionMapper chatSessionMapper;
     private final KmChatMessageMapper chatMessageMapper;
+    private final KmAppAccessStatMapper appAccessStatMapper;
 
     /**
      * 查询AI应用
@@ -316,43 +318,91 @@ public class KmAppServiceImpl implements IKmAppService {
         // 统计数据
         KmAppStatisticsVo stats = new KmAppStatisticsVo();
 
-        // 1. 用户总数 (基于会话去重)
-        // SELECT COUNT(DISTINCT user_id) FROM km_chat_session WHERE app_id = ? AND
-        // create_time >= ?
-        // 这里暂时简化为查询会话数，实际应关联用户
-        long userCount = chatSessionMapper.selectCount(
-                new LambdaQueryWrapper<KmChatSession>()
-                        .eq(KmChatSession::getAppId, appId)
-                        .ge(startTime != null, KmChatSession::getCreateTime, startTime));
-        stats.setUserCount(userCount);
-        stats.setUserCountDelta(0L); // 暂不计算环比
-
-        // 2. 提问次数 (消息数)
-        // 由于 KmChatMessage 没有 appId，需要关联 KmChatSession
-        // 简化: 先查出该应用下的所有会话ID, 再查消息数
-        // 注意:这里如果会话很多可能有性能问题, 理想情况应该在 Message 表冗余 appId 或使用 JOIN
-        // 这里暂时使用 EXISTS 子查询 (MyBatis-Plus apply)
-        long questionCount = chatMessageMapper.selectCount(
-                new LambdaQueryWrapper<KmChatMessage>()
-                        .eq(KmChatMessage::getRole, "user") // 只统计用户提问
-                        .apply("session_id IN (SELECT session_id FROM km_chat_session WHERE app_id = {0}" +
-                                (startTime != null ? " AND create_time >= {1}" : "") + ")",
-                                appId, startTime));
-        stats.setQuestionCount(questionCount);
-
-        // 3. Tokens 总数 (需要消息表有 tokens 字段，假设有)
-        // 暂且置为 0，需确认 KmChatMessage 是否有 tokens 字段
-        stats.setTokensTotal(0L);
-
-        // 4. 用户满意度
+        // 1. 用户总数
+        long userCount = 0;
+        long questionCount = 0;
+        long tokensTotal = 0;
         KmAppStatisticsVo.Satisfaction satisfaction = new KmAppStatisticsVo.Satisfaction();
         satisfaction.setLike(0L);
         satisfaction.setDislike(0L);
+
+        if (startTime == null) {
+            // 全时段统计: 优先从 km_app_access_stat 获取
+            List<KmAppAccessStat> statsList = appAccessStatMapper.selectList(
+                new LambdaQueryWrapper<KmAppAccessStat>().eq(KmAppAccessStat::getAppId, appId));
+            
+            userCount = statsList.size(); // 记录数即用户数
+            for (KmAppAccessStat item : statsList) {
+                questionCount += (item.getQuestionCount() != null ? item.getQuestionCount() : 0L);
+                tokensTotal += (item.getTokenCount() != null ? item.getTokenCount() : 0L);
+                satisfaction.setLike(satisfaction.getLike() + (item.getLikeCount() != null ? item.getLikeCount() : 0L));
+                satisfaction.setDislike(satisfaction.getDislike() + (item.getDislikeCount() != null ? item.getDislikeCount() : 0L));
+            }
+        } else {
+            // 特定周期统计: 维持原逻辑 (从消息/会话实时计算)
+            userCount = chatSessionMapper.selectCount(
+                    new LambdaQueryWrapper<KmChatSession>()
+                            .eq(KmChatSession::getAppId, appId)
+                            .ge(KmChatSession::getCreateTime, startTime));
+
+            questionCount = chatMessageMapper.selectCount(
+                    new LambdaQueryWrapper<KmChatMessage>()
+                            .eq(KmChatMessage::getRole, "user")
+                            .apply("session_id IN (SELECT session_id FROM km_chat_session WHERE app_id = {0} AND create_time >= {1})",
+                                    appId, startTime));
+
+            Long tokensSum = chatMessageMapper.sumTotalTokensByAppId(appId, startTime);
+            tokensTotal = tokensSum != null ? tokensSum : 0L;
+
+            List<Map<String, Object>> feedbackList = chatMessageMapper.countFeedbackByAppId(appId, startTime);
+            if (CollUtil.isNotEmpty(feedbackList)) {
+                for (Map<String, Object> map : feedbackList) {
+                    Number statusNum = (Number) map.get("status");
+                    Long count = map.get("count") != null ? ((Number) map.get("count")).longValue() : 0L;
+                    if (statusNum != null) {
+                        int status = statusNum.intValue();
+                        if (status == 1) {
+                            satisfaction.setLike(count);
+                        } else if (status == -1) {
+                            satisfaction.setDislike(count);
+                        }
+                    }
+                }
+            }
+        }
+
+        stats.setUserCount(userCount);
+        stats.setUserCountDelta(0L);
+        stats.setQuestionCount(questionCount);
+        stats.setTokensTotal(tokensTotal);
         stats.setSatisfaction(satisfaction);
 
-        // 5. 模拟趋势数据 (后续对接真实数据)
-        stats.setUserTrend(new HashMap<>());
-        stats.setQuestionTrend(new HashMap<>());
+        // 5. 趋势数据
+        Map<String, Long> userTrendMap = new HashMap<>();
+        List<Map<String, Object>> userTrendList = chatSessionMapper.getUserTrendByAppId(appId, startTime);
+        if (CollUtil.isNotEmpty(userTrendList)) {
+            for (Map<String, Object> map : userTrendList) {
+                String date = (String) map.get("date");
+                Long count = map.get("count") != null ? ((Number) map.get("count")).longValue() : 0L;
+                if (date != null) {
+                    userTrendMap.put(date, count);
+                }
+            }
+        }
+        stats.setUserTrend(userTrendMap);
+
+        Map<String, Long> questionTrendMap = new HashMap<>();
+        List<Map<String, Object>> questionTrendList = chatMessageMapper.getQuestionTrendByAppId(appId, startTime);
+        if (CollUtil.isNotEmpty(questionTrendList)) {
+            for (Map<String, Object> map : questionTrendList) {
+                String date = (String) map.get("date");
+                Long count = map.get("count") != null ? ((Number) map.get("count")).longValue() : 0L;
+                if (date != null) {
+                    questionTrendMap.put(date, count);
+                }
+            }
+        }
+        stats.setQuestionTrend(questionTrendMap);
 
         return stats;
     }
@@ -369,9 +419,6 @@ public class KmAppServiceImpl implements IKmAppService {
         return null; // 全部
     }
 
-    /**
-     * 获取应用发布历史
-     */
     @Override
     public List<KmAppVersionVo> getPublishHistory(Long appId) {
         List<KmAppVersion> versions = versionMapper.selectList(
@@ -379,5 +426,19 @@ public class KmAppServiceImpl implements IKmAppService {
                         .eq(KmAppVersion::getAppId, appId)
                         .orderByDesc(KmAppVersion::getVersion));
         return MapstructUtils.convert(versions, KmAppVersionVo.class);
+    }
+
+    @Override
+    public void updateAccessStat(Long appId, Long userId, Long tokens, Integer likes, Integer dislikes, Integer questions) {
+        if (appId == null || userId == null) {
+            return;
+        }
+        // 使用 MyBatis-Plus 生成 ID (如果需要 INSERT)
+        Long id = com.baomidou.mybatisplus.core.toolkit.IdWorker.getId();
+        appAccessStatMapper.incrementStats(id, appId, userId, 
+            tokens != null ? tokens : 0L, 
+            likes != null ? likes : 0, 
+            dislikes != null ? dislikes : 0, 
+            questions != null ? questions : 0);
     }
 }

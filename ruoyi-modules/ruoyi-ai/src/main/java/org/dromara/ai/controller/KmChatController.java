@@ -13,6 +13,7 @@ import org.dromara.ai.service.IChatSessionTokenService;
 import org.dromara.ai.service.IKmAppTokenService;
 import org.dromara.ai.service.IKmChatService;
 import org.dromara.ai.service.IKmSkillService;
+import org.dromara.ai.domain.bo.KmChatFeedbackBo;
 import org.dromara.ai.domain.bo.KmSkillBo;
 import org.dromara.ai.domain.vo.KmSkillVo;
 import org.dromara.common.core.domain.R;
@@ -72,7 +73,7 @@ public class KmChatController extends BaseController {
      * 普通对话(非流式)
      */
     @PostMapping("/send")
-    public R<String> send(@Valid @RequestBody KmChatSendBo bo,
+    public R<KmChatMessageVo> send(@Valid @RequestBody KmChatSendBo bo,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         bo.setStream(false);
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
@@ -154,6 +155,16 @@ public class KmChatController extends BaseController {
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
         chatService.updateSessionTitle(sessionId, title, info.getUserId());
         return R.ok();
+    }
+
+    /**
+     * 提交消息评价 (点赞/踩)
+     */
+    @PostMapping("/feedback")
+    public R<Void> submitFeedback(@Valid @RequestBody KmChatFeedbackBo bo,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return toAjax(chatService.submitFeedback(bo.getMessageId(), bo.getFeedbackStatus(), info.getUserId()));
     }
 
     /**

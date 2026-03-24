@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmBuiltinTool;
 import org.dromara.ai.domain.KmMcpServer;
+import org.dromara.ai.domain.KmSkill;
 import org.dromara.ai.mapper.KmBuiltinToolMapper;
 import org.dromara.ai.mapper.KmMcpServerMapper;
+import org.dromara.ai.mapper.KmSkillMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -44,7 +46,7 @@ public class ToolProviderService {
 
     private final KmBuiltinToolMapper builtinToolMapper;
     private final KmMcpServerMapper mcpServerMapper;
-    private final org.dromara.ai.mapper.KmSkillMapper skillMapper;
+    private final KmSkillMapper skillMapper;
 
     /**
      * 根据节点 tools 配置解析工具绑定列表
@@ -142,7 +144,7 @@ public class ToolProviderService {
     private List<ToolBinding> resolveSkill(Long skillId, RestTemplate restTemplate) {
         List<ToolBinding> result = new ArrayList<>();
 
-        org.dromara.ai.domain.KmSkill skill = skillMapper.selectById(skillId);
+        KmSkill skill = skillMapper.selectById(skillId);
         if (skill == null) {
             log.error("技能不存在 (DB查询失败): skillId={}", skillId);
             return result;
@@ -210,13 +212,13 @@ public class ToolProviderService {
      * 获取指定技能的底层工具集合，绕除字符串拼接的包裹类，方便直接提取原生 JSON
      */
     public List<ToolBinding> resolveSkillInnerBindings(Long skillId) {
-        org.dromara.ai.domain.KmSkill skill = skillMapper.selectById(skillId);
-        if (skill == null || !"0".equals(skill.getStatus()) || cn.hutool.core.util.StrUtil.isBlank(skill.getToolBindings())) {
+        KmSkill skill = skillMapper.selectById(skillId);
+        if (skill == null || !"0".equals(skill.getStatus()) || StrUtil.isBlank(skill.getToolBindings())) {
             return new ArrayList<>();
         }
         try {
             List<Map<String, Object>> innerToolRefs = MAPPER.readValue(skill.getToolBindings(),
-                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+                    new TypeReference<List<Map<String, Object>>>() {});
             return resolveBindings(innerToolRefs);
         } catch (Exception e) {
             log.error("提取技能底层工具失败: skillId={}", skillId, e);

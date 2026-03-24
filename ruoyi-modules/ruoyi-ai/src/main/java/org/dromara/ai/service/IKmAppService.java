@@ -91,4 +91,16 @@ public interface IKmAppService {
      * @return 发布历史列表
      */
     List<KmAppVersionVo> getPublishHistory(Long appId);
+
+    /**
+     * 更新应用访问统计
+     * @param appId 应用ID
+     * @param userId 用户ID
+     * @param tokens 消耗的 Token 数 (增量)
+     * @param likes 点赞数增量 (1, -1, 0)
+     * @param dislikes 点踩数增量 (1, -1, 0)
+     * @param questions 提问次数增量 (1, 0)
+     */
+    void updateAccessStat(Long appId, Long userId, Long tokens, Integer likes, Integer dislikes, Integer questions);
+
 }

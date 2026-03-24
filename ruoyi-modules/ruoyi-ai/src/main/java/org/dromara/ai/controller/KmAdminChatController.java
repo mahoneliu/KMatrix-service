@@ -58,7 +58,7 @@ public class KmAdminChatController extends BaseController {
      */
     @SaCheckPermission("ai:app:edit")
     @PostMapping("/send")
-    public R<String> send(@Valid @RequestBody KmChatSendBo bo) {
+    public R<KmChatMessageVo> send(@Valid @RequestBody KmChatSendBo bo) {
         bo.setStream(false);
         bo.setUserId(LoginHelper.getUserId());
         bo.setUserType(ChatUserType.SYSTEM_USER.getCode());
@@ -136,5 +136,15 @@ public class KmAdminChatController extends BaseController {
             return R.fail("调试会话不保存执行记录");
         }
         return R.ok(chatService.getExecutionDetails(sessionId, LoginHelper.getUserId()));
+    }
+    /**
+     * 提交消息评价 (管理端)
+     */
+    @SaCheckPermission("ai:app:edit")
+    @PostMapping("/feedback")
+    public R<Boolean> submitFeedback(@RequestBody Map<String, Object> body) {
+        Long messageId = Long.valueOf(body.get("messageId").toString());
+        Integer feedbackStatus = Integer.valueOf(body.get("feedbackStatus").toString());
+        return R.ok(chatService.submitFeedback(messageId, feedbackStatus, LoginHelper.getUserId()));
     }
 }

@@ -2,6 +2,7 @@ package org.dromara.ai.workflow.engine;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.serializer.std.ObjectStreamStateSerializer;
 import org.dromara.ai.domain.enums.NodeExecutionStatus;
@@ -113,8 +114,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             StateGraph<WorkflowState> graph = buildGraph(config, emitter);
 
             // 3. 编译并执行
-            // 默认 LangGraph4j 会限制 maxIterations(recursionLimit) 为 25。将其调大以支持长循环。
-            org.bsc.langgraph4j.CompileConfig compileConfig = org.bsc.langgraph4j.CompileConfig.builder()
+            // 默认 LangGraph4j 会限制 maxIterations(recursionLimit) 为 25。将其调大以支持 long 循环。
+            CompileConfig compileConfig = CompileConfig.builder()
                     .recursionLimit(1000)
                     .build();
             var compiled = graph.compile(compileConfig);

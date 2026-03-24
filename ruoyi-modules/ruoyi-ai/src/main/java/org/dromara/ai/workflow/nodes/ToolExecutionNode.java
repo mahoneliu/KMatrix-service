@@ -1,6 +1,7 @@
 package org.dromara.ai.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -110,11 +111,11 @@ public class ToolExecutionNode extends AbstractWorkflowNode {
 
         // 5. 将结果放入输出
         Object parsedResult;
-        if (cn.hutool.core.util.StrUtil.isNotBlank(resultStr)) {
+        if (StrUtil.isNotBlank(resultStr)) {
             if (JSONUtil.isTypeJSONObject(resultStr)) {
                 parsedResult = JSONUtil.parseObj(resultStr);
                 // 自动将 JSON Object 的所有顶层 key 拍平放入 NodeOutput，便于工作流引擎与自定义出参绑定映射
-                ((cn.hutool.json.JSONObject) parsedResult).forEach((k, v) -> output.addOutput(k, v));
+                ((JSONObject) parsedResult).forEach((k, v) -> output.addOutput(k, v));
             } else if (JSONUtil.isTypeJSONArray(resultStr)) {
                 parsedResult = JSONUtil.parseArray(resultStr);
             } else {

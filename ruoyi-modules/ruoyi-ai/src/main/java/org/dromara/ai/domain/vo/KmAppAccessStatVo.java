@@ -52,4 +52,24 @@ public class KmAppAccessStatVo implements Serializable {
      */
     private Date lastAccessTime;
 
+    /**
+     * 消耗的 Token 总数
+     */
+    private Long tokenCount;
+
+    /**
+     * 点赞次数
+     */
+    private Long likeCount;
+
+    /**
+     * 点踩次数
+     */
+    private Long dislikeCount;
+
+    /**
+     * 提问次数
+     */
+    private Long questionCount;
+
 }

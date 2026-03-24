@@ -56,4 +56,9 @@ public class KmChatMessageVo implements Serializable {
      * 节点执行记录列表
      */
     private List<KmNodeExecutionVo> executions;
+
+    /**
+     * 用户反馈状态: 0=无, 1=赞同, -1=踩
+     */
+    private Integer feedbackStatus;
 }

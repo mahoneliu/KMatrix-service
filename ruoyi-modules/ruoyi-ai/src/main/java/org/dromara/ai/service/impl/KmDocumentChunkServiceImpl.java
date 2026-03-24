@@ -9,14 +9,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
 import org.dromara.ai.domain.KmEmbedding;
+import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmQuestionChunkMap;
 import org.dromara.ai.domain.bo.KmDocumentChunkBo;
 import org.dromara.ai.domain.vo.KmDocumentChunkVo;
 import org.dromara.ai.mapper.KmDocumentChunkMapper;
 import org.dromara.ai.mapper.KmDocumentMapper;
 import org.dromara.ai.mapper.KmEmbeddingMapper;
+import org.dromara.ai.mapper.KmDatasetMapper;
 import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
+import org.dromara.ai.service.IKmChunkingConfigService;
 import org.dromara.ai.service.IKmDocumentChunkService;
+import org.dromara.ai.service.IKmQuestionService;
+import org.dromara.ai.util.StatusMetaUtils;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -42,10 +47,10 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
     private final KmDocumentMapper documentMapper;
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionChunkMapMapper questionChunkMapMapper;
-    private final org.dromara.ai.service.IKmQuestionService questionService;
+    private final IKmQuestionService questionService;
     private final EmbeddingModel embeddingModel;
-    private final org.dromara.ai.service.IKmChunkingConfigService chunkingConfigService;
-    private final org.dromara.ai.mapper.KmDatasetMapper datasetMapper;
+    private final IKmChunkingConfigService chunkingConfigService;
+    private final KmDatasetMapper datasetMapper;
 
     @Override
     public List<KmDocumentChunkVo> listByDocumentId(Long documentId) {
@@ -104,9 +109,9 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
                 int chunkSize = 500;
                 int overlap = 50;
                 if (chunk.getKbId() != null) {
-                    org.dromara.ai.domain.KmDataset dataset = datasetMapper
-                            .selectOne(new LambdaQueryWrapper<org.dromara.ai.domain.KmDataset>()
-                                    .eq(org.dromara.ai.domain.KmDataset::getKbId, chunk.getKbId())
+                    KmDataset dataset = datasetMapper
+                            .selectOne(new LambdaQueryWrapper<KmDataset>()
+                                    .eq(KmDataset::getKbId, chunk.getKbId())
                                     .last("limit 1"));
                     if (dataset != null) {
                         chunkSize = chunkingConfigService.getChildChunkSize(dataset);
@@ -142,9 +147,9 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
                     java.util.Map<String, Object> childMeta = new java.util.HashMap<>();
                     childMeta.put("childIndex", i);
                     childEntity.setMetadata(childMeta);
-                    childEntity.setStatusMeta(org.dromara.ai.util.StatusMetaUtils.updateStateTime(null,
-                            org.dromara.ai.util.StatusMetaUtils.TASK_EMBEDDING,
-                            org.dromara.ai.util.StatusMetaUtils.STATUS_SUCCESS));
+                    childEntity.setStatusMeta(StatusMetaUtils.updateStateTime(null,
+                            StatusMetaUtils.TASK_EMBEDDING,
+                            StatusMetaUtils.STATUS_SUCCESS));
 
                     newChildren.add(childEntity);
 

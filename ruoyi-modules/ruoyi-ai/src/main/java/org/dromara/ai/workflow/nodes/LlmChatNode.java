@@ -1,6 +1,8 @@
 package org.dromara.ai.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -310,7 +312,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
             // ================== 增加 JSON 回退（Fallback）解析机制 ==================
             // 有些大模型即使支持工具，也可能不走底层的 toolRequests 而是以普通 JSON 文本的格式输出
             if ((toolRequests == null || toolRequests.isEmpty()) && !toolSpecs.isEmpty()
-                    && cn.hutool.core.util.StrUtil.isNotBlank(aiMessage.text())) {
+                    && StrUtil.isNotBlank(aiMessage.text())) {
                 toolRequests = parseFallbackToolRequests(aiMessage.text(), toolSpecs);
                 if (toolRequests != null && !toolRequests.isEmpty()) {
                     log.info("LLM_CHAT节点 - 触发Fallback解析, 成功从纯文本中提取了ToolExecutionRequest: {}", toolRequests);
@@ -496,8 +498,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
             jsonStr = jsonStr.trim();
 
-            if (cn.hutool.json.JSONUtil.isTypeJSONObject(jsonStr)) {
-                cn.hutool.json.JSONObject jsonObj = cn.hutool.json.JSONUtil.parseObj(jsonStr);
+            if (JSONUtil.isTypeJSONObject(jsonStr)) {
+                JSONObject jsonObj = JSONUtil.parseObj(jsonStr);
                 String toolName = jsonObj.getStr("name");
                 Object args = jsonObj.get("arguments");
 
@@ -512,12 +514,12 @@ public class LlmChatNode extends AbstractWorkflowNode {
                     boolean exists = toolSpecs.stream().anyMatch(spec -> spec.name().equals(finalToolName));
                     if (exists) {
                         String argumentsStr = (args instanceof String) ? (String) args
-                                : cn.hutool.json.JSONUtil.toJsonStr(args);
+                                : JSONUtil.toJsonStr(args);
                         if (argumentsStr == null) {
                             argumentsStr = "{}";
                         }
                         return Collections.singletonList(
-                                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                                ToolExecutionRequest.builder()
                                         .id("call_" + System.currentTimeMillis())
                                         .name(toolName)
                                         .arguments(argumentsStr)

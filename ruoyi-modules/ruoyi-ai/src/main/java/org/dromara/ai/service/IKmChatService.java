@@ -28,9 +28,9 @@ public interface IKmChatService {
      * 普通对话(非流式)
      *
      * @param bo 发送消息参数
-     * @return AI响应内容
+     * @return AI响应消息对象
      */
-    String chat(KmChatSendBo bo);
+    KmChatMessageVo chat(KmChatSendBo bo);
 
     /**
      * 获取会话历史消息
@@ -87,6 +87,16 @@ public interface IKmChatService {
      * @return 是否成功
      */
     Boolean updateSessionTitle(Long sessionId, String title, Long userId);
+
+    /**
+     * 提交消息评价
+     *
+     * @param messageId      消息ID
+     * @param feedbackStatus 评价状态 (0=取消, 1=赞, -1=踩)
+     * @param userId         当前用户ID
+     * @return 是否成功
+     */
+    Boolean submitFeedback(Long messageId, Integer feedbackStatus, Long userId);
 
     /**
      * 获取会话的执行详情
