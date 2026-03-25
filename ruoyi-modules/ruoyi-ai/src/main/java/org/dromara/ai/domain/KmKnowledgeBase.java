@@ -55,4 +55,9 @@ public class KmKnowledgeBase extends BaseEntity {
      * 删除标志
      */
     private String delFlag;
+
+    /**
+     * 绑定的向量化模型ID
+     */
+    private Long embeddingModelId;
 }

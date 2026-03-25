@@ -194,9 +194,11 @@ public class KmChatServiceImpl implements IKmChatService {
 
                         // 保存AI响应
                         if (aiResponse != null) {
-                            KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId, totalTokens, effectiveUserId);
+                            KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId,
+                                    totalTokens, effectiveUserId);
                             // 发送消息ID给前端，以便进行评价
-                            sendSseEvent(emitter, SseEventType.DONE, Map.of("messageId", assistantMessage.getMessageId().toString()));
+                            sendSseEvent(emitter, SseEventType.DONE,
+                                    Map.of("messageId", assistantMessage.getMessageId().toString()));
                         }
 
                         // 异步生成标题（仅在首次对话时）
@@ -238,7 +240,8 @@ public class KmChatServiceImpl implements IKmChatService {
             } catch (Exception e) {
                 log.error("流式对话处理失败", e);
                 try {
-                    emitter.send(SseEmitter.event().name("error").data(MessageUtils.message("ai.msg.chat.failed") + ": " + e.getMessage()));
+                    emitter.send(SseEmitter.event().name("error")
+                            .data(MessageUtils.message("ai.msg.chat.failed") + ": " + e.getMessage()));
                 } catch (IOException ioException) {
                     log.error("发送错误消息失败", ioException);
                 }
@@ -520,7 +523,8 @@ public class KmChatServiceImpl implements IKmChatService {
     /**
      * 保存带有进度实例和 Token 使用情况的消息
      */
-    private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens, Long userId) {
+    private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens,
+            Long userId) {
         KmChatMessage message = new KmChatMessage();
         message.setSessionId(sessionId);
         message.setRole(role);
@@ -535,12 +539,13 @@ public class KmChatServiceImpl implements IKmChatService {
         message.setUpdateTime(new Date());
 
         messageMapper.insert(message);
-        
+
         // 更新统计数据
         if ("user".equals(role)) {
             appService.updateAccessStat(sessionMapper.selectById(sessionId).getAppId(), userId, 0L, 0, 0, 1);
         } else if ("assistant".equals(role) && totalTokens != null && totalTokens > 0) {
-            appService.updateAccessStat(sessionMapper.selectById(sessionId).getAppId(), userId, totalTokens.longValue(), 0, 0, 0);
+            appService.updateAccessStat(sessionMapper.selectById(sessionId).getAppId(), userId, totalTokens.longValue(),
+                    0, 0, 0);
         }
 
         return message;
@@ -666,31 +671,39 @@ public class KmChatServiceImpl implements IKmChatService {
             int likeDiff = 0;
             int dislikeDiff = 0;
 
-            if (oldStatus == 1) likeDiff -= 1;
-            else if (oldStatus == -1) dislikeDiff -= 1;
+            if (oldStatus == 1)
+                likeDiff -= 1;
+            else if (oldStatus == -1)
+                dislikeDiff -= 1;
 
-            if (feedbackStatus == 1) likeDiff += 1;
-            else if (feedbackStatus == -1) dislikeDiff += 1;
+            if (feedbackStatus == 1)
+                likeDiff += 1;
+            else if (feedbackStatus == -1)
+                dislikeDiff += 1;
 
             if (likeDiff != 0 || dislikeDiff != 0) {
                 // 1. 更新 km_app (保留旧逻辑，或可逐步废弃)
-                com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<KmApp> wrapper = 
-                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-                wrapper.eq(KmApp::getAppId, appId);
-                
-                if (likeDiff > 0) {
-                    wrapper.setSql("like_count = COALESCE(like_count, 0) + " + likeDiff);
-                } else if (likeDiff < 0) {
-                    wrapper.setSql("like_count = GREATEST(COALESCE(like_count, 0) - " + Math.abs(likeDiff) + ", 0)");
-                }
-                
-                if (dislikeDiff > 0) {
-                    wrapper.setSql("dislike_count = COALESCE(dislike_count, 0) + " + dislikeDiff);
-                } else if (dislikeDiff < 0) {
-                    wrapper.setSql("dislike_count = GREATEST(COALESCE(dislike_count, 0) - " + Math.abs(dislikeDiff) + ", 0)");
-                }
-                
-                appMapper.update(null, wrapper);
+                // com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<KmApp>
+                // wrapper =
+                // new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+                // wrapper.eq(KmApp::getAppId, appId);
+
+                // if (likeDiff > 0) {
+                // wrapper.setSql("like_count = COALESCE(like_count, 0) + " + likeDiff);
+                // } else if (likeDiff < 0) {
+                // wrapper.setSql("like_count = GREATEST(COALESCE(like_count, 0) - " +
+                // Math.abs(likeDiff) + ", 0)");
+                // }
+
+                // if (dislikeDiff > 0) {
+                // wrapper.setSql("dislike_count = COALESCE(dislike_count, 0) + " +
+                // dislikeDiff);
+                // } else if (dislikeDiff < 0) {
+                // wrapper.setSql("dislike_count = GREATEST(COALESCE(dislike_count, 0) - " +
+                // Math.abs(dislikeDiff) + ", 0)");
+                // }
+
+                // appMapper.update(null, wrapper);
 
                 // 2. 更新 km_app_access_stat (新统计体系)
                 appService.updateAccessStat(appId, userId, 0L, likeDiff, dislikeDiff, 0);

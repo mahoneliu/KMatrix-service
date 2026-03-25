@@ -61,6 +61,14 @@ public interface IKmModelService {
     Boolean setDefaultModel(Long modelId);
 
     /**
+     * 检查指定类型是否存在默认兆底模型
+     *
+     * @param modelType 模型类型（1-语言模型 2-向量模型）
+     * @return 是否存在
+     */
+    Boolean hasDefaultModel(String modelType);
+
+    /**
      * 测试模型对话 (流式)
      *
      * @param bo 发送消息对象

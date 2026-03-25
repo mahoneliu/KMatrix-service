@@ -44,7 +44,8 @@ public class KmModelVo implements Serializable {
     private String modelName;
 
     /**
-     * 模型类型（1语言模型 2向量模型）
+     * 模型类型: 1-LLM, 2-向量模型, 3-重排序型, 4-语音型, 5-图像型, 6-视频型
+     * @see org.dromara.ai.domain.enums.AiModelType
      */
     private String modelType;
 

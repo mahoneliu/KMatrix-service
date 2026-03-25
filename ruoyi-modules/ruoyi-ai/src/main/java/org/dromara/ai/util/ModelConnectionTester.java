@@ -1,10 +1,14 @@
 package org.dromara.ai.util;
 
 import cn.hutool.core.util.StrUtil;
+import org.dromara.common.core.utils.MessageUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.dashscope.QwenChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GeminiHarmCategory;
 import dev.langchain4j.model.googleai.GeminiHarmBlockThreshold;
@@ -32,37 +36,81 @@ public class ModelConnectionTester {
     public static String testOpenAiCompatible(KmModelBo bo, String providerName) {
         try {
             if (StrUtil.isBlank(bo.getApiKey())) {
-                return "API Key 不能为空";
+                return MessageUtils.message("ai.msg.model.api_key_empty");
             }
             if (StrUtil.isBlank(bo.getModelKey())) {
-                return "基础模型不能为空";
+                return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            var builder = OpenAiChatModel.builder()
-                    .apiKey(bo.getApiKey())
-                    .modelName(bo.getModelKey())
-                    .timeout(DEFAULT_TIMEOUT);
+            String type = bo.getModelType();
+            if (StrUtil.isBlank(type)) type = "1"; // 默认聊天模型
 
-            if (StrUtil.isNotBlank(bo.getApiBase())) {
-                builder.baseUrl(bo.getApiBase());
-            }
-
-            ChatLanguageModel model = builder.build();
-            String response = model.generate(TEST_MESSAGE);
-
-            log.info("{} 连接测试成功: model={}, response={}", providerName, bo.getModelKey(), response);
-            return "连接成功";
+            return switch (type) {
+                case "2" -> testOpenAiEmbedding(bo, providerName);
+                case "3" -> testOpenAiScoring(bo, providerName);
+                default -> testOpenAiChat(bo, providerName);
+            };
         } catch (Exception e) {
             log.error("{} 连接测试失败: model={}", providerName, bo.getModelKey(), e);
-            return "连接测试失败: " + e.getMessage();
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
         }
+    }
+
+    private static String testOpenAiChat(KmModelBo bo, String providerName) {
+        var builder = OpenAiChatModel.builder()
+                .apiKey(bo.getApiKey())
+                .modelName(bo.getModelKey())
+                .timeout(DEFAULT_TIMEOUT);
+
+        if (StrUtil.isNotBlank(bo.getApiBase())) {
+            builder.baseUrl(bo.getApiBase());
+        }
+
+        ChatLanguageModel model = builder.build();
+        String response = model.generate(TEST_MESSAGE);
+        log.info("{} Chat连接测试成功: model={}, response={}", providerName, bo.getModelKey(), response);
+        return MessageUtils.message("ai.msg.model.connection_success");
+    }
+
+    private static String testOpenAiEmbedding(KmModelBo bo, String providerName) {
+        var builder = OpenAiEmbeddingModel.builder()
+                .apiKey(bo.getApiKey())
+                .modelName(bo.getModelKey())
+                .timeout(DEFAULT_TIMEOUT);
+
+        if (StrUtil.isNotBlank(bo.getApiBase())) {
+            builder.baseUrl(bo.getApiBase());
+        }
+
+        EmbeddingModel model = builder.build();
+        model.embed(TEST_MESSAGE);
+        log.info("{} Embedding连接测试成功: model={}", providerName, bo.getModelKey());
+        return MessageUtils.message("ai.msg.model.connection_success");
+    }
+
+    private static String testOpenAiScoring(KmModelBo bo, String providerName) {
+        String apiBase = bo.getApiBase();
+        if (StrUtil.isBlank(apiBase)) {
+            apiBase = "https://api.siliconflow.cn/v1/";
+        }
+
+        ScoringModel model = OpenAiCompatibleScoringModel.builder()
+                .apiKey(bo.getApiKey())
+                .baseUrl(apiBase)
+                .modelName(bo.getModelKey())
+                .timeout(DEFAULT_TIMEOUT)
+                .build();
+
+        model.score(TEST_MESSAGE, "Hi");
+        log.info("{} Scoring连接测试成功: model={}", providerName, bo.getModelKey());
+        return MessageUtils.message("ai.msg.model.connection_success");
     }
 
     /**
      * 测试 Azure OpenAI 模型连接 (暂未引入依赖)
      */
     public static String testAzureOpenAi(String apiKey, String endpoint, String deploymentName) {
-        return "暂未支持 Azure OpenAI 连接测试 (缺少依赖)";
+        return MessageUtils.message("ai.msg.model.azure_not_supported");
     }
 
     /**
@@ -71,10 +119,10 @@ public class ModelConnectionTester {
     public static String testOllama(String apiBase, String modelKey) {
         try {
             if (StrUtil.isBlank(apiBase)) {
-                return "API Base URL 不能为空";
+                return MessageUtils.message("ai.msg.model.endpoint_empty");
             }
             if (StrUtil.isBlank(modelKey)) {
-                return "基础模型不能为空";
+                return MessageUtils.message("ai.msg.model.config_empty");
             }
 
             ChatLanguageModel model = OllamaChatModel.builder()
@@ -86,10 +134,10 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("Ollama 连接测试成功: model={}, response={}", modelKey, response);
-            return "连接成功";
+            return MessageUtils.message("ai.msg.model.connection_success");
         } catch (Exception e) {
             log.error("Ollama 连接测试失败: model={}", modelKey, e);
-            return "连接测试失败: " + e.getMessage();
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
         }
     }
 
@@ -99,10 +147,10 @@ public class ModelConnectionTester {
     public static String testQwen(String apiKey, String modelKey) {
         try {
             if (StrUtil.isBlank(apiKey)) {
-                return "API Key 不能为空";
+                return MessageUtils.message("ai.msg.model.api_key_empty");
             }
             if (StrUtil.isBlank(modelKey)) {
-                return "基础模型不能为空";
+                return MessageUtils.message("ai.msg.model.config_empty");
             }
 
             ChatLanguageModel model = QwenChatModel.builder()
@@ -113,10 +161,10 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("通义千问连接测试成功: model={}, response={}", modelKey, response);
-            return "连接成功";
+            return MessageUtils.message("ai.msg.model.connection_success");
         } catch (Exception e) {
             log.error("通义千问连接测试失败: model={}", modelKey, e);
-            return "连接测试失败: " + e.getMessage();
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
         }
     }
 
@@ -126,10 +174,10 @@ public class ModelConnectionTester {
     public static String testGemini(String apiKey, String modelKey) {
         try {
             if (StrUtil.isBlank(apiKey)) {
-                return "API Key 不能为空";
+                return MessageUtils.message("ai.msg.model.api_key_empty");
             }
             if (modelKey == null) {
-                return "基础模型不能为空";
+                return MessageUtils.message("ai.msg.model.config_empty");
             }
 
             ChatLanguageModel model = GoogleAiGeminiChatModel.builder()
@@ -143,10 +191,10 @@ public class ModelConnectionTester {
             String response = model.generate(TEST_MESSAGE);
 
             log.info("Gemini 连接测试成功: model={}, response={}", modelKey, response);
-            return "连接成功";
+            return MessageUtils.message("ai.msg.model.connection_success");
         } catch (Exception e) {
             log.error("Gemini 连接测试失败: model={}", modelKey, e);
-            return "连接测试失败: " + e.getMessage();
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
         }
     }
 
@@ -160,9 +208,19 @@ public class ModelConnectionTester {
     }
 
     /**
+     * 测试 SiliconFlow 模型连接 - 使用 OpenAI 兼容模式
+     */
+    public static String testSiliconFlow(KmModelBo bo) {
+        if (StrUtil.isBlank(bo.getApiBase())) {
+            bo.setApiBase("https://api.siliconflow.cn/v1/");
+        }
+        return testOpenAiCompatible(bo, "SiliconFlow");
+    }
+
+    /**
      * 测试 Anthropic (Claude) 模型连接 (暂未引入依赖)
      */
     public static String testAnthropic(String apiKey, String apiBase, String modelKey) {
-        return "暂未支持 Anthropic 连接测试 (缺少依赖)";
+        return MessageUtils.message("ai.msg.model.anthropic_not_supported");
     }
 }

@@ -19,6 +19,10 @@ import org.dromara.common.oss.core.OssClient;
 import org.dromara.common.oss.factory.OssFactory;
 import org.dromara.system.domain.vo.SysOssVo;
 import org.dromara.system.service.ISysOssService;
+import org.apache.tika.config.TikaConfig;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.Parser;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -27,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * 通用文件 ETL 处理器
@@ -50,28 +55,28 @@ public class GenericFileEtlHandler implements EtlHandler {
     private final DocumentParser documentParser = createDocumentParser();
 
     private static DocumentParser createDocumentParser() {
-        org.apache.tika.parser.Parser parser;
+        Parser parser;
         try (InputStream is = GenericFileEtlHandler.class.getResourceAsStream("/tika-config.xml")) {
             if (is != null) {
-                org.apache.tika.config.TikaConfig tikaConfig = new org.apache.tika.config.TikaConfig(is);
-                parser = new org.apache.tika.parser.AutoDetectParser(tikaConfig);
+                TikaConfig tikaConfig = new TikaConfig(is);
+                parser = new AutoDetectParser(tikaConfig);
             } else {
-                parser = new org.apache.tika.parser.AutoDetectParser();
+                parser = new AutoDetectParser();
             }
         } catch (Exception e) {
             log.error("Failed to load tika-config.xml", e);
-            parser = new org.apache.tika.parser.AutoDetectParser();
+            parser = new AutoDetectParser();
         }
 
-        final org.apache.tika.parser.Parser finalParser = parser;
-        java.util.function.Supplier<org.apache.tika.parser.Parser> parserSupplier = () -> finalParser;
+        final Parser finalParser = parser;
+        Supplier<Parser> parserSupplier = () -> finalParser;
 
         return new ApacheTikaDocumentParser(
                 parserSupplier,
                 ApacheTikaDocumentParser.DEFAULT_CONTENT_HANDLER_SUPPLIER,
                 ApacheTikaDocumentParser.DEFAULT_METADATA_SUPPLIER,
                 () -> {
-                    org.apache.tika.parser.ParseContext context = new org.apache.tika.parser.ParseContext();
+                    ParseContext context = new ParseContext();
                     try {
                         // Double protection against Tesseract OCR
                         Class<?> tesseractConfigClass = Class.forName("org.apache.tika.parser.ocr.TesseractOCRConfig");

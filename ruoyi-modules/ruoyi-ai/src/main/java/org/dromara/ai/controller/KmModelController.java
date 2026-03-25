@@ -77,9 +77,9 @@ public class KmModelController extends BaseController {
     @Log(title = "模型管理", businessType = BusinessType.UPDATE)
     @PutMapping()
     public R<Void> edit(@Validated(EditGroup.class) @RequestBody KmModelBo bo) {
-        // 如果是系统内置模型，就不允许修改
+        // 如果是系统内置模型或本地模型，就不允许修改
         KmModelVo existing = modelService.queryById(bo.getModelId());
-        if (existing != null && "Y".equals(existing.getIsBuiltin())) {
+        if (existing != null && ("Y".equals(existing.getIsBuiltin()) || "2".equals(existing.getModelSource()))) {
             return R.fail(MessageUtils.message("ai.msg.model.builtin_readonly"));
         }
         return toAjax(modelService.updateByBo(bo));
@@ -117,6 +117,16 @@ public class KmModelController extends BaseController {
     @PostMapping("/copy/{modelId}")
     public R<Long> copy(@PathVariable Long modelId) {
         return R.ok(modelService.copyModel(modelId));
+    }
+
+    /**
+     * Set default fallback model
+     */
+    @SaCheckPermission("ai:model:edit")
+    @Log(title = "Model Management", businessType = BusinessType.UPDATE)
+    @PostMapping("/setDefault/{modelId}")
+    public R<Boolean> setDefault(@PathVariable Long modelId) {
+        return R.ok(modelService.setDefaultModel(modelId));
     }
 
     /**

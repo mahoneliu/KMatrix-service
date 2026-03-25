@@ -145,8 +145,8 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 1. **Environment Setup**:
     - Install Redis.
     - Download the rerank model.
-    - Install PostgreSQL and enable pgvector extension and jieba tokenizer.
-    Note: PG deployment scripts and rerank model download scripts are available in the `script` directory. The project uses flyway to manage SQL. The startup project will automatically execute the initialization SQL. The SQL directory is: /kmatrix-admin/src/resources/sql.
+    - Install PostgreSQL and enable pgvector extension and jieba tokenizer. jieba deployment reference 👉🏻[here](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h6qmh45fmedk).
+    - Note: PG deployment scripts and rerank model download scripts are available in the `script` directory. The project uses flyway to manage SQL. The startup project will automatically execute the initialization SQL. The SQL directory is: /kmatrix-admin/src/resources/sql.
 
 2. **Backend Startup (kmatrix-service)**:
 

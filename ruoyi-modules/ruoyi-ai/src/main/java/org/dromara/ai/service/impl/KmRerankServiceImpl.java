@@ -1,83 +1,46 @@
 package org.dromara.ai.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.StrUtil;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.scoring.ScoringModel;
-import dev.langchain4j.model.scoring.onnx.OnnxScoringModel;
-import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.domain.KmModel;
+import org.dromara.ai.domain.enums.AiModelType;
 import org.dromara.ai.domain.vo.KmRetrievalResultVo;
+import org.dromara.ai.mapper.KmModelMapper;
+import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmRerankService;
-import org.springframework.beans.factory.annotation.Value;
+import org.dromara.ai.util.ModelBuilder;
 import org.springframework.stereotype.Service;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-import jakarta.annotation.PostConstruct;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * BGE-Reranker 重排序服务实现
- * 支持 ONNX 本地模型或关键词回退方案
+ * Rerank 重排序服务实现
+ *
+ * <p>重排序调用优先级（从高到低）：</p>
+ * <ol>
+ *   <li>数据库默认 Rerank 模型（如 SiliconFlow Qwen3-Reranker-0.6B）—— 需用户在界面配置 API Key 并设为默认</li>
+ *   <li>内置本地 ONNX 模型（bge-reranker-v2-m3）—— 需配置文件路径并开启 ai.reranker.enabled=true</li>
+ *   <li>关键词回退（fallback）—— 没有任何模型时使用简单的关键词权重算法</li>
+ * </ol>
  *
  * @author Mahone
  * @date 2026-01-29
  */
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class KmRerankServiceImpl implements IKmRerankService {
 
-    @Value("${ai.reranker.enabled:false}")
-    private boolean enabled;
-
-    @Value("${ai.reranker.model-path:}")
-    private String modelPath;
-
-    @Value("${ai.reranker.tokenizer-path:}")
-    private String tokenizerPath;
-
-    private ScoringModel scoringModel;
-    private boolean initialized = false;
-
-    @PostConstruct
-    public void init() {
-        if (!enabled) {
-            log.info("Reranker is disabled, using keyword-based rerank fallback");
-            return;
-        }
-
-        // 检查模型文件是否配置且存在
-        if (StrUtil.isBlank(modelPath) || StrUtil.isBlank(tokenizerPath)) {
-            log.warn("Reranker enabled but model-path or tokenizer-path not configured, using keyword-based fallback");
-            return;
-        }
-
-        Path modelFilePath = Paths.get(modelPath);
-        Path tokenizerFilePath = Paths.get(tokenizerPath);
-
-        if (!Files.exists(modelFilePath)) {
-            log.warn("ONNX model file not found: {}, using keyword-based fallback", modelPath);
-            return;
-        }
-        if (!Files.exists(tokenizerFilePath)) {
-            log.warn("Tokenizer file not found: {}, using keyword-based fallback", tokenizerPath);
-            return;
-        }
-
-        try {
-            log.info("Initializing BGE-Reranker from: {}", modelPath);
-            scoringModel = new OnnxScoringModel(modelPath, tokenizerPath);
-            initialized = true;
-            log.info("BGE-Reranker initialized successfully");
-        } catch (Exception e) {
-            log.error("Failed to initialize BGE-Reranker: {}", e.getMessage(), e);
-            log.info("Falling back to keyword-based rerank");
-        }
-    }
+    private final KmModelMapper kmModelMapper;
+    private final KmModelProviderMapper providerMapper;
+    private final ModelBuilder modelBuilder;
 
     @Override
     public List<KmRetrievalResultVo> rerank(String query, List<KmRetrievalResultVo> results, int topK) {
@@ -85,30 +48,50 @@ public class KmRerankServiceImpl implements IKmRerankService {
             return results;
         }
 
-        if (initialized && scoringModel != null) {
-            return rerankWithModel(query, results, topK);
-        } else {
-            log.warn("ONNX model file not found: {}, using keyword-based fallback reranking...", modelPath);
-            return rerankWithKeywords(query, results, topK);
-        }
-    }
+        // 1. 根据数据库 km_model.is_default 来决定采用哪个 rerank 模型
+        //    统一使用 modelBuilder.buildScoringModel 方法来管理实例及缓存
+        KmModel defaultRerankModel = kmModelMapper.selectOne(Wrappers.lambdaQuery(KmModel.class)
+                .eq(KmModel::getModelType, AiModelType.RERANK.getCode())
+                .eq(KmModel::getIsDefault, 1)
+                .eq(KmModel::getStatus, "0"));
 
-    @Override
-    public boolean isEnabled() {
-        return initialized && scoringModel != null;
+        if (defaultRerankModel != null) {
+            try {
+                var provider = providerMapper.selectById(defaultRerankModel.getProviderId());
+                ScoringModel dbScoringModel = modelBuilder.buildScoringModel(defaultRerankModel, provider.getProviderKey());
+                return rerankWithModel(query, results, topK, dbScoringModel);
+            } catch (Exception e) {
+                log.error("Rerank 模型 [{}] 调用失败，尝试关键词回退: {}", defaultRerankModel.getModelName(), e.getMessage());
+            }
+        }
+
+        // 2. 如果没有启用默认模型，使用关键词回退
+        return rerankWithKeywords(query, results, topK);
     }
 
     /**
-     * 使用 ONNX 模型进行重排序
+     * 检查 Rerank 服务是否可用
+     * <p>现在 Rerank 为动态加载，只要有默认开启的模型即视为可用。</p>
      */
-    private List<KmRetrievalResultVo> rerankWithModel(String query, List<KmRetrievalResultVo> results, int topK) {
+    @Override
+    public boolean isEnabled() {
+        return kmModelMapper.selectCount(Wrappers.lambdaQuery(KmModel.class)
+                .eq(KmModel::getModelType, AiModelType.RERANK.getCode())
+                .eq(KmModel::getIsDefault, 1)
+                .eq(KmModel::getStatus, "0")) > 0;
+    }
+
+    /**
+     * 使用指定的 ScoringModel 进行重排序
+     */
+    private List<KmRetrievalResultVo> rerankWithModel(String query, List<KmRetrievalResultVo> results, int topK, ScoringModel model) {
         long start = System.currentTimeMillis();
         try {
             List<TextSegment> segments = results.stream()
                     .map(r -> TextSegment.from(r.getContent()))
                     .collect(Collectors.toList());
 
-            List<Double> scores = scoringModel.scoreAll(segments, query).content();
+            List<Double> scores = model.scoreAll(segments, query).content();
 
             List<KmRetrievalResultVo> scored = new ArrayList<>();
             for (int i = 0; i < results.size(); i++) {

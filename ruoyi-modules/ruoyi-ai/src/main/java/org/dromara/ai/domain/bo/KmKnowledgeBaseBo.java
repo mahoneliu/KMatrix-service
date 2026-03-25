@@ -44,4 +44,9 @@ public class KmKnowledgeBaseBo implements Serializable {
      * 状态 (ACTIVE/ARCHIVED)
      */
     private String status;
+
+    /**
+     * 绑定的向量化模型ID
+     */
+    private Long embeddingModelId;
 }

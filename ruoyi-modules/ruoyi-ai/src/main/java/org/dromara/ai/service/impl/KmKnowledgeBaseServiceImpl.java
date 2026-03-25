@@ -3,6 +3,7 @@ package org.dromara.ai.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.dromara.ai.config.KmAiProperties;
 import org.dromara.ai.domain.KmDataset;
 import org.dromara.ai.domain.KmDocument;
 import org.dromara.ai.domain.KmDocumentChunk;
@@ -18,6 +19,7 @@ import org.dromara.ai.service.IKmKnowledgeBaseService;
 import org.dromara.ai.service.etl.DatasetProcessType;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
+import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -38,6 +40,7 @@ import java.util.List;
 @Service
 public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
 
+    private final KmAiProperties aiProperties;
     private final KmKnowledgeBaseMapper baseMapper;
     private final KmDatasetMapper datasetMapper;
     private final KmDocumentMapper documentMapper;
@@ -88,6 +91,10 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long insertByBo(KmKnowledgeBaseBo bo) {
+        // 独立向量模型模式下，必须为知识库指定向量模型
+        if (!aiProperties.isUnifiedEmbeddingModel() && bo.getEmbeddingModelId() == null) {
+            throw new ServiceException(MessageUtils.message("ai.msg.kb.embedding_model_required"));
+        }
         KmKnowledgeBase add = MapstructUtils.convert(bo, KmKnowledgeBase.class);
         // 设置所属用户
         add.setOwnerId(LoginHelper.getUserId());
@@ -167,7 +174,18 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean updateByBo(KmKnowledgeBaseBo bo) {
+        KmKnowledgeBase existing = baseMapper.selectById(bo.getId());
+        if (existing == null) {
+            throw new ServiceException(MessageUtils.message("ai.msg.kb.not_found"));
+        }
+        // 如果知识库已绑定向量模型，则不允许修改
+        if (existing.getEmbeddingModelId() != null && bo.getEmbeddingModelId() != null
+                && !existing.getEmbeddingModelId().equals(bo.getEmbeddingModelId())) {
+            throw new ServiceException(MessageUtils.message("ai.msg.kb.embedding_model_immutable"));
+        }
         KmKnowledgeBase update = MapstructUtils.convert(bo, KmKnowledgeBase.class);
+        // 强制保持原向量模型不变
+        update.setEmbeddingModelId(existing.getEmbeddingModelId());
         return baseMapper.updateById(update) > 0;
     }
 
@@ -182,12 +200,12 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
 
             // 校验是否存在文档
             if (documentMapper.exists(new LambdaQueryWrapper<KmDocument>().in(KmDocument::getKbId, ids))) {
-                throw new ServiceException("当前知识库下存在文档，无法直接删除");
+                throw new ServiceException(MessageUtils.message("ai.msg.kb.has_documents"));
             }
             // 校验是否存在问题
             if (questionMapper.exists(
                     new LambdaQueryWrapper<KmQuestion>().in(KmQuestion::getKbId, ids).apply("del_flag = '0'"))) {
-                throw new ServiceException("当前知识库下存在问题，无法直接删除");
+                throw new ServiceException(MessageUtils.message("ai.msg.kb.has_questions"));
             }
         }
 

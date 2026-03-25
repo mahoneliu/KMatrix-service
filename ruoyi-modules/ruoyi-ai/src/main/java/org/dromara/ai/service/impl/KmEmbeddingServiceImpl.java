@@ -3,22 +3,24 @@ package org.dromara.ai.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.domain.KmDocumentChunk;
-import org.dromara.ai.domain.KmEmbedding;
-import org.dromara.ai.domain.KmQuestion;
-import org.dromara.ai.domain.KmQuestionChunkMap;
+import org.dromara.ai.config.KmAiProperties;
+import org.dromara.ai.domain.*;
 import org.dromara.ai.domain.bo.ChunkResult;
-import org.dromara.ai.mapper.KmDocumentChunkMapper;
-import org.dromara.ai.mapper.KmEmbeddingMapper;
-import org.dromara.ai.domain.KmDocument;
-import org.dromara.ai.mapper.KmDocumentMapper;
-import org.dromara.ai.mapper.KmQuestionChunkMapMapper;
-import org.dromara.ai.mapper.KmQuestionMapper;
+import org.dromara.ai.domain.enums.AiModelType;
+import org.dromara.ai.domain.vo.KmModelProviderVo;
+import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmEmbeddingService;
+import org.dromara.ai.service.IKmModelProviderService;
+import org.dromara.ai.util.ModelBuilder;
 import org.dromara.ai.util.StatusMetaUtils;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.common.core.utils.MessageUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +39,11 @@ import java.util.*;
 @RequiredArgsConstructor
 public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
 
-    private final EmbeddingModel embeddingModel;
+    private final KmAiProperties aiProperties;
+    private final KmModelMapper kmModelMapper;
+    private final IKmModelProviderService providerService;
+    private final KmKnowledgeBaseMapper kbMapper;
+    private final ModelBuilder modelBuilder;
     private final KmDocumentChunkMapper chunkMapper;
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionMapper questionMapper;
@@ -51,6 +57,8 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             log.warn("No chunks to embed for document: {}", documentId);
             return;
         }
+
+        EmbeddingModel embeddingModel = resolveEmbeddingModel(kbId);
 
         log.info("Starting parent-child embedding for {} top-level chunks of document {}", chunks.size(), documentId);
 
@@ -104,7 +112,7 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
                     if (childText == null || childText.isBlank())
                         continue;
 
-                    float[] childVector = embeddingModel.embed(childText).content().vector();
+                    float[] childVector = embedWithRetry(embeddingModel, childText);
                     Long childId = IdUtil.getSnowflakeNextId();
 
                     KmDocumentChunk childEntity = new KmDocumentChunk();
@@ -142,7 +150,7 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
                 }
             } else {
                 // STANDALONE 块：直接向量化
-                float[] vector = embeddingModel.embed(chunkText).content().vector();
+                float[] vector = embedWithRetry(embeddingModel, chunkText);
                 chunkEntity.setEmbeddingStatus(2);
                 chunkEntity.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
                         StatusMetaUtils.STATUS_SUCCESS));
@@ -180,6 +188,8 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             return;
         }
 
+        EmbeddingModel embeddingModel = resolveEmbeddingModel(kbId);
+
         log.info("Starting QA embedding for {} chunks of document {}", chunks.size(), documentId);
 
         List<KmDocumentChunk> chunkEntities = new ArrayList<>();
@@ -199,7 +209,7 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             }
 
             // 生成答案向量
-            float[] answerVector = embeddingModel.embed(answer).content().vector();
+            float[] answerVector = embedWithRetry(embeddingModel, answer);
 
             // 创建Chunk实体
             Long chunkId = IdUtil.getSnowflakeNextId();
@@ -273,7 +283,7 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
                     questionChunkMaps.add(map);
 
                     // 生成问题向量
-                    float[] questionVector = embeddingModel.embed(q).content().vector();
+                    float[] questionVector = embedWithRetry(embeddingModel, q);
                     KmEmbedding questionEmbedding = new KmEmbedding();
                     questionEmbedding.setId(IdUtil.getSnowflakeNextId());
                     questionEmbedding.setKbId(kbId);
@@ -316,9 +326,11 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
             return;
         }
 
+        EmbeddingModel embeddingModel = resolveEmbeddingModel(kbId);
+
         try {
             // 生成标题向量
-            float[] titleVector = embeddingModel.embed(title).content().vector();
+            float[] titleVector = embedWithRetry(embeddingModel, title);
             String vectorString = Arrays.toString(titleVector);
 
             // 构建embedding实体
@@ -341,25 +353,108 @@ public class KmEmbeddingServiceImpl implements IKmEmbeddingService {
     }
 
     @Override
-    public float[] embed(String text) {
+    public float[] embed(String text, Long kbId) {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Text cannot be null or blank");
         }
-        return embeddingModel.embed(text).content().vector();
+        EmbeddingModel model = resolveEmbeddingModel(kbId);
+        return embedWithRetry(model, text);
     }
 
     @Override
-    public List<float[]> embedBatch(List<String> texts) {
+    public List<float[]> embedBatch(List<String> texts, Long kbId) {
         if (CollUtil.isEmpty(texts)) {
             return new ArrayList<>();
         }
 
+        EmbeddingModel model = resolveEmbeddingModel(kbId);
         List<float[]> result = new ArrayList<>();
         for (String text : texts) {
             if (text != null && !text.isBlank()) {
-                result.add(embeddingModel.embed(text).content().vector());
+                result.add(embedWithRetry(model, text));
             }
         }
         return result;
+    }
+
+    private float[] embedWithRetry(EmbeddingModel model, String text) {
+        int maxRetries = 3;
+        int retryCount = 0;
+        Exception lastException = null;
+
+        while (retryCount < maxRetries) {
+            try {
+                Response<Embedding> response = model.embed(text);
+                if (response != null && response.content() != null) {
+                    return response.content().vector();
+                }
+            } catch (Exception e) {
+                log.error("Embedding failed (attempt {}/{}): {}", retryCount + 1, maxRetries, e.getMessage());
+                lastException = e;
+            }
+            retryCount++;
+            if (retryCount < maxRetries) {
+                try {
+                    Thread.sleep(1000L * retryCount);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        String errorMsg = "Embedding failed after retries: " + (lastException != null ? lastException.getMessage() : "Unknown");
+        try {
+            errorMsg = MessageUtils.message("ai.msg.embedding_failed", lastException != null ? lastException.getMessage() : "Unknown");
+        } catch (Exception e) {
+            // ignore
+        }
+        throw new ServiceException(errorMsg);
+    }
+
+    private EmbeddingModel resolveEmbeddingModel(Long kbId) {
+        if (aiProperties.isUnifiedEmbeddingModel()) {
+            return getGlobalDefaultEmbeddingModel();
+        } else {
+            if (kbId == null) {
+                String msg = "Independent mode requires a KB ID for embedding.";
+                try {
+                    msg = MessageUtils.message("ai.msg.embedding.independent_mode_no_kb");
+                } catch (Exception e) {}
+                throw new ServiceException(msg);
+            }
+            KmKnowledgeBase kb = kbMapper.selectById(kbId);
+            if (kb == null || kb.getEmbeddingModelId() == null) {
+                String msg = "Knowledge base has no embedding model bound and unified mode is disabled.";
+                try {
+                    msg = MessageUtils.message("ai.msg.kb.embedding_model_required");
+                } catch (Exception e) {}
+                throw new ServiceException(msg);
+            }
+            KmModel kbModel = kmModelMapper.selectById(kb.getEmbeddingModelId());
+            if (kbModel == null) {
+                String msg = "Bound embedding model not found.";
+                try {
+                    msg = MessageUtils.message("ai.msg.embedding.kb_model_not_found");
+                } catch (Exception e) {}
+                throw new ServiceException(msg);
+            }
+            KmModelProviderVo provider = providerService.queryById(kbModel.getProviderId());
+            return modelBuilder.buildEmbeddingModel(kbModel, provider.getProviderKey());
+        }
+    }
+
+    private EmbeddingModel getGlobalDefaultEmbeddingModel() {
+        KmModel globalDefault = kmModelMapper.selectOne(Wrappers.lambdaQuery(KmModel.class)
+                .eq(KmModel::getModelType, AiModelType.EMBEDDING.getCode())
+                .eq(KmModel::getIsDefault, 1));
+        if (globalDefault == null) {
+            String msg = "Global default embedding model not found.";
+            try {
+                msg = MessageUtils.message("ai.msg.embedding.global_default_not_found");
+            } catch (Exception e) {}
+            throw new ServiceException(msg);
+        }
+        KmModelProviderVo provider = providerService.queryById(globalDefault.getProviderId());
+        return modelBuilder.buildEmbeddingModel(globalDefault, provider.getProviderKey());
     }
 }

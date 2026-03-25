@@ -21,6 +21,8 @@ import org.dromara.ai.domain.KmModelProvider;
 import org.dromara.ai.domain.bo.KmModelBo;
 import org.dromara.ai.domain.bo.KmModelChatSendBo;
 import org.dromara.ai.domain.vo.KmModelVo;
+import org.dromara.ai.domain.enums.AiModelType;
+import org.dromara.ai.mapper.KmEmbeddingMapper;
 import org.dromara.ai.mapper.KmModelMapper;
 import org.dromara.ai.mapper.KmModelProviderMapper;
 import org.dromara.ai.service.IKmModelService;
@@ -45,6 +47,7 @@ public class KmModelServiceImpl implements IKmModelService {
 
     private final KmModelMapper baseMapper;
     private final KmModelProviderMapper providerMapper;
+    private final KmEmbeddingMapper embeddingMapper;
     private final ModelBuilder modelBuilder;
 
     /**
@@ -60,6 +63,10 @@ public class KmModelServiceImpl implements IKmModelService {
         lqw.eq(StrUtil.isNotBlank(bo.getModelType()), KmModel::getModelType, bo.getModelType());
         lqw.eq(StrUtil.isNotBlank(bo.getModelSource()), KmModel::getModelSource, bo.getModelSource());
         lqw.eq(StrUtil.isNotBlank(bo.getStatus()), KmModel::getStatus, bo.getStatus());
+        lqw.orderByDesc(KmModel::getIsDefault);
+        lqw.orderByDesc(KmModel::getModelType);
+        lqw.orderByDesc(KmModel::getProviderId);
+        lqw.orderByDesc(KmModel::getCreateTime);
         return lqw;
     }
 
@@ -88,12 +95,50 @@ public class KmModelServiceImpl implements IKmModelService {
     @Override
     public Boolean insertByBo(KmModelBo bo) {
         KmModel add = MapstructUtils.convert(bo, KmModel.class);
+        // 如果设置为默认模型，校验向量模型约束
+        if (Integer.valueOf(1).equals(add.getIsDefault())) {
+            checkDefaultEmbeddingModelConstraint(add.getModelType(), add.getIsDefault(), null);
+            // 大语言模型自动清理同类型的其他默认模型
+            if (AiModelType.LLM.getCode().equals(add.getModelType())) {
+                baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
+                        .set(KmModel::getIsDefault, 0)
+                        .eq(KmModel::getModelType, AiModelType.LLM.getCode())
+                        .eq(KmModel::getIsDefault, 1));
+            }
+        }
         return baseMapper.insert(add) > 0;
     }
 
     @Override
     public Boolean updateByBo(KmModelBo bo) {
+        // 1. 校验：如果是向量模型且当前是默认模型，则不允许修改配置（除了取消默认，但通常通过设置另一个为默认来切换）
+        KmModel existing = baseMapper.selectById(bo.getModelId());
+        if (existing != null && AiModelType.EMBEDDING.getCode().equals(existing.getModelType())
+                && Integer.valueOf(1).equals(existing.getIsDefault())) {
+            // 只有当尝试修改关键配置字段且向量表已有数据时才拦截
+            if (!StrUtil.equals(existing.getModelKey(), bo.getModelKey())
+                    || !existing.getProviderId().equals(bo.getProviderId())
+                    || !StrUtil.equals(existing.getApiBase(), bo.getApiBase())
+                    || !StrUtil.equals(existing.getModelType(), bo.getModelType())) {
+                if (embeddingMapper.selectCount(null) > 0) {
+                    throw new ServiceException(MessageUtils.message("ai.msg.embedding.default_immutable"));
+                }
+            }
+        }
+
         KmModel update = MapstructUtils.convert(bo, KmModel.class);
+        // 如果开启了默认，校验向量模型约束
+        if (Integer.valueOf(1).equals(update.getIsDefault())) {
+            checkDefaultEmbeddingModelConstraint(update.getModelType(), update.getIsDefault(), update.getModelId());
+            // 大语言模型，需要清理同类型的其他默认记录
+            if (AiModelType.LLM.getCode().equals(update.getModelType())) {
+                baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
+                        .set(KmModel::getIsDefault, 0)
+                        .eq(KmModel::getModelType, AiModelType.LLM.getCode())
+                        .eq(KmModel::getIsDefault, 1));
+            }
+        }
+
         // 如果传入的apiKey包含星号，说明前端由于脱敏没有修改真实值，这时置空以便让mybatis-plus的updateIgnoreNull生效，或者单独查出旧值
         if (StrUtil.isNotBlank(bo.getApiKey()) && bo.getApiKey().contains("*")) {
             update.setApiKey(null);
@@ -132,25 +177,39 @@ public class KmModelServiceImpl implements IKmModelService {
 
     @Override
     public Boolean setDefaultModel(Long modelId) {
-        // 1. 验证模型是否存在且为语言模型
+        // 1. 验证模型是否存在且为大语言模型或向量模型、重排序模型
         KmModel model = baseMapper.selectById(modelId);
         if (model == null) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.not_found"));
         }
-        if (!"1".equals(model.getModelType())) {
-            throw new ServiceException("只能将语言模型设置为默认模型");
+        if (!AiModelType.LLM.getCode().equals(model.getModelType()) &&
+            !AiModelType.EMBEDDING.getCode().equals(model.getModelType()) &&
+            !AiModelType.RERANK.getCode().equals(model.getModelType())) {
+            throw new ServiceException(MessageUtils.message("ai.msg.embedding.default_type_invalid"));
         }
 
-        // 2. 清除当前默认模型
-        baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
-                .set(KmModel::getIsDefault, 0)
-                .eq(KmModel::getModelType, "1")
-                .eq(KmModel::getIsDefault, 1));
+        // 2. 校验向量模型约束，且如果是LLM或Rerank则清除当前相同配置类型的默认模型
+        checkDefaultEmbeddingModelConstraint(model.getModelType(), 1, modelId);
+        if (AiModelType.LLM.getCode().equals(model.getModelType()) ||
+            AiModelType.RERANK.getCode().equals(model.getModelType())) {
+            baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
+                    .set(KmModel::getIsDefault, 0)
+                    .eq(KmModel::getModelType, model.getModelType())
+                    .eq(KmModel::getIsDefault, 1));
+        }
 
         // 3. 设置新的默认模型
         return baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
                 .set(KmModel::getIsDefault, 1)
                 .eq(KmModel::getModelId, modelId)) > 0;
+    }
+
+    @Override
+    public Boolean hasDefaultModel(String modelType) {
+        return baseMapper.selectCount(Wrappers.lambdaQuery(KmModel.class)
+                .eq(KmModel::getModelType, modelType)
+                .eq(KmModel::getIsDefault, 1)
+                .eq(KmModel::getStatus, "0")) > 0;
     }
 
     @Override
@@ -189,9 +248,10 @@ public class KmModelServiceImpl implements IKmModelService {
             String modelKey = bo.getModelKey();
 
             // 根据供应商类型调用对应的测试方法
-            return switch (providerKey) {
-                case "openai" -> ModelConnectionTester.testOpenAiCompatible(bo, "OpenAI");
-                case "ollama" -> ModelConnectionTester.testOllama(apiBase, modelKey);
+            return switch (providerKey.toLowerCase()) {
+                case "openai", "deepseek", "moonshot", "doubao", "xai" -> ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
+                case "siliconflow" -> ModelConnectionTester.testSiliconFlow(bo);
+                case "ollama", "vllm" -> ModelConnectionTester.testOllama(bo.getApiBase(), bo.getModelKey());
                 case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
                 case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
                 case "azure" -> {
@@ -204,12 +264,6 @@ public class KmModelServiceImpl implements IKmModelService {
                     yield ModelConnectionTester.testZhipu(bo);
                 }
                 case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
-                // 其它兼容 OpenAI 协议的供应商
-                case "deepseek" -> ModelConnectionTester.testOpenAiCompatible(bo, "DeepSeek");
-                case "moonshot" -> ModelConnectionTester.testOpenAiCompatible(bo, "Moonshot");
-                case "xai" -> ModelConnectionTester.testOpenAiCompatible(bo, "X.AI");
-                case "vllm" -> ModelConnectionTester.testOpenAiCompatible(bo, "vLLM");
-                case "doubao" -> ModelConnectionTester.testOpenAiCompatible(bo, "Doubao");
                 default -> {
                     bo.setApiKey(apiKey);
                     bo.setApiBase(apiBase);
@@ -310,6 +364,26 @@ public class KmModelServiceImpl implements IKmModelService {
             emitter.complete();
         } catch (Exception e) {
             // ignore
+        }
+    }
+
+    /**
+     * 校验默认向量模型约束：向量兜底模型只能一次性设置，不允许修改或设置多个。
+     */
+    private void checkDefaultEmbeddingModelConstraint(String modelType, Integer isDefault, Long modelId) {
+        if (AiModelType.EMBEDDING.getCode().equals(modelType) && Integer.valueOf(1).equals(isDefault)) {
+            // 如果向量表没有任何数据，则允许设置新的默认（例如初始化系统时）
+            if (embeddingMapper.selectCount(null) == 0) {
+                return;
+            }
+            // 校验向量模型唯一兜底：不论状态，只要存在一个默认向量模型且不是当前模型，就禁止设置新的
+            Long count = baseMapper.selectCount(Wrappers.lambdaQuery(KmModel.class)
+                    .eq(KmModel::getModelType, AiModelType.EMBEDDING.getCode())
+                    .eq(KmModel::getIsDefault, 1)
+                    .ne(modelId != null, KmModel::getModelId, modelId));
+            if (count > 0) {
+                throw new ServiceException(MessageUtils.message("ai.msg.embedding.once_only"));
+            }
         }
     }
 }

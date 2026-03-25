@@ -3,7 +3,6 @@ package org.dromara.ai.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.domain.KmDataset;
@@ -13,7 +12,11 @@ import org.dromara.ai.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.mapper.*;
 import org.dromara.ai.service.IKmRetrievalService;
 import org.dromara.ai.service.IKmRerankService;
+import org.dromara.ai.service.IKmEmbeddingService;
+import org.dromara.common.core.utils.MessageUtils;
+import org.dromara.ai.config.KmAiProperties;
 import org.springframework.stereotype.Service;
+import org.dromara.common.core.exception.ServiceException;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +39,8 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionMapper questionMapper;
     private final IKmRerankService rerankService;
-    private final EmbeddingModel embeddingModel;
+    private final KmAiProperties aiProperties;
+    private final IKmEmbeddingService embeddingService;
 
     // RRF 融合常数
     private static final int RRF_K = 60;
@@ -59,6 +63,13 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
         double threshold = bo.getThreshold() != null ? bo.getThreshold() : 0.0; // Debug: default to 0.0
         String mode = bo.getMode() != null ? bo.getMode() : "VECTOR";
         boolean enableRerank = Boolean.TRUE.equals(bo.getEnableRerank());
+
+        // 如果开启独立向量模型配置，校验向量检索约束（必须指定唯一知识库）
+        if (!aiProperties.isUnifiedEmbeddingModel() && ("VECTOR".equalsIgnoreCase(mode) || "HYBRID".equalsIgnoreCase(mode))) {
+            if (CollUtil.isEmpty(kbIds) || kbIds.size() > 1) {
+                throw new ServiceException(MessageUtils.message("ai.msg.embedding.unified_mode_no_kb"));
+            }
+        }
 
         log.info("Search Params: query={}, kbIds={}, topK={}, threshold={}, mode={}, enableRerank={}",
                 bo.getQuery(), kbIds, topK, threshold, mode, enableRerank);
@@ -107,8 +118,10 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
     public List<KmRetrievalResultVo> multiSourceVectorSearch(String query, List<Long> kbIds, int retrievalCount,
             double threshold) {
         long start = System.currentTimeMillis();
+        // 获取向量化依赖的知识库ID（如果存在多选，会经过上面约束拦截，这里必定最多只有一个）
+        Long kbId = CollUtil.isNotEmpty(kbIds) ? kbIds.get(0) : null;
         // 生成查询向量
-        float[] queryEmbedding = embeddingModel.embed(query).content().vector();
+        float[] queryEmbedding = embeddingService.embed(query, kbId);
         String vectorStr = floatArrayToString(queryEmbedding);
         long vectorizationTime = System.currentTimeMillis() - start;
 
@@ -292,7 +305,7 @@ public class KmRetrievalServiceImpl implements IKmRetrievalService {
             keywordResults = keywordFuture.get();
         } catch (Exception e) {
             log.error("混合检索异步执行异常", e);
-            throw new RuntimeException("混合检索执行失败", e);
+            throw new ServiceException(MessageUtils.message("ai.msg.retrieval.hybrid_failed", e.getMessage()));
         }
         long parallelSearchTime = System.currentTimeMillis() - start;
 

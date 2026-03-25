@@ -16,6 +16,13 @@ import dev.langchain4j.model.googleai.GeminiHarmBlockThreshold;
 import dev.langchain4j.model.googleai.GeminiSafetySetting;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+import dev.langchain4j.model.dashscope.QwenEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallzh.BgeSmallZhEmbeddingModel;
+import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.onnx.OnnxScoringModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.config.KmAiProperties;
@@ -27,6 +34,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * AI模型构建器工具类
@@ -42,6 +51,9 @@ public class ModelBuilder {
     private final KmAiProperties aiProperties;
 
     private final IKmModelProviderService kmModelServiceImpl;
+
+    private final Map<Long, EmbeddingModel> embeddingModelCache = new ConcurrentHashMap<>();
+    private final Map<Long, ScoringModel> scoringModelCache = new ConcurrentHashMap<>();
 
     // 将默认超时时间从60秒增加到300秒，以适应DeepSeek等带有长推理过程的模型
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(300);
@@ -61,11 +73,11 @@ public class ModelBuilder {
         log.info("构建聊天模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiModel(model);
+            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" -> buildOpenAiModel(model);
             case "ollama", "vllm" -> buildOllamaModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model);
             case "gemini" -> buildGeminiModel(model);
-            default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
+            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
@@ -87,11 +99,11 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" -> buildOpenAiModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiModel(model, temperature, maxTokens);
-            default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
+            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
@@ -125,11 +137,11 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaStreamingModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiStreamingModel(model, temperature, maxTokens);
-            default -> throw new ServiceException("不支持的模型供应商: " + providerKey);
+            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
@@ -381,5 +393,162 @@ public class ModelBuilder {
         }
 
         return builder.build();
+    }
+
+    public EmbeddingModel buildEmbeddingModel(KmModel model, String providerKey) {
+        if (model == null || StrUtil.isBlank(providerKey)) {
+            throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
+        }
+
+        // 使用缓存，避免重复构建
+        if (model.getModelId() != null && embeddingModelCache.containsKey(model.getModelId())) {
+            return embeddingModelCache.get(model.getModelId());
+        }
+
+        log.info("构建向量化模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
+
+        EmbeddingModel embeddingModel = switch (providerKey.toLowerCase()) {
+            case "openai", "deepseek", "moonshot", "doubao", "vllm", "zhipu", "siliconflow" -> buildOpenAiEmbeddingModel(model);
+            case "ollama" -> buildOllamaEmbeddingModel(model);
+            case "qwen", "bailian" -> buildQwenEmbeddingModel(model);
+            case "local" -> buildLocalEmbeddingModel(model);
+            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+        };
+
+        if (model.getModelId() != null) {
+            embeddingModelCache.put(model.getModelId(), embeddingModel);
+        }
+
+        return embeddingModel;
+    }
+
+    private EmbeddingModel buildLocalEmbeddingModel(KmModel model) {
+        if ("bge-small-zh".equalsIgnoreCase(model.getModelKey())) {
+            return new BgeSmallZhEmbeddingModel();
+        }
+        throw new ServiceException(MessageUtils.message("ai.msg.embedding.unsupported_local_model", model.getModelKey()));
+    }
+
+    private EmbeddingModel buildOpenAiEmbeddingModel(KmModel model) {
+        var builder = OpenAiEmbeddingModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
+                .timeout(DEFAULT_TIMEOUT);
+
+        if (StrUtil.isNotBlank(model.getApiBase())) {
+            builder.baseUrl(model.getApiBase());
+        } else {
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
+        }
+        return builder.build();
+    }
+
+    private EmbeddingModel buildOllamaEmbeddingModel(KmModel model) {
+        String baseUrl = StrUtil.isNotBlank(model.getApiBase())
+                ? model.getApiBase()
+                : "http://localhost:11434";
+
+        return OllamaEmbeddingModel.builder()
+                .baseUrl(baseUrl)
+                .modelName(model.getModelKey())
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
+                .timeout(DEFAULT_TIMEOUT)
+                .build();
+    }
+
+    private EmbeddingModel buildQwenEmbeddingModel(KmModel model) {
+        return QwenEmbeddingModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .build();
+    }
+
+    /**
+     * 构建重排序模型 (ScoringModel)
+     *
+     * @param model       模型配置
+     * @param providerKey 供应商标识
+     * @return 重排序模型实例
+     */
+    public ScoringModel buildScoringModel(KmModel model, String providerKey) {
+        if (model == null || StrUtil.isBlank(providerKey)) {
+            throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
+        }
+
+        // 使用缓存
+        if (model.getModelId() != null && scoringModelCache.containsKey(model.getModelId())) {
+            return scoringModelCache.get(model.getModelId());
+        }
+
+        log.info("构建重排序模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
+
+        ScoringModel scoringModel = switch (providerKey.toLowerCase()) {
+            case "openai", "deepseek", "siliconflow" -> buildOpenAiScoringModel(model);
+            case "local" -> buildLocalScoringModel(model);
+            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+        };
+
+        if (model.getModelId() != null) {
+            scoringModelCache.put(model.getModelId(), scoringModel);
+        }
+
+        return scoringModel;
+    }
+
+    private ScoringModel buildLocalScoringModel(KmModel model) {
+        if (StrUtil.isBlank(model.getModelKey())) {
+            throw new ServiceException(MessageUtils.message("ai.msg.rerank.local_path_required"));
+        }
+
+        String modelPath;
+        String tokenizerPath;
+
+        // 如果是内置模型，从配置文件获取绝对路径
+        if ("bge-reranker-v2-m3".equals(model.getModelKey())) {
+            modelPath = aiProperties.getReranker().getModelPath();
+            tokenizerPath = aiProperties.getReranker().getTokenizerPath();
+        } else {
+            // 否则认为 ModelKey 就是路径
+            modelPath = model.getModelKey();
+            int dotIndex = modelPath.lastIndexOf(".");
+            if (dotIndex > 0) {
+                tokenizerPath = modelPath.substring(0, dotIndex) + ".tokenizer.json";
+            } else {
+                tokenizerPath = modelPath + ".tokenizer.json";
+            }
+        }
+
+        if (StrUtil.isBlank(modelPath) || StrUtil.isBlank(tokenizerPath)) {
+            throw new ServiceException(MessageUtils.message("ai.msg.rerank.local_path_not_configured"));
+        }
+
+        try {
+            log.info("加载本地重排序模型: {}", modelPath);
+            return new OnnxScoringModel(modelPath, tokenizerPath);
+        } catch (Exception e) {
+            log.error("构建本地重排序模型失败: {}", e.getMessage());
+            throw new ServiceException(MessageUtils.message("ai.msg.rerank.build_failed", e.getMessage()));
+        }
+    }
+
+    private ScoringModel buildOpenAiScoringModel(KmModel model) {
+        // 获取 API Base，优先使用模型自定义，否则查询供应商默认地址
+        String apiBase = model.getApiBase();
+        if (StrUtil.isBlank(apiBase)) {
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            if (providerVo != null) {
+                apiBase = providerVo.getDefaultEndpoint();
+            }
+        }
+        return OpenAiCompatibleScoringModel.builder()
+                .apiKey(model.getApiKey())
+                .baseUrl(apiBase)
+                .modelName(model.getModelKey())
+                .timeout(DEFAULT_TIMEOUT)
+                .build();
     }
 }

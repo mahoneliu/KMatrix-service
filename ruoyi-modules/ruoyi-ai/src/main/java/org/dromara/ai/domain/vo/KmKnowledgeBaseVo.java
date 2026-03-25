@@ -68,4 +68,9 @@ public class KmKnowledgeBaseVo implements Serializable {
      * 文档数量
      */
     private Integer documentCount;
+
+    /**
+     * 绑定的向量化模型ID
+     */
+    private Long embeddingModelId;
 }

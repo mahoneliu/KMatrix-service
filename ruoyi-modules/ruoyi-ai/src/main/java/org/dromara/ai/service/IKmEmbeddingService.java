@@ -48,7 +48,18 @@ public interface IKmEmbeddingService {
      * @param text 文本内容
      * @return 向量数组
      */
-    float[] embed(String text);
+    default float[] embed(String text) {
+        return embed(text, null);
+    }
+
+    /**
+     * 为单个文本内容生成向量 (带知识库约束)
+     *
+     * @param text 文本内容
+     * @param kbId 知识库ID
+     * @return 向量数组
+     */
+    float[] embed(String text, Long kbId);
 
     /**
      * 批量为文本生成向量
@@ -56,5 +67,16 @@ public interface IKmEmbeddingService {
      * @param texts 文本列表
      * @return 向量数组列表
      */
-    List<float[]> embedBatch(List<String> texts);
+    default List<float[]> embedBatch(List<String> texts) {
+        return embedBatch(texts, null);
+    }
+
+    /**
+     * 批量为文本生成向量 (带知识库约束)
+     *
+     * @param texts 文本列表
+     * @param kbId 知识库ID
+     * @return 向量数组列表
+     */
+    List<float[]> embedBatch(List<String> texts, Long kbId);
 }

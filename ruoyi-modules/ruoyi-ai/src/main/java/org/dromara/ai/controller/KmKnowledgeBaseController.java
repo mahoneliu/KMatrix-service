@@ -7,6 +7,7 @@ import org.dromara.ai.domain.bo.KmKnowledgeBaseBo;
 import org.dromara.ai.domain.vo.KmKnowledgeBaseVo;
 import org.dromara.ai.domain.vo.KmStatisticsVo;
 import org.dromara.ai.service.IKmKnowledgeBaseService;
+import org.dromara.ai.service.IKmModelService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.validate.AddGroup;
 import org.dromara.common.core.validate.EditGroup;
@@ -20,6 +21,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import org.dromara.ai.config.KmAiProperties;
 
 /**
  * 知识库管理
@@ -34,6 +37,8 @@ import java.util.List;
 public class KmKnowledgeBaseController extends BaseController {
 
     private final IKmKnowledgeBaseService knowledgeBaseService;
+    private final KmAiProperties aiProperties;
+    private final IKmModelService modelService;
 
     /**
      * 查询知识库列表
@@ -69,6 +74,19 @@ public class KmKnowledgeBaseController extends BaseController {
     @GetMapping("/statistics")
     public R<KmStatisticsVo> getStatistics() {
         return R.ok(knowledgeBaseService.getStatistics());
+    }
+
+    /**
+     * 获取知识库模块的前端配置
+     */
+    @GetMapping("/config")
+    public R<Map<String, Object>> getConfig() {
+        boolean unified = aiProperties.isUnifiedEmbeddingModel();
+        boolean hasDefault = modelService.hasDefaultModel("2");
+        return R.ok(Map.of(
+            "unifiedEmbeddingModel", unified,
+            "hasDefaultEmbeddingModel", hasDefault
+        ));
     }
 
     /**
