@@ -35,6 +35,9 @@ snail-job:
 
 --- # 数据源配置
 spring:
+  flyway:
+    # 是否在迁移前自动执行 repair，解决开发环境修改 SQL 导致的 Checksum 校验失败问题
+    repair-on-migrate: false
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     # 动态数据源文档 https://www.kancloud.cn/tracy5546/dynamic-datasource/content
