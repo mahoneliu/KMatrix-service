@@ -109,10 +109,10 @@
             <artifactId>ruoyi-workflow</artifactId>
         </dependency>-->
 
-        <!--  AI模块  -->
+        <!--  AI应用模块 (间接引入其他AI子模块)  -->
         <dependency>
             <groupId>org.dromara</groupId>
-            <artifactId>ruoyi-ai</artifactId>
+            <artifactId>ruoyi-ai-app</artifactId>
         </dependency>
 
         <dependency>

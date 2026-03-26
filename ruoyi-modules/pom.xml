@@ -14,8 +14,12 @@
         <module>ruoyi-generator</module>
         <module>ruoyi-job</module>
         <module>ruoyi-system</module>
-        <module>ruoyi-ai</module>
-<!--        <module>ruoyi-workflow</module>-->
+        <!-- 新拆分的 AI 子模块 -->
+        <module>ruoyi-ai-api</module>
+        <module>ruoyi-ai-model</module>
+        <module>ruoyi-ai-knowledge</module>
+        <module>ruoyi-ai-workflow</module>
+        <module>ruoyi-ai-app</module>
     </modules>
 
     <artifactId>ruoyi-modules</artifactId>

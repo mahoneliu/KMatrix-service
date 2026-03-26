@@ -1,0 +1,12 @@
+mybatis-plus:
+  mapperPackage: org.dromara.ai.knowledge.mapper
+
+sse:
+  path: /sse
+
+spring:
+  flyway:
+    placeholder-replacement: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
