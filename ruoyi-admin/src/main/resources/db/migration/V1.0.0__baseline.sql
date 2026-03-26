@@ -1,4 +1,4 @@
-﻿-- ======================================================================
+-- ======================================================================
 -- KMatrix 数据库初始化脚本
 -- PostgreSQL 17+
 -- 生成时间: 2026-02-09 16:15:39
@@ -9,7 +9,7 @@
 -- 第一部分: 扩展定义
 -- ======================================================================
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_jieba; 
+CREATE EXTENSION IF NOT EXISTS pgroonga; 
 
 
 CREATE FUNCTION cast_varchar_to_timestamp(character varying) RETURNS timestamp with time zone
@@ -2030,7 +2030,6 @@ CREATE TABLE km_question (
     content VARCHAR(500) NOT NULL,
     hit_num INT DEFAULT 0,
     source_type VARCHAR(20) DEFAULT 'IMPORT',
-    content_search_vector tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED,
     create_dept BIGINT,
     create_by BIGINT,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2039,13 +2038,12 @@ CREATE TABLE km_question (
     del_flag CHAR(1) DEFAULT '0'
 );
 CREATE INDEX idx_question_kb_id ON km_question(kb_id);
-CREATE INDEX idx_question_search_vector ON km_question USING GIN (content_search_vector);
+CREATE INDEX idx_question_pgroonga ON km_question USING pgroonga (content);
 COMMENT ON TABLE km_question IS '问题表';
 COMMENT ON COLUMN km_question.kb_id IS '知识库ID';
 COMMENT ON COLUMN km_question.content IS '问题内容';
 COMMENT ON COLUMN km_question.hit_num IS '命中次数';
 COMMENT ON COLUMN km_question.source_type IS '来源类型(IMPORT-导入, GENERATED-生成)';
-COMMENT ON COLUMN km_question.content_search_vector IS '全文搜索向量';
 COMMENT ON COLUMN km_question.create_dept IS '创建部门';
 COMMENT ON COLUMN km_question.create_by IS '创建人';
 COMMENT ON COLUMN km_question.create_time IS '创建时间';
@@ -2080,20 +2078,18 @@ CREATE TABLE km_embedding (
     source_type SMALLINT NOT NULL,  -- 0=QUESTION, 1=CONTENT, 2=TITLE
     embedding vector(512),
     text_content TEXT,
-    search_vector tsvector GENERATED ALWAYS AS (to_tsvector('jiebacfg', coalesce(text_content, ''))) STORED,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_embedding_kb_id ON km_embedding(kb_id);
 CREATE INDEX idx_embedding_source ON km_embedding(source_id, source_type);
 CREATE INDEX idx_embedding_vector ON km_embedding USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
-CREATE INDEX idx_embedding_search_vector ON km_embedding USING GIN (search_vector);
+CREATE INDEX idx_embedding_pgroonga ON km_embedding USING pgroonga (text_content) WITH (tokenizer='TokenBigramSplitSymbolAlphaDigit');
 COMMENT ON TABLE km_embedding IS '统一向量存储表';
 COMMENT ON COLUMN km_embedding.kb_id IS '知识库ID';
 COMMENT ON COLUMN km_embedding.source_id IS '来源ID';
 COMMENT ON COLUMN km_embedding.source_type IS '来源类型(0=QUESTION, 1=CONTENT, 2=TITLE)';
 COMMENT ON COLUMN km_embedding.embedding IS '向量';
 COMMENT ON COLUMN km_embedding.text_content IS '文本内容';
-COMMENT ON COLUMN km_embedding.search_vector IS '全文搜索向量';
 COMMENT ON COLUMN km_embedding.create_time IS '创建时间';
 
 -- ----------------------------
@@ -2635,31 +2631,6 @@ COMMENT ON COLUMN km_node_connection_rule.create_time IS '创建时间';
 COMMENT ON COLUMN km_node_connection_rule.update_by IS '更新人';
 COMMENT ON COLUMN km_node_connection_rule.update_time IS '更新时间';
 COMMENT ON COLUMN km_node_connection_rule.remark IS '备注';
-
-DROP TABLE IF EXISTS km_tool CASCADE;
-
-CREATE TABLE km_tool (
-    tool_id         BIGINT          NOT NULL,
-    tool_name       VARCHAR(64)     NOT NULL,
-    tool_label      VARCHAR(64)     NOT NULL,
-    description     VARCHAR(500)    DEFAULT '',
-    tool_type       CHAR(1)         NOT NULL,
-    icon            VARCHAR(255)    DEFAULT '',
-    input_params_schema JSONB       DEFAULT NULL,
-    init_params_schema JSONB        DEFAULT NULL,
-    api_spec        TEXT,
-    mcp_config      JSONB,
-    create_dept     BIGINT,
-    create_by       BIGINT,
-    create_time     TIMESTAMP,
-    update_by       BIGINT,
-    update_time     TIMESTAMP,
-    del_flag        CHAR(1)         DEFAULT '0',
-    remark          VARCHAR(500),
-    PRIMARY KEY (tool_id)
-);
-
--- ----------------------------
 
 -- 初始化-用户信息表数据
 -- ----------------------------

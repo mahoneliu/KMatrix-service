@@ -155,16 +155,11 @@ public interface KmEmbeddingMapper extends BaseMapper<KmEmbedding> {
                         "WITH base_matches AS ( " +
                         "  SELECT " +
                         "    id, kb_id, source_id, source_type, " +
-                        "    ts_rank(search_vector, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|'))) as score, "
-                        +
-                        "    ts_headline('jiebacfg', text_content, to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')), "
-                        +
-                        "      'StartSel=&lt;mark&gt;, StopSel=&lt;/mark&gt;, MaxWords=80, MinWords=30') as highlight "
-                        +
+                        "    pgroonga_score(tableoid, ctid) as score, " +
+                        "    array_to_string(pgroonga_snippet_html(text_content, pgroonga_query_extract_keywords(regexp_replace(#{query}, '(.)', '\\1 ', 'g'))), '...') as highlight " +
                         "  FROM km_embedding " +
                         "  <where>" +
-                        "    search_vector @@ to_tsquery('jiebacfg', replace(plainto_tsquery('jiebacfg', #{query}::text)::text, '&amp;', '|')) "
-                        +
+                        "    text_content &amp;@ ANY (pgroonga_query_extract_keywords(regexp_replace(#{query}, '(.)', '\\1 ', 'g'))) " +
                         "    <if test='kbIds != null and kbIds.size() > 0'>" +
                         "      AND kb_id IN " +
                         "      <foreach collection='kbIds' item='id' open='(' separator=',' close=')'>" +

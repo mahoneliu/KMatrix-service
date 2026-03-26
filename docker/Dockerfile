@@ -16,26 +16,11 @@ RUN apt-get update && apt-get install -y \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pg_jieba
-RUN apt-get update && apt-get install -y \
-    git \
-    make \
-    cmake \
-    gcc \
-    g++ \
-    postgresql-server-dev-17 \
-    && git clone https://github.com/jaiminpan/pg_jieba.git \
-    && cd pg_jieba \
-    && git submodule update --init --recursive \
-    && mkdir build \
-    && cd build \
-    && cmake -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql/17/server .. \
-    && make \
-    && make install \
-    && cd ../.. \
-    && rm -rf pg_jieba \
-    && apt-get remove -y git make cmake gcc g++ postgresql-server-dev-17 \
-    && apt-get autoremove -y \
+# Install PGroonga
+RUN apt-get update && apt-get install -y curl \
+    && curl -L https://packages.groonga.org/debian/groonga-apt-source-latest-bookworm.deb -o groonga-apt-source-latest-bookworm.deb \
+    && apt-get install -y ./groonga-apt-source-latest-bookworm.deb \
+    && apt-get update && apt-get install -y postgresql-17-pgroonga \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories

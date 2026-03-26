@@ -2,7 +2,6 @@ package org.dromara.ai.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import java.util.Map;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -52,62 +51,6 @@ public interface KmQuestionMapper extends BaseMapper<KmQuestion> {
                         "</script>")
         int batchIncrementHitNum(@Param("questionIds") List<Long> questionIds);
 
-
-        /**
-         * 分页查询问题列表（含分段数量）- 单次JOIN查询优化
-         * 
-         * @param kbId    知识库ID（可选）
-         * @param content 问题内容（模糊匹配，可选）
-         * @param offset  偏移量
-         * @param limit   每页数量
-         * @return 包含问题信息和分段数量的Map列表
-         */
-        @Select("<script>" +
-                        "SELECT " +
-                        "  q.id, q.kb_id, q.content, q.hit_num, q.source_type, q.create_time, q.update_time, " +
-                        "  COALESCE(COUNT(m.chunk_id), 0) as chunk_count " +
-                        "FROM km_question q " +
-                        "LEFT JOIN km_question_chunk_map m ON q.id = m.question_id " +
-                        "<where>" +
-                        "  <if test='kbId != null'>" +
-                        "    q.kb_id = #{kbId}" +
-                        "  </if>" +
-                        "  <if test='content != null and content != \"\"'>" +
-                        "    AND q.content LIKE CONCAT('%', #{content}, '%')" +
-                        "  </if>" +
-                        "</where>" +
-                        "GROUP BY q.id, q.kb_id, q.content, q.hit_num, q.source_type, q.create_time " +
-                        "ORDER BY q.create_time DESC " +
-                        "LIMIT #{limit} OFFSET #{offset}" +
-                        "</script>")
-        List<Map<String, Object>> selectPageWithChunkCount(
-                        @Param("kbId") Long kbId,
-                        @Param("content") String content,
-                        @Param("offset") long offset,
-                        @Param("limit") long limit);
-
-        /**
-         * 查询满足条件的问题总数
-         * 
-         * @param kbId    知识库ID（可选）
-         * @param content 问题内容（模糊匹配，可选）
-         * @return 问题总数
-         */
-        @Select("<script>" +
-                        "SELECT COUNT(DISTINCT q.id) " +
-                        "FROM km_question q " +
-                        "<where>" +
-                        "  <if test='kbId != null'>" +
-                        "    q.kb_id = #{kbId}" +
-                        "  </if>" +
-                        "  <if test='content != null and content != \"\"'>" +
-                        "    AND q.content LIKE CONCAT('%', #{content}, '%')" +
-                        "  </if>" +
-                        "</where>" +
-                        "</script>")
-        long countByCondition(
-                        @Param("kbId") Long kbId,
-                        @Param("content") String content);
 
         /**
          * 根据文档ID查询关联的问题列表 - 单次JOIN查询优化

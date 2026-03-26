@@ -6,9 +6,12 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.nio.file.Paths;
 
 /**
  * 持久层集成测试基类（Testcontainers）
@@ -31,29 +34,41 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public abstract class BaseContainersTest {
 
-    /**
-     * 共享的 PostgreSQL 容器（带 pgvector）
-     * 使用 ankane/pgvector 镜像，内置了 pgvector 扩展
-     */
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("ankane/pgvector:v0.5.1")
-            .withDatabaseName("kmatrix_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(true); // 在同一 JVM 中复用容器，提高测试速度
+        /**
+         * 共享的 PostgreSQL 容器（带 pgvector 和 pgroonga）
+         * 使用自定义 Dockerfile 构建，内置了两个必要的扩展
+         */
+        /**
+         * 共享的 PostgreSQL 容器（带 pgvector 和 pgroonga）
+         * 使用自定义 Dockerfile 构建，内置了两个必要的扩展
+         */
+        static final GenericContainer<?> POSTGRES = new GenericContainer<>(
+                        new ImageFromDockerfile("kmatrix-test-db", false)
+                                        .withDockerfile(Paths.get("src/test/resources/Dockerfile-test-db")))
+                        .withExposedPorts(5432)
+                        .withEnv("POSTGRES_DB", "kmatrix_test")
+                        .withEnv("POSTGRES_USER", "test")
+                        .withEnv("POSTGRES_PASSWORD", "test")
+                        .waitingFor(Wait.forListeningPort())
+                        .withReuse(true);
 
-    /**
-     * 动态注入数据库连接信息，覆盖 application.yml 中的配置
-     */
-    @DynamicPropertySource
-    static void overrideDataSourceProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () ->
-                POSTGRES.getJdbcUrl() + "&currentSchema=public");
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        // 关闭 Redis/Redisson 等在测试环境中不必要的组件
-        registry.add("spring.data.redis.host", () -> "localhost");
-        registry.add("spring.data.redis.port", () -> "6379");
-    }
+        static {
+                POSTGRES.start();
+        }
+
+        /**
+         * 动态注入数据库连接信息，覆盖 application.yml 中的配置
+         */
+        @DynamicPropertySource
+        static void overrideDataSourceProperties(DynamicPropertyRegistry registry) {
+                registry.add("spring.datasource.url",
+                                () -> String.format("jdbc:postgresql://%s:%d/kmatrix_test?currentSchema=public",
+                                                POSTGRES.getHost(), POSTGRES.getMappedPort(5432)));
+                registry.add("spring.datasource.username", () -> "test");
+                registry.add("spring.datasource.password", () -> "test");
+                registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+                // 关闭 Redis/Redisson 等在测试环境中不必要的组件
+                registry.add("spring.data.redis.host", () -> "localhost");
+                registry.add("spring.data.redis.port", () -> "6379");
+        }
 }

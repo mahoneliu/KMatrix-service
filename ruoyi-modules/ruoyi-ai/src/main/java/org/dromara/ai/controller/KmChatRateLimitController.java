@@ -3,6 +3,7 @@ package org.dromara.ai.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.domain.vo.ChatRateLimitConfigVo;
+import org.dromara.common.core.annotation.DemoBlock;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
@@ -49,6 +50,7 @@ public class KmChatRateLimitController extends BaseController {
     /**
      * 更新系统默认限流配置
      */
+    @DemoBlock
     @SaCheckPermission("ai:rateLimit:edit")
     @PutMapping("/system-default")
     public R<Void> updateSystemDefaultConfig(@RequestBody ChatRateLimitConfigVo configVo) {
@@ -63,7 +65,7 @@ public class KmChatRateLimitController extends BaseController {
         updateBo.setConfigId(list.get(0).getConfigId());
         updateBo.setConfigKey(DEFAULT_RATE_LIMIT_KEY);
         updateBo.setConfigValue(JsonUtils.toJsonString(configVo));
-        
+
         configService.updateConfig(updateBo);
         return R.ok();
     }
@@ -80,6 +82,7 @@ public class KmChatRateLimitController extends BaseController {
     /**
      * 更新用户的限流配置
      */
+    @DemoBlock
     @SaCheckPermission("ai:rateLimit:edit")
     @PutMapping("/user/{userId}")
     public R<Void> updateUserConfig(@PathVariable Long userId, @RequestBody ChatRateLimitConfigVo configVo) {
@@ -90,7 +93,7 @@ public class KmChatRateLimitController extends BaseController {
         } else {
             userBo.setRateLimitConfig(JsonUtils.toJsonString(configVo));
         }
-        
+
         userService.updateUser(userBo);
         return R.ok();
     }
@@ -98,6 +101,7 @@ public class KmChatRateLimitController extends BaseController {
     /**
      * 清理用户的限流配置（恢复系统默认）
      */
+    @DemoBlock
     @SaCheckPermission("ai:rateLimit:edit")
     @DeleteMapping("/user/{userId}")
     public R<Void> clearUserConfig(@PathVariable Long userId) {

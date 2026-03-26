@@ -139,13 +139,13 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 - **JDK**: >= 17
 - **Node.js**: >= 20.19.0
 - **pnpm**: >= 9.x
-- **Database**: PostgreSQL 15+ (需安装 `vector` 插件和`jieba`分词器)
+- **Database**: PostgreSQL 15+ (需安装 `vector` 插件和`pgroonga`扩展)
 - **Redis**: 6.x+
 
 1. **环境准备**:
     - 安装Redis。
     - 下载rerank模型。
-    - 安装 PostgreSQL 并启用 vector 扩展和 jieba 分词器。 jieba部署参考👉🏻[这里](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h6qmh45fmedk)。
+    - 安装 PostgreSQL 并启用 vector/pgroonga 扩展。部署参考👉🏻[这里](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h6qmh45fmedk)。
     - 注：script目录下有PG部署脚本和rerank模型下载脚本可参考。项目初始化sql脚本在/kmatrix-admin/src/resources/sql，启动项目会自动执行初始化sql。
 
 2. **后端启动 (kmatrix-service)**:

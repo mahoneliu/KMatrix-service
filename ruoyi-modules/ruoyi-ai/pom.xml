@@ -236,6 +236,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- 解决 Logback 版本冲突 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.12</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.12</version>
+        </dependency>
+
     </dependencies>
 
     <build>

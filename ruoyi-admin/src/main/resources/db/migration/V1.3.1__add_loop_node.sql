@@ -15,7 +15,7 @@ INSERT INTO km_node_definition (
     '[]', 
     '[]', 
     1, NOW(), NOW()
-);
+) on conflict (node_def_id) do nothing;
 
 -- ----------------------------
 -- LOOP 节点的连接规则
@@ -43,4 +43,4 @@ INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type
 (159, 'LOOP', 'FIXED_RESPONSE', '0', 10, '1', NOW()),
 (160, 'LOOP', 'END', '0', 10, '1', NOW()),
 (161, 'LOOP', 'SKILL', '0', 10, '1', NOW()),
-(162, 'FIXED_RESPONSE', 'LOOP', '0', 10, '1', NOW());
+(162, 'FIXED_RESPONSE', 'LOOP', '0', 10, '1', NOW()) on conflict (rule_id) do nothing;

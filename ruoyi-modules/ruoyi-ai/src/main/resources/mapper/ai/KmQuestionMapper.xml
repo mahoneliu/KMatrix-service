@@ -26,7 +26,7 @@
                 AND q.kb_id = #{kbId}
             </if>
             <if test="content != null and content != ''">
-                AND q.content LIKE CONCAT('%', #{content}, '%')
+                AND q.content &amp;@ ANY (pgroonga_query_extract_keywords(regexp_replace(#{content}, '(.)', '\\1 ', 'g')))
             </if>
         </where>
         GROUP BY q.id, q.kb_id, q.content, q.hit_num, q.source_type, q.create_time, q.update_time

@@ -25,10 +25,10 @@ WHERE NOT EXISTS (
 -- 3. 增加菜单数据：限流配置 (AI 管理模块下)
 -- Parent ID 2000 是 "AI 管理"
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
-(2130, '限流配置', 2000, 8, 'rate-limit', 'ai/rate-limit/index', 1, 0, 'C', '0', '0', 'ai:rate-limit:list', 'mdi:timer-sand', 1, NOW(), 'AI对话频率与Token限制管理'),
-(2131, '限流查询', 2130, 1, '', '', 1, 0, 'F', '0', '0', 'ai:rate-limit:query', '#', 1, NOW(), ''),
-(2132, '限流修改', 2130, 2, '', '', 1, 0, 'F', '0', '0', 'ai:rate-limit:edit', '#', 1, NOW(), ''),
-(2133, '限流删除', 2130, 3, '', '', 1, 0, 'F', '0', '0', 'ai:rate-limit:remove', '#', 1, NOW(), '') on conflict (menu_id) do nothing;
+(2130, '限流配置', 2000, 8, 'rateLimit', 'ai/rateLimit/index', 1, 0, 'C', '0', '0', 'ai:rateLimit:list', 'mdi:timer-sand', 1, NOW(), 'AI对话频率与Token限制管理'),
+(2131, '限流查询', 2130, 1, '', '', 1, 0, 'F', '0', '0', 'ai:rateLimit:query', '#', 1, NOW(), ''),
+(2132, '限流修改', 2130, 2, '', '', 1, 0, 'F', '0', '0', 'ai:rateLimit:edit', '#', 1, NOW(), ''),
+(2133, '限流删除', 2130, 3, '', '', 1, 0, 'F', '0', '0', 'ai:rateLimit:remove', '#', 1, NOW(), '') on conflict (menu_id) do nothing;
 
 -- 4. 为超级管理员关联菜单权限
 INSERT INTO sys_role_menu (role_id, menu_id)
