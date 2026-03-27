@@ -19,6 +19,11 @@ public class RequestState {
     private String requestId;
 
     /**
+     * 会话ID（用于中止请求时更新会话状态）
+     */
+    private Long sessionId;
+
+    /**
      * 请求状态
      */
     private RequestStatus status;

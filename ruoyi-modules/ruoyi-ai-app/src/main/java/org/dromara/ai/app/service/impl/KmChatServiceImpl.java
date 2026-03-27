@@ -44,6 +44,7 @@ import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.ai.app.service.IChatRateLimitService;
 import org.dromara.ai.app.service.ChatServiceAbortMixin;
+import org.dromara.ai.app.service.ChatStreamHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -83,6 +84,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final IChatRateLimitService rateLimitService;
     private final IKmFileService kmFileService;
     private final ChatServiceAbortMixin abortMixin;
+    private final ChatStreamHandler chatStreamHandler;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -174,6 +176,14 @@ public class KmChatServiceImpl implements IKmChatService {
 
                 // 判断是否为新会话（首次对话）
                 boolean isNewSession = (bo.getSessionId() == null);
+
+                // 记录请求状态（用于中止请求时获取 sessionId）
+                if (bo.getRequestId() != null) {
+                    log.info("Recording request state: requestId={}, sessionId={}", bo.getRequestId(), sessionId);
+                    chatStreamHandler.startStreamResponse(bo.getRequestId(), sessionId);
+                } else {
+                    log.warn("RequestId is null in streamChat, cannot record request state");
+                }
 
                 // 5. 检查应用类型
                 log.info("开始处理流式对话: appId={}, appType={}", app.getAppId(), app.getAppType());

@@ -1,5 +1,6 @@
 package org.dromara.ai.app.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -31,6 +32,7 @@ public class KmChatMessage extends BaseEntity {
     /**
      * 会话ID
      */
+    @TableField("session_id")
     private Long sessionId;
 
     /**
@@ -46,40 +48,48 @@ public class KmChatMessage extends BaseEntity {
     /**
      * 工作流实例ID
      */
+    @TableField("instance_id")
     private Long instanceId;
 
     /**
      * 用户反馈状态: 0=无, 1=赞同, -1=踩
      */
+    @TableField("feedback_status")
     private Integer feedbackStatus;
 
     /**
      * 消耗的 Token 总数
      */
+    @TableField("total_tokens")
     private Integer totalTokens;
 
     /**
      * 中断状态: none=未中断, aborted=已中断
      */
+    @TableField("abort_status")
     private String abortStatus;
 
     /**
      * 请求被中断时已生成的部分内容
      */
+    @TableField("partial_content")
     private String partialContent;
 
     /**
      * 请求被中断的时间
      */
+    @TableField("abort_time")
     private java.time.LocalDateTime abortTime;
 
     /**
      * 请求的唯一标识符
      */
+    @TableField("request_id")
     private String requestId;
 
     /**
      * 中断原因: user_abort=用户主动中断, exception=异常中断, network_error=网络错误
      */
+    @TableField("abort_reason")
     private String abortReason;
 }

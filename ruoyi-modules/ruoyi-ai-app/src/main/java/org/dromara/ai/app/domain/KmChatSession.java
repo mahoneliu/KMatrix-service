@@ -1,5 +1,6 @@
 package org.dromara.ai.app.domain;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -56,45 +57,54 @@ public class KmChatSession extends BaseEntity {
     /**
      * 中断原因: user_abort=用户主动中断, exception=异常中断, network_error=网络错误
      */
+    @TableField("abort_reason")
     private String abortReason;
 
     /**
      * 异常类型（仅当中断原因为exception时有值）
      */
+    @TableField("abort_exception_type")
     private String abortExceptionType;
 
     /**
      * 异常消息（仅当中断原因为exception时有值）
      */
+    @TableField("abort_exception_message")
     private String abortExceptionMessage;
 
     /**
      * 异常堆栈信息（仅当中断原因为exception时有值）
      */
+    @TableField("abort_exception_stacktrace")
     private String abortExceptionStacktrace;
 
     /**
      * 会话被中断的时间戳
      */
+    @TableField("abort_timestamp")
     private java.time.LocalDateTime abortTimestamp;
 
     /**
      * 中断时最后一条消息的ID
      */
+    @TableField("last_message_id")
     private Long lastMessageId;
 
     /**
      * 会话是否可恢复（0=不可恢复, 1=可恢复）
      */
+    @TableField("is_resumable")
     private String isResumable;
 
     /**
      * 恢复令牌，用于防止重复恢复
      */
+    @TableField("resume_token")
     private String resumeToken;
 
     /**
      * 会话被恢复的时间戳
      */
+    @TableField("resumed_at")
     private java.time.LocalDateTime resumedAt;
 }

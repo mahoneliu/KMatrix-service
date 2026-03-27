@@ -28,12 +28,14 @@ public class ChatStreamHandler {
      * 创建请求状态并开始处理流
      *
      * @param requestId 请求ID
+     * @param sessionId 会话ID
      * @return 请求状态
      */
-    public RequestState startStreamResponse(String requestId) {
+    public RequestState startStreamResponse(String requestId, Long sessionId) {
         RequestState state = new RequestState(requestId);
+        state.setSessionId(sessionId);
         requestStateManager.put(requestId, state);
-        log.debug("Started stream response for request: {}", requestId);
+        log.debug("Started stream response for request: {}, sessionId: {}", requestId, sessionId);
         return state;
     }
 

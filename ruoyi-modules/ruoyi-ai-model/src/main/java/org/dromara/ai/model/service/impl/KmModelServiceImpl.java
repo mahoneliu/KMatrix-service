@@ -170,8 +170,8 @@ public class KmModelServiceImpl implements IKmModelService {
             throw new ServiceException(MessageUtils.message("ai.msg.model.not_found"));
         }
         if (!AiModelType.LLM.getCode().equals(model.getModelType()) &&
-            !AiModelType.EMBEDDING.getCode().equals(model.getModelType()) &&
-            !AiModelType.RERANK.getCode().equals(model.getModelType())) {
+                !AiModelType.EMBEDDING.getCode().equals(model.getModelType()) &&
+                !AiModelType.RERANK.getCode().equals(model.getModelType())) {
             throw new ServiceException(MessageUtils.message("ai.msg.embedding.default_type_invalid"));
         }
 
@@ -223,6 +223,7 @@ public class KmModelServiceImpl implements IKmModelService {
                     apiKey = oldModel.getApiKey();
                 }
             }
+            bo.setApiKey(apiKey);
 
             String apiBase = StrUtil.isNotBlank(bo.getApiBase()) ? bo.getApiBase() : provider.getDefaultEndpoint();
             bo.setApiBase(apiBase);
@@ -230,7 +231,8 @@ public class KmModelServiceImpl implements IKmModelService {
 
             // 根据供应商类型调用对应的测试方法
             return switch (providerKey.toLowerCase()) {
-                case "openai", "deepseek", "moonshot", "doubao", "xai" -> ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
+                case "openai", "deepseek", "moonshot", "doubao", "xai" ->
+                    ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
                 case "siliconflow" -> ModelConnectionTester.testSiliconFlow(bo);
                 case "ollama", "vllm" -> ModelConnectionTester.testOllama(bo.getApiBase(), bo.getModelKey());
                 case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
@@ -240,12 +242,12 @@ public class KmModelServiceImpl implements IKmModelService {
                     yield ModelConnectionTester.testAzureOpenAi(apiKey, apiBase, modelKey);
                 }
                 case "zhipu" -> {
-                    bo.setApiKey(apiKey);
+                    // bo.setApiKey(apiKey);
                     yield ModelConnectionTester.testZhipu(bo);
                 }
                 case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
                 default -> {
-                    bo.setApiKey(apiKey);
+                    // bo.setApiKey(apiKey);
                     bo.setApiBase(apiBase);
                     yield ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
                 }
@@ -278,7 +280,8 @@ public class KmModelServiceImpl implements IKmModelService {
                 }
 
                 // 处理 apiBase
-                String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase() : provider.getDefaultEndpoint();
+                String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase()
+                        : provider.getDefaultEndpoint();
                 model.setApiBase(apiBase);
 
                 StreamingChatLanguageModel streamingModel = modelBuilder.buildStreamingChatModel(
@@ -425,15 +428,15 @@ public class KmModelServiceImpl implements IKmModelService {
     private void clearOtherDefaultModels(String modelType, Long currentModelId) {
         // 针对 LLM, RERANK, AUDIO, IMAGE, VIDEO 类型进行自动清理
         if (AiModelType.LLM.getCode().equals(modelType) ||
-            AiModelType.RERANK.getCode().equals(modelType) ||
-            AiModelType.AUDIO.getCode().equals(modelType) ||
-            AiModelType.IMAGE.getCode().equals(modelType) ||
-            AiModelType.VIDEO.getCode().equals(modelType)) {
+                AiModelType.RERANK.getCode().equals(modelType) ||
+                AiModelType.AUDIO.getCode().equals(modelType) ||
+                AiModelType.IMAGE.getCode().equals(modelType) ||
+                AiModelType.VIDEO.getCode().equals(modelType)) {
             baseMapper.update(null, Wrappers.lambdaUpdate(KmModel.class)
-                .set(KmModel::getIsDefault, 0)
-                .eq(KmModel::getModelType, modelType)
-                .eq(KmModel::getIsDefault, 1)
-                .ne(currentModelId != null, KmModel::getModelId, currentModelId));
+                    .set(KmModel::getIsDefault, 0)
+                    .eq(KmModel::getModelType, modelType)
+                    .eq(KmModel::getIsDefault, 1)
+                    .ne(currentModelId != null, KmModel::getModelId, currentModelId));
         }
     }
 }

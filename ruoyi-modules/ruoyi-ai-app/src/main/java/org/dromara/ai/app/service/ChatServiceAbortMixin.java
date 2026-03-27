@@ -1,9 +1,11 @@
 package org.dromara.ai.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.app.domain.KmChatMessage;
 import org.dromara.ai.app.domain.KmChatSession;
+import org.dromara.ai.app.domain.RequestState;
 import org.dromara.ai.app.domain.vo.AbortResponseVo;
 import org.dromara.ai.app.domain.vo.KmChatSessionVo;
 import org.dromara.ai.app.mapper.KmChatMessageMapper;
@@ -11,6 +13,7 @@ import org.dromara.ai.app.mapper.KmChatSessionMapper;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.StringUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,6 +50,7 @@ public class ChatServiceAbortMixin {
      * @param userId    用户ID
      * @return 中断响应
      */
+    @Transactional
     public AbortResponseVo abortRequest(String requestId, Long userId) {
         if (StringUtils.isBlank(requestId)) {
             throw new ServiceException("请求ID不能为空");
@@ -66,42 +70,78 @@ public class ChatServiceAbortMixin {
             log.debug("Collected partial content for requestId={}: {} chars", requestId, 
                 partialContent != null ? partialContent.length() : 0);
 
-            // 更新数据库 - 更新消息
-            KmChatMessage message = new KmChatMessage();
-            message.setRequestId(requestId);
-            message.setAbortStatus("aborted");
-            message.setPartialContent(partialContent);
-            message.setAbortTime(LocalDateTime.now());
-            message.setAbortReason("user_abort");
-
-            // 根据 requestId 更新消息
-            int messageUpdateCount = kmChatMessageMapper.updateByRequestId(message);
-            log.info("Updated {} messages for requestId={}", messageUpdateCount, requestId);
-
-            // 更新会话 - 标记为可恢复
-            // 需要从消息中获取 sessionId，然后更新会话
-            KmChatMessage existingMessage = kmChatMessageMapper.selectOne(
-                new LambdaQueryWrapper<KmChatMessage>()
-                    .eq(KmChatMessage::getRequestId, requestId)
-                    .last("LIMIT 1")
-            );
+            // 获取请求状态中的 sessionId
+            RequestState requestState = chatStreamHandler.getRequestState(requestId);
+            Long sessionId = null;
             
-            if (existingMessage != null && existingMessage.getSessionId() != null) {
-                log.info("Found message with sessionId={} for requestId={}", existingMessage.getSessionId(), requestId);
-                
-                // 使用 updateWrapper 只更新特定字段，避免其他字段被设置为 NULL
-                LambdaQueryWrapper<KmChatSession> updateWrapper = new LambdaQueryWrapper<KmChatSession>()
-                    .eq(KmChatSession::getSessionId, existingMessage.getSessionId());
-                
-                KmChatSession sessionUpdate = new KmChatSession();
-                sessionUpdate.setIsResumable("1");
-                sessionUpdate.setAbortReason("user_abort");
-                sessionUpdate.setAbortTimestamp(LocalDateTime.now());
-                
-                int sessionUpdateCount = kmChatSessionMapper.update(sessionUpdate, updateWrapper);
-                log.info("Updated {} sessions (sessionId={}) to be resumable", sessionUpdateCount, existingMessage.getSessionId());
+            log.info("RequestState for requestId={}: {}", requestId, requestState);
+            if (requestState != null) {
+                sessionId = requestState.getSessionId();
+                log.info("Found sessionId={} from request state for requestId={}", sessionId, requestId);
             } else {
-                log.warn("Could not find message with sessionId for requestId={}", requestId);
+                log.warn("RequestState is null for requestId={}", requestId);
+            }
+            
+            // 如果从RequestState中没有找到sessionId，尝试其他方式
+            if (sessionId == null) {
+                log.warn("Could not find sessionId from request state for requestId={}", requestId);
+                
+                // 尝试从最近的会话中查找（按创建时间倒序）
+                log.info("Attempting to find sessionId from recent sessions for userId={}", userId);
+                List<KmChatSession> recentSessions = kmChatSessionMapper.selectList(
+                    new LambdaQueryWrapper<KmChatSession>()
+                        .eq(KmChatSession::getUserId, userId)
+                        .eq(KmChatSession::getDelFlag, "0")
+                        .orderByDesc(KmChatSession::getCreateTime)
+                        .last("LIMIT 1")
+                );
+                
+                if (!recentSessions.isEmpty()) {
+                    sessionId = recentSessions.get(0).getSessionId();
+                    log.info("Found sessionId={} from recent sessions for userId={}", sessionId, userId);
+                } else {
+                    log.warn("Could not find any recent sessions for userId={}", userId);
+                }
+            }
+            
+            // 如果找到了 sessionId，更新会话
+            if (sessionId != null) {
+                log.info("Updating session with sessionId={}", sessionId);
+                
+                try {
+                    // 先查询现有会话
+                    KmChatSession existingSession = kmChatSessionMapper.selectById(sessionId);
+                    if (existingSession != null) {
+                        log.info("Found existing session: sessionId={}, title={}", sessionId, existingSession.getTitle());
+                        
+                        // 更新会话的中断信息
+                        existingSession.setIsResumable("1");
+                        existingSession.setAbortReason("user_abort");
+                        existingSession.setAbortTimestamp(LocalDateTime.now());
+                        
+                        log.info("Updating session with: isResumable={}, abortReason={}, abortTimestamp={}", 
+                            existingSession.getIsResumable(), existingSession.getAbortReason(), existingSession.getAbortTimestamp());
+                        
+                        // 使用 updateById 方法更新
+                        int sessionUpdateCount = kmChatSessionMapper.updateById(existingSession);
+                        log.info("Updated {} sessions (sessionId={}) to be resumable", sessionUpdateCount, sessionId);
+                        
+                        if (sessionUpdateCount > 0) {
+                            // 验证更新是否成功
+                            KmChatSession verifySession = kmChatSessionMapper.selectById(sessionId);
+                            log.info("Verification after update: isResumable={}, abortReason={}, abortTimestamp={}", 
+                                verifySession.getIsResumable(), verifySession.getAbortReason(), verifySession.getAbortTimestamp());
+                        } else {
+                            log.warn("Session update returned 0 rows. Checking database state...");
+                        }
+                    } else {
+                        log.warn("Session with sessionId={} does not exist", sessionId);
+                    }
+                } catch (Exception e) {
+                    log.error("Error updating session with sessionId={}", sessionId, e);
+                }
+            } else {
+                log.warn("Could not find sessionId for requestId={}, skipping session update", requestId);
             }
 
             log.info("Request {} aborted successfully by user {}", requestId, userId);
