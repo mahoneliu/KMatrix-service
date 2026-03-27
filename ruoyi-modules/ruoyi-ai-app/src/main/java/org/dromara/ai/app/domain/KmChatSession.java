@@ -52,4 +52,49 @@ public class KmChatSession extends BaseEntity {
      * 删除标志(0代表存在 1代表删除)
      */
     private String delFlag;
+
+    /**
+     * 中断原因: user_abort=用户主动中断, exception=异常中断, network_error=网络错误
+     */
+    private String abortReason;
+
+    /**
+     * 异常类型（仅当中断原因为exception时有值）
+     */
+    private String abortExceptionType;
+
+    /**
+     * 异常消息（仅当中断原因为exception时有值）
+     */
+    private String abortExceptionMessage;
+
+    /**
+     * 异常堆栈信息（仅当中断原因为exception时有值）
+     */
+    private String abortExceptionStacktrace;
+
+    /**
+     * 会话被中断的时间戳
+     */
+    private java.time.LocalDateTime abortTimestamp;
+
+    /**
+     * 中断时最后一条消息的ID
+     */
+    private Long lastMessageId;
+
+    /**
+     * 会话是否可恢复（0=不可恢复, 1=可恢复）
+     */
+    private String isResumable;
+
+    /**
+     * 恢复令牌，用于防止重复恢复
+     */
+    private String resumeToken;
+
+    /**
+     * 会话被恢复的时间戳
+     */
+    private java.time.LocalDateTime resumedAt;
 }

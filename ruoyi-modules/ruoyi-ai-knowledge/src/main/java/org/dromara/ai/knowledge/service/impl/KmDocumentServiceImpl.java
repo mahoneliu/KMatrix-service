@@ -1,7 +1,6 @@
 package org.dromara.ai.knowledge.service.impl;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.langchain4j.data.document.Document;
@@ -21,38 +20,29 @@ import org.dromara.ai.knowledge.domain.vo.TempFileVo;
 import org.dromara.ai.knowledge.util.StatusMetaUtils;
 import org.dromara.ai.knowledge.mapper.KmDatasetMapper;
 import org.dromara.ai.knowledge.mapper.KmDocumentMapper;
-import org.dromara.ai.model.config.KmAiProperties;
-import org.dromara.ai.api.enums.FileStoreType;
-import org.dromara.ai.knowledge.domain.vo.LocalFileVo;
-import org.dromara.ai.knowledge.service.IKmDocumentService;
-import org.dromara.ai.knowledge.service.IKmEtlService;
-import org.dromara.ai.knowledge.service.IKmQuestionService;
-import org.dromara.ai.knowledge.service.IKmTempFileService;
-import org.dromara.ai.knowledge.service.ILocalFileService;
+import org.dromara.ai.storage.domain.KmTempFile;
+import org.dromara.ai.storage.domain.dto.KmFileResult;
+import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.ai.knowledge.service.*;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
-import org.dromara.system.service.ISysOssService;
-import org.dromara.system.domain.vo.SysOssVo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
+
+
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import org.springframework.http.MediaType;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 /**
  * 文档服务实现
@@ -67,12 +57,9 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
 
     private final KmDocumentMapper documentMapper;
     private final KmDatasetMapper datasetMapper;
-    private final ISysOssService ossService;
-    private final ILocalFileService localFileService;
-    private final KmAiProperties aiProperties;
+    private final IKmFileService kmFileService;
     private final IKmEtlService etlService;
     private final IKmQuestionService questionService;
-    private final IKmTempFileService tempFileService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -112,8 +99,9 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
      * 保存文档记录到数据库
      */
     private KmDocument saveDocumentRecord(Long datasetId, MultipartFile file) throws IOException {
-        // 1. 计算文件哈希 (用于去重)
-        String hash = DigestUtil.sha256Hex(file.getInputStream());
+        // 1. 调用底层文件服务处理上传
+        KmFileResult result = kmFileService.upload(file);
+        String hash = result.getHashCode();
 
         // 2. 检查是否已存在相同哈希的文档
         KmDocument existingDoc = documentMapper.selectOne(
@@ -131,39 +119,16 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             throw new RuntimeException("数据集不存在");
         }
 
-        // 4. 根据配置选择存储方式
-        FileStoreType storeType = FileStoreType.fromValue(aiProperties.getFileStore().getType());
-        Long ossId = null;
-        String filePath = null;
-        Long fileSize = 0L;
-
-        if (storeType.isOss()) {
-            // OSS 存储
-            SysOssVo ossVo = ossService.upload(file);
-            ossId = ossVo.getOssId();
-            filePath = ossVo.getUrl();
-            fileSize = file.getSize();
-            log.info("文件上传到 OSS: {}", filePath);
-        } else if (storeType.isLocal()) {
-            // 本地存储
-            LocalFileVo localFileVo = localFileService.upload(file);
-            filePath = localFileVo.getFilePath();
-            fileSize = localFileVo.getFileSize();
-            log.info("文件保存到本地: {}", filePath);
-        } else {
-            throw new RuntimeException("不支持的存储类型: " + storeType);
-        }
-
-        // 5. 创建文档记录
+        // 4. 创建文档记录
         KmDocument document = new KmDocument();
         document.setDatasetId(datasetId);
         document.setKbId(dataset.getKbId());
-        document.setOriginalFilename(file.getOriginalFilename());
-        document.setOssId(ossId);
-        document.setFilePath(filePath);
-        document.setStoreType(storeType.getValue());
-        document.setFileType(FileUtil.extName(file.getOriginalFilename()));
-        document.setFileSize(fileSize);
+        document.setOriginalFilename(result.getOriginalFilename());
+        document.setOssId(result.getOssId());
+        document.setFilePath(result.getFilePath());
+        document.setStoreType(result.getStoreType());
+        document.setFileType(FileUtil.extName(result.getOriginalFilename()));
+        document.setFileSize(result.getFileSize());
         document.setEmbeddingStatus(1); // 1 = 生成中
         document.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
                 StatusMetaUtils.STATUS_PENDING));
@@ -245,30 +210,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         return documentMapper.deleteById(id) > 0;
     }
 
-    // @Override
-    // public Boolean reprocessEmbeddingDocument(Long id) {
-    // // 更新状态为 PENDING
-    // KmDocument doc = new KmDocument();
-    // doc.setId(id);
-    // doc.setEmbeddingStatus(1); // 1 = 生成中
-
-    // // 更新状态元数据
-    // KmDocument exist = documentMapper.selectById(id);
-    // Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
-    // doc.setStatusMeta(
-    // StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_EMBEDDING,
-    // StatusMetaUtils.STATUS_PENDING));
-    // doc.setErrorMsg(null);
-    // documentMapper.updateById(doc);
-
-    // // 删除旧的切片
-    // etlService.deleteChunksByDocumentId(id);
-
-    // // 重新触发 ETL
-    // etlService.processDocumentAsync(id, null);
-    // return true;
-    // }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public KmDocumentVo createOnlineDocument(Long datasetId, String title, String content) {
@@ -285,7 +226,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         document.setTitle(title);
         document.setContent(content);
         document.setOriginalFilename(title); // 使用 title 作为文件名
-        document.setFileType("html");
         document.setFileType("html");
         document.setEmbeddingStatus(1); // 1 = 生成中
         document.setStatusMeta(
@@ -320,7 +260,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         document.setKbId(dataset.getKbId()); // 设置知识库ID
         document.setUrl(url);
         document.setOriginalFilename(url); // 使用 URL 作为文件名
-        document.setFileType("url");
         document.setFileType("url");
         document.setEmbeddingStatus(1); // 1 = 生成中
         document.setStatusMeta(
@@ -447,21 +386,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
      * 根据存储类型删除文件
      */
     private void deleteFile(KmDocument doc) {
-        try {
-            FileStoreType storeType = FileStoreType.fromValue(doc.getStoreType());
-            if (storeType.isLocal()) {
-                if (StringUtils.isNotBlank(doc.getFilePath())) {
-                    localFileService.delete(doc.getFilePath());
-                }
-            } else if (storeType.isOss()) {
-                if (doc.getOssId() != null) {
-                    ossService.deleteWithValidByIds(List.of(doc.getOssId()), true);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to delete file for document: {}", doc.getId(), e);
-            // 文件删除失败不应阻止文档记录删除，记录日志即可
-        }
+        kmFileService.deleteFile(doc.getStoreType(), doc.getOssId(), doc.getFilePath());
     }
 
     @Override
@@ -481,7 +406,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         if (documentIds == null || documentIds.isEmpty()) {
             return false;
         }
-        // 遍历每个文档,重新触发向量化流程
         for (Long documentId : documentIds) {
             embeddingDocument(documentId, option);
         }
@@ -495,20 +419,16 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         if (doc == null) {
             return false;
         }
-        // 更新向量化状态为"生成中"
         KmDocument update = new KmDocument();
         update.setId(documentId);
         update.setEmbeddingStatus(1); // 1 = 生成中
-        update.setEmbeddingStatus(1); // 1 = 生成中
 
-        // 更新状态元数据
         Map<String, Object> meta = doc.getStatusMeta();
         update.setStatusMeta(
                 StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_STARTED));
 
         documentMapper.updateById(update);
 
-        // 异步执行向量化 (事务提交后执行)
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -525,15 +445,11 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         if (documentIds == null || documentIds.isEmpty()) {
             return false;
         }
-        // 遍历每个文档，为其所有切片生成问题
         for (Long documentId : documentIds) {
-            // 更新问题生成状态为"生成中"
             KmDocument update = new KmDocument();
             update.setId(documentId);
             update.setQuestionStatus(1); // 1 = 生成中
-            update.setQuestionStatus(1); // 1 = 生成中
 
-            // 更新状态元数据
             KmDocument exist = documentMapper.selectById(documentId);
             Map<String, Object> meta = exist != null ? exist.getStatusMeta() : null;
             update.setStatusMeta(StatusMetaUtils.updateStateTime(meta, StatusMetaUtils.TASK_GENERATE_QUESTION,
@@ -541,7 +457,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
 
             documentMapper.updateById(update);
 
-            // 异步生成问题 (事务提交后执行)
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
@@ -555,7 +470,8 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TempFileVo uploadTempFile(Long datasetId, MultipartFile file) {
-        return tempFileService.saveTempFile(datasetId, file);
+        KmTempFile tempFile = kmFileService.saveTempFile(datasetId, file);
+        return convertToTempFileVo(tempFile);
     }
 
     @Override
@@ -563,7 +479,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     public List<TempFileVo> uploadTempFiles(Long datasetId, MultipartFile[] files) {
         List<TempFileVo> results = new ArrayList<>();
         for (MultipartFile file : files) {
-            results.add(tempFileService.saveTempFile(datasetId, file));
+            results.add(uploadTempFile(datasetId, file));
         }
         return results;
     }
@@ -571,37 +487,32 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     public List<ChunkPreviewVo> previewChunks(ChunkPreviewBo bo) {
         try {
-            // 1. 获取临时文件路径
-            String tempPath = tempFileService.getTempFilePath(bo.getTempFileId());
-            if (tempPath == null) {
+            KmTempFile tempFile = kmFileService.getTempFile(bo.getTempFileId());
+            if (tempFile == null) {
                 throw new RuntimeException("临时文件不存在");
             }
+            String tempPath = tempFile.getFilePath();
 
-            // 2. 解析文件内容
             String content = parseFileContent(tempPath);
             if (content == null || content.isBlank()) {
                 throw new RuntimeException("文件内容为空");
             }
 
-            // 3. 根据策略进行分块
             List<String> chunks;
             if ("AUTO".equals(bo.getChunkStrategy())) {
-                // 自动分块: 使用默认配置
                 int chunkSize = bo.getChunkSize() != null ? bo.getChunkSize() : 500;
                 int overlap = bo.getOverlap() != null ? bo.getOverlap() : 50;
                 chunks = splitTextRecursive(content, chunkSize, overlap);
             } else if ("CUSTOM".equals(bo.getChunkStrategy())) {
-                // 自定义分块: 根据分隔符分割
                 if (bo.getSeparators() == null || bo.getSeparators().isEmpty()) {
                     throw new RuntimeException("自定义分块需要指定分隔符");
                 }
-                String separator = bo.getSeparators().get(0); // 使用第一个分隔符
+                String separator = bo.getSeparators().get(0);
                 chunks = splitByCustomSeparator(content, separator);
             } else {
                 throw new RuntimeException("不支持的分块策略: " + bo.getChunkStrategy());
             }
 
-            // 4. 转换为预览VO
             List<ChunkPreviewVo> result = new ArrayList<>();
             for (int i = 0; i < chunks.size(); i++) {
                 ChunkPreviewVo vo = new ChunkPreviewVo();
@@ -611,7 +522,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 result.add(vo);
             }
 
-            log.info("Generated {} chunks for tempFileId: {}", result.size(), bo.getTempFileId());
             return result;
         } catch (Exception e) {
             log.error("Failed to preview chunks", e);
@@ -622,10 +532,8 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Override
     public Map<Long, List<ChunkPreviewVo>> batchPreviewChunks(BatchChunkPreviewBo bo) {
         Map<Long, List<ChunkPreviewVo>> resultMap = new HashMap<>();
-
         for (Long tempFileId : bo.getTempFileIds()) {
             try {
-                // 为每个文件创建单独的预览请求
                 ChunkPreviewBo singleBo = new ChunkPreviewBo();
                 singleBo.setTempFileId(tempFileId);
                 singleBo.setChunkStrategy(bo.getChunkStrategy());
@@ -633,25 +541,16 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 singleBo.setChunkSize(bo.getChunkSize());
                 singleBo.setOverlap(bo.getOverlap());
 
-                // 调用单文件预览方法
                 List<ChunkPreviewVo> chunks = previewChunks(singleBo);
                 resultMap.put(tempFileId, chunks);
-
-                log.info("Batch preview: generated {} chunks for tempFileId: {}", chunks.size(), tempFileId);
             } catch (Exception e) {
                 log.error("Failed to preview chunks for tempFileId: {}", tempFileId, e);
-                // 单个文件失败不影响其他文件,记录空列表
                 resultMap.put(tempFileId, new ArrayList<>());
             }
         }
-
-        log.info("Batch preview completed for {} files", bo.getTempFileIds().size());
         return resultMap;
     }
 
-    /**
-     * 解析文件内容
-     */
     private String parseFileContent(String filePath) {
         try {
             File file = new File(filePath);
@@ -666,9 +565,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         }
     }
 
-    /**
-     * 递归分块
-     */
     private List<String> splitTextRecursive(String text, int chunkSize, int overlap) {
         var splitter = DocumentSplitters.recursive(chunkSize, overlap);
         Document doc = Document.from(text);
@@ -681,9 +577,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         return result;
     }
 
-    /**
-     * 根据自定义分隔符分块
-     */
     private List<String> splitByCustomSeparator(String text, String separator) {
         String actualSeparator = separator;
         if ("回车".equals(separator) || "\\n".equals(separator)) {
@@ -694,7 +587,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             actualSeparator = "。";
         }
 
-        String[] parts = text.split(actualSeparator);
+        String[] parts = text.split(java.util.regex.Pattern.quote(actualSeparator));
         List<String> result = new ArrayList<>();
         for (String part : parts) {
             String trimmed = part.trim();
@@ -709,17 +602,16 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     @Transactional(rollbackFor = Exception.class)
     public KmDocumentVo submitChunks(ChunkSubmitBo bo) {
         try {
-            // 1. 获取数据集信息
             KmDataset dataset = datasetMapper.selectById(bo.getDatasetId());
             if (dataset == null) {
                 throw new RuntimeException("数据集不存在");
             }
 
-            // 2. 获取临时文件信息
-            String tempPath = tempFileService.getTempFilePath(bo.getTempFileId());
-            if (tempPath == null) {
+            KmTempFile tempRecord = kmFileService.getTempFile(bo.getTempFileId());
+            if (tempRecord == null) {
                 throw new RuntimeException("临时文件不存在");
             }
+            String tempPath = tempRecord.getFilePath();
 
             File tempFile = new File(tempPath);
             if (!tempFile.exists()) {
@@ -727,53 +619,30 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             }
 
             String filename = tempFile.getName();
-            // 移除时间戳前缀
-            if (filename.contains("_")) {
+            if (filename.contains("_") && filename.matches("^\\d+_.*")) {
                 filename = filename.substring(filename.indexOf("_") + 1);
             }
             String fileExtension = FileUtil.extName(filename);
 
-            // 3. 保存文件到OSS或本地存储
-            FileStoreType storeType = FileStoreType.fromValue(aiProperties.getFileStore().getType());
-            Long ossId = null;
-            String filePath = null;
-            Long fileSize = tempFile.length();
+            KmFileResult result = kmFileService.upload(tempFile);
 
-            if (storeType.isOss()) {
-                // OSS 存储 - 将临时文件上传到OSS
-                SysOssVo ossVo = ossService.upload(tempFile);
-                ossId = ossVo.getOssId();
-                filePath = ossVo.getUrl();
-                log.info("临时文件上传到 OSS: {}", filePath);
-            } else if (storeType.isLocal()) {
-                // 本地存储 - 将临时文件复制到本地存储目录
-                LocalFileVo localFileVo = localFileService.upload(tempFile);
-                filePath = localFileVo.getFilePath();
-                fileSize = localFileVo.getFileSize();
-                log.info("临时文件保存到本地: {}", filePath);
-            } else {
-                throw new RuntimeException("不支持的存储类型: " + storeType);
-            }
-
-            // 4. 创建文档记录
             KmDocument document = new KmDocument();
             document.setDatasetId(bo.getDatasetId());
             document.setKbId(dataset.getKbId());
             document.setOriginalFilename(filename);
-            document.setOssId(ossId);
-            document.setFilePath(filePath);
-            document.setStoreType(storeType.getValue());
+            document.setOssId(result.getOssId());
+            document.setFilePath(result.getFilePath());
+            document.setStoreType(result.getStoreType());
             document.setFileType(fileExtension);
-            document.setFileSize(fileSize);
-            document.setEmbeddingStatus(1); // 1 = 待向量化
+            document.setFileSize(result.getFileSize());
+            document.setEmbeddingStatus(1);
             document.setStatusMeta(StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING,
                     StatusMetaUtils.STATUS_PENDING));
-            document.setQuestionStatus(0); // 无需问题生成
-            document.setChunkCount(bo.getChunks().size()); // 预设分块数量
+            document.setQuestionStatus(0);
+            document.setChunkCount(bo.getChunks().size());
 
             documentMapper.insert(document);
 
-            // 5. 转换ChunkItem为ChunkResult
             Long docId = document.getId();
             Long kbId = dataset.getKbId();
             List<ChunkResult> chunkResults = new ArrayList<>();
@@ -782,7 +651,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 Map<String, Object> metadata = new HashMap<>();
                 metadata.put("chunkIndex", i);
                 metadata.put("totalChunks", bo.getChunks().size());
-                metadata.put("customChunk", true); // 标记为用户自定义分块
+                metadata.put("customChunk", true);
 
                 chunkResults.add(ChunkResult.builder()
                         .content(item.getContent())
@@ -791,7 +660,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                         .build());
             }
 
-            // 6. 异步触发向量化处理 (确保事务提交后再执行)
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
@@ -799,7 +667,6 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 }
             });
 
-            // 7. 返回文档信息
             return documentMapper.selectVoById(docId);
         } catch (Exception e) {
             log.error("Failed to submit chunks", e);
@@ -813,45 +680,17 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         if (doc == null) {
             throw new RuntimeException("文档不存在");
         }
-
-        try {
-            FileStoreType storeType = FileStoreType.fromValue(doc.getStoreType());
-            if (storeType.isOss()) {
-                if (doc.getOssId() != null) {
-                    ossService.download(doc.getOssId(), response);
-                } else {
-                    throw new RuntimeException("OSS文件ID丢失");
-                }
-            } else if (storeType.isLocal()) {
-                String filePath = doc.getFilePath();
-                if (StringUtils.isBlank(filePath)) {
-                    throw new RuntimeException("文件路径丢失");
-                }
-
-                // 本地文件下载
-                response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-                String fileName = URLEncoder.encode(doc.getOriginalFilename(), StandardCharsets.UTF_8).replaceAll("\\+",
-                        "%20");
-                response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-
-                try (InputStream is = localFileService.getFileStream(filePath);
-                        OutputStream os = response.getOutputStream()) {
-                    if (is == null) {
-                        throw new RuntimeException("文件流获取失败");
-                    }
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = is.read(buffer)) != -1) {
-                        os.write(buffer, 0, bytesRead);
-                    }
-                }
-            } else {
-                throw new RuntimeException("不支持的存储类型: " + storeType);
-            }
-        } catch (Exception e) {
-            log.error("Failed to download document: {}", id, e);
-            throw new RuntimeException("下载失败: " + e.getMessage());
-        }
+        kmFileService.download(doc.getStoreType(), doc.getOssId(), doc.getFilePath(), doc.getOriginalFilename(), response);
     }
 
+    private TempFileVo convertToTempFileVo(KmTempFile tempFile) {
+        TempFileVo vo = new TempFileVo();
+        vo.setId(tempFile.getId());
+        vo.setDatasetId(tempFile.getDatasetId());
+        vo.setOriginalFilename(tempFile.getOriginalFilename());
+        vo.setFileExtension(tempFile.getFileExtension());
+        vo.setFileSize(tempFile.getFileSize());
+        vo.setTempPath(tempFile.getFilePath()); // VO 保持 tempPath 命名
+        return vo;
+    }
 }

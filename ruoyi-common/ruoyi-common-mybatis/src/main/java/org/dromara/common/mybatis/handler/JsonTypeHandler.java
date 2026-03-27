@@ -2,6 +2,8 @@ package org.dromara.common.mybatis.handler;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedTypes;
@@ -20,6 +22,8 @@ import java.sql.SQLException;
  */
 @MappedTypes({ Object.class })
 public class JsonTypeHandler extends BaseTypeHandler<Object> {
+
+    private static final Log log = LogFactory.getLog(JsonTypeHandler.class);
 
     private final Class<?> type;
 
@@ -99,8 +103,12 @@ public class JsonTypeHandler extends BaseTypeHandler<Object> {
             return json;
         }
         try {
+            if (Iterable.class.isAssignableFrom(type) && JSONUtil.isTypeJSONArray(json)) {
+                return JSONUtil.parseArray(json).toList(Object.class);
+            }
             return JSONUtil.toBean(json, type);
         } catch (Exception e) {
+            log.error("JsonTypeHandler parse error: json=" + json + ", type=" + type.getName(), e);
             return null;
         }
     }

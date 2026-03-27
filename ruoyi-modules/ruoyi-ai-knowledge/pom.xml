@@ -39,6 +39,13 @@
             <version>${revision}</version>
         </dependency>
 
+        <!-- 存储模块（提供统一文件服务、临时文件管理） -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai-storage</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.dromara</groupId>
             <artifactId>ruoyi-common-security</artifactId>

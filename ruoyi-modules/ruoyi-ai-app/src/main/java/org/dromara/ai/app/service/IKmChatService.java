@@ -107,4 +107,40 @@ public interface IKmChatService {
      */
     List<KmNodeExecutionVo> getExecutionDetails(Long sessionId, Long userId);
 
+    /**
+     * 中断请求
+     *
+     * @param requestId 请求ID
+     * @param userId    当前用户ID
+     * @return 中断响应
+     */
+    Object abortRequest(String requestId, Long userId);
+
+    /**
+     * 获取可恢复的会话列表
+     *
+     * @param appId  应用ID
+     * @param userId 当前用户ID
+     * @return 可恢复的会话列表
+     */
+    List<KmChatSessionVo> getResumableSessions(Long appId, Long userId);
+
+    /**
+     * 恢复会话
+     *
+     * @param sessionId 会话ID
+     * @param userId    当前用户ID
+     * @return 恢复后的会话
+     */
+    KmChatSessionVo resumeSession(Long sessionId, Long userId);
+
+    /**
+     * 清除会话中断状态
+     *
+     * @param sessionId 会话ID
+     * @param userId    当前用户ID
+     * @return 是否成功
+     */
+    Boolean clearAbortStatus(Long sessionId, Long userId);
+
 }

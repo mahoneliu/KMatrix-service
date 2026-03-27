@@ -155,4 +155,10 @@ public class KmAppVo implements Serializable {
      * 更新时间
      */
     private Date updateTime;
+
+    /**
+     * 混合能力标签(如 vision, audio, file-storage 等)
+     */
+    private java.util.Set<String> capabilities;
+
 }

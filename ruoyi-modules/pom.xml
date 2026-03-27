@@ -17,6 +17,7 @@
         <!-- 新拆分的 AI 子模块 -->
         <module>ruoyi-ai-api</module>
         <module>ruoyi-ai-model</module>
+        <module>ruoyi-ai-storage</module>
         <module>ruoyi-ai-knowledge</module>
         <module>ruoyi-ai-workflow</module>
         <module>ruoyi-ai-app</module>

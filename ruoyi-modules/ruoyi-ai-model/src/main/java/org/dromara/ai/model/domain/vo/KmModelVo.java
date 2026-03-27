@@ -10,6 +10,8 @@ import org.dromara.common.translation.constant.TransConstant;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
+
 
 /**
  * AI模型配置视图对象 km_model
@@ -126,4 +128,10 @@ public class KmModelVo implements Serializable {
      * 是否为系统默认模型(0-否 1-是)
      */
     private Integer isDefault;
+
+    /**
+     * 模型能力标签(JSON数组)
+     */
+    private List<String> abilities;
+
 }

@@ -130,8 +130,15 @@ public class NodeContext {
      * 获取配置参数(String类型)
      */
     public String getConfigAsString(String key) {
+        return getConfigAsString(key, null);
+    }
+
+    /**
+     * 获取配置参数(String类型)，带默认值
+     */
+    public String getConfigAsString(String key, String defaultValue) {
         Object value = getConfig(key);
-        return value != null ? value.toString() : null;
+        return value != null ? value.toString() : defaultValue;
     }
 
     /**

@@ -16,8 +16,6 @@ import org.dromara.ai.app.domain.vo.KmAppVersionVo;
 import org.dromara.ai.app.domain.vo.KmAppVo;
 import org.dromara.ai.app.domain.vo.config.AppSnapshot;
 import org.dromara.ai.app.mapper.*;
-import org.dromara.ai.workflow.mapper.*;
-import org.dromara.ai.model.mapper.*;
 import org.dromara.ai.knowledge.mapper.*;
 import org.dromara.ai.knowledge.domain.KmAppKnowledge;
 import org.dromara.ai.app.service.IKmAppService;
@@ -55,6 +53,8 @@ public class KmAppServiceImpl implements IKmAppService {
     private final KmChatSessionMapper chatSessionMapper;
     private final KmChatMessageMapper chatMessageMapper;
     private final KmAppAccessStatMapper appAccessStatMapper;
+    private final org.dromara.ai.app.service.IAppCapabilityService appCapabilityService;
+
 
     /**
      * 查询AI应用
@@ -71,6 +71,7 @@ public class KmAppServiceImpl implements IKmAppService {
                         .collect(Collectors.joining(","));
                 vo.setKnowledgeIds(ids);
             }
+            vo.setCapabilities(appCapabilityService.getAppCapabilities(appId));
         }
         return vo;
     }

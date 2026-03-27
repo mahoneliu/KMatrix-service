@@ -2,6 +2,7 @@ package org.dromara.ai.app.mapper;
 
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.dromara.ai.app.domain.KmChatMessage;
 import org.dromara.ai.app.domain.vo.KmChatMessageVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
@@ -54,4 +55,17 @@ public interface KmChatMessageMapper extends BaseMapperPlus<KmChatMessage, KmCha
             "ORDER BY date ASC" +
             "</script>")
     List<Map<String, Object>> getQuestionTrendByAppId(@Param("appId") Long appId, @Param("startTime") Date startTime);
+
+    /**
+     * 根据 requestId 更新消息的中断状态和部分内容
+     */
+    @Update("<script>" +
+            "UPDATE km_chat_message SET " +
+            "abort_status = #{abortStatus}, " +
+            "partial_content = #{partialContent}, " +
+            "abort_time = #{abortTime}, " +
+            "abort_reason = #{abortReason} " +
+            "WHERE request_id = #{requestId}" +
+            "</script>")
+    int updateByRequestId(KmChatMessage message);
 }

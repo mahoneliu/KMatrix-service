@@ -1,4 +1,4 @@
-package org.dromara.ai.knowledge.domain.vo;
+package org.dromara.ai.storage.domain.vo;
 
 import lombok.Data;
 
@@ -7,18 +7,13 @@ import java.io.Serializable;
 /**
  * 本地文件信息 VO
  *
- * @author AI Assistant
- * @date 2026-02-06
+ * @author Mahone
+ * @date 2026-03-28
  */
 @Data
 public class LocalFileVo implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    /**
-     * 文件ID (对应 km_document.id)
-     */
-    private Long fileId;
 
     /**
      * 文件名 (存储的文件名,带UUID前缀)

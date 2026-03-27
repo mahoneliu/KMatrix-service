@@ -77,6 +77,7 @@ public class WorkflowExecutor {
         globalState.put(WorkflowState.KEY_SESSION_ID, req.getSessionId());
         globalState.put(WorkflowState.KEY_USER_ID, req.getUserId());
         globalState.put(WorkflowState.KEY_SHOW_EXECUTION_INFO, showExecutionInfo);
+        globalState.put(WorkflowState.KEY_TEMP_FILE_IDS, req.getTempFileIds());
 
         // 初始化app参数
         // globalState.put(ChatWorkflowState.KEY_APP, app);

@@ -24,7 +24,11 @@ import org.dromara.common.web.core.BaseController;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.dromara.ai.storage.domain.KmTempFile;
+import org.dromara.ai.storage.service.IKmFileService;
+import java.util.HashMap;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -45,6 +49,7 @@ public class KmChatController extends BaseController {
     private final IKmAppTokenService appTokenService;
     private final IChatSessionTokenService chatSessionTokenService;
     private final IKmSkillService skillService;
+    private final IKmFileService kmFileService;
 
     /**
      * 流式对话 (SSE)
@@ -237,5 +242,67 @@ public class KmChatController extends BaseController {
             return StringUtils.isNotBlank(value) ? value : null;
         }
         return token;
+    }
+
+    /**
+     * 中断当前请求
+     */
+    @PostMapping("/abort")
+    public R<Object> abortRequest(@Valid @RequestBody org.dromara.ai.app.domain.bo.AbortRequestBo bo,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return R.ok(chatService.abortRequest(bo.getRequestId(), info.getUserId()));
+    }
+
+    /**
+     * 获取可恢复的会话列表
+     */
+    @GetMapping("/resumable-sessions/{appId}")
+    public R<List<KmChatSessionVo>> getResumableSessions(@PathVariable Long appId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return R.ok(chatService.getResumableSessions(appId, info.getUserId()));
+    }
+
+    /**
+     * 恢复会话
+     */
+    @PostMapping("/resume-session/{sessionId}")
+    public R<KmChatSessionVo> resumeSession(@PathVariable Long sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return R.ok(chatService.resumeSession(sessionId, info.getUserId()));
+    }
+
+    /**
+     * 清除会话中断状态
+     */
+    @PostMapping("/clear-abort-status/{sessionId}")
+    public R<Void> clearAbortStatus(@PathVariable Long sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ChatSessionTokenInfo info = validateAndParseToken(authHeader);
+        return toAjax(chatService.clearAbortStatus(sessionId, info.getUserId()));
+    }
+
+    /**
+     * 上传聊天附件（公共端）
+     */
+    @PostMapping("/attachment/upload")
+    public R<Map<String, Object>> uploadAttachment(@RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (file == null || file.isEmpty()) {
+            return R.fail("文件不能为空");
+        }
+        validateAndParseToken(authHeader); // 确保是合法用户或Token
+        KmTempFile tempFile = kmFileService.saveTempFile(null, file);
+        Map<String, Object> result = new HashMap<>();
+        result.put("ossId", tempFile.getId());
+        result.put("tempFileId", tempFile.getId());
+        result.put("originalFilename", tempFile.getOriginalFilename());
+        result.put("fileExtension", tempFile.getFileExtension());
+        result.put("fileSize", tempFile.getFileSize());
+        result.put("url", tempFile.getUrl());
+        result.put("fileUrl", tempFile.getUrl());
+        return R.ok(result);
     }
 }

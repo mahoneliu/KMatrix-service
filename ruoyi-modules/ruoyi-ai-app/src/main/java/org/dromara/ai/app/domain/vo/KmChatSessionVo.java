@@ -50,4 +50,24 @@ public class KmChatSessionVo implements Serializable {
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 更新时间
+     */
+    private Date updateTime;
+
+    /**
+     * 中断原因
+     */
+    private String abortReason;
+
+    /**
+     * 中断时间
+     */
+    private java.time.LocalDateTime abortTimestamp;
+
+    /**
+     * 是否可恢复 (0=否, 1=是)
+     */
+    private String isResumable;
 }

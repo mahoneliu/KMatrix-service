@@ -14,11 +14,7 @@ import org.dromara.ai.knowledge.domain.KmDocumentChunk;
 import org.dromara.ai.knowledge.domain.bo.ChunkResult;
 import org.dromara.ai.api.enums.FileStoreType;
 import org.dromara.ai.knowledge.service.IKmChunkingConfigService;
-import org.dromara.ai.knowledge.service.ILocalFileService;
-import org.dromara.common.oss.core.OssClient;
-import org.dromara.common.oss.factory.OssFactory;
-import org.dromara.system.domain.vo.SysOssVo;
-import org.dromara.system.service.ISysOssService;
+import org.dromara.ai.storage.service.IKmFileService;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -47,8 +43,7 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class GenericFileEtlHandler implements EtlHandler {
 
-    private final ISysOssService ossService;
-    private final ILocalFileService localFileService;
+    private final IKmFileService kmFileService;
     private final ChildChunkSplitter childChunkSplitter;
     private final IKmChunkingConfigService chunkingConfigService;
 
@@ -221,35 +216,11 @@ public class GenericFileEtlHandler implements EtlHandler {
      * 根据文档存储类型获取输入流
      */
     private InputStream getDocumentInputStream(KmDocument document) throws IOException {
-        FileStoreType storeType = FileStoreType.fromValue(document.getStoreType());
-
-        if (storeType.isOss()) {
-            // 从 OSS 读取
-            Long ossId = document.getOssId();
-            if (ossId == null) {
-                throw new RuntimeException("Document OSS ID is null");
-            }
-
-            SysOssVo ossVo = ossService.getById(ossId);
-            if (ossVo == null) {
-                throw new RuntimeException("OSS file not found: " + ossId);
-            }
-
-            OssClient storage = OssFactory.instance(ossVo.getService());
-            return storage.getObjectContent(ossVo.getFileName());
-
-        } else if (storeType.isLocal()) {
-            // 从本地文件系统读取
-            String filePath = document.getFilePath();
-            if (filePath == null) {
-                throw new RuntimeException("Document file path is null");
-            }
-
-            return localFileService.getFileStream(filePath);
-
-        } else {
-            throw new RuntimeException("Unsupported store type: " + storeType);
-        }
+        return kmFileService.getFileStream(
+            document.getStoreType(), 
+            document.getOssId(), 
+            document.getFilePath()
+        );
     }
 
     private List<String> splitText(String text, int chunkSize, int overlap) {

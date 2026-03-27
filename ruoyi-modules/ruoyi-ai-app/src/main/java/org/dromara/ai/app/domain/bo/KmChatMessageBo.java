@@ -47,4 +47,29 @@ public class KmChatMessageBo extends BaseEntity {
      * 工作流实例ID
      */
     private Long instanceId;
+
+    /**
+     * 中断状态: none=未中断, aborted=已中断
+     */
+    private String abortStatus;
+
+    /**
+     * 请求被中断时已生成的部分内容
+     */
+    private String partialContent;
+
+    /**
+     * 请求被中断的时间
+     */
+    private java.time.LocalDateTime abortTime;
+
+    /**
+     * 请求的唯一标识符
+     */
+    private String requestId;
+
+    /**
+     * 中断原因: user_abort=用户主动中断, exception=异常中断, network_error=网络错误
+     */
+    private String abortReason;
 }

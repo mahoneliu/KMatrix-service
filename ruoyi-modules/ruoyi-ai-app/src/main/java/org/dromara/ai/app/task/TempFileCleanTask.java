@@ -2,7 +2,7 @@ package org.dromara.ai.app.task;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.knowledge.service.IKmTempFileService;
+import org.dromara.ai.storage.service.IKmFileService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TempFileCleanTask {
 
-    private final IKmTempFileService tempFileService;
+    private final IKmFileService fileService;
 
     /**
      * 每小时清理一次过期临时文件
@@ -26,7 +26,7 @@ public class TempFileCleanTask {
     public void cleanExpiredFiles() {
         log.info("Starting temp file cleanup task");
         try {
-            tempFileService.cleanExpiredFiles();
+            fileService.cleanExpiredTempFiles();
         } catch (Exception e) {
             log.error("Temp file cleanup failed", e);
         }

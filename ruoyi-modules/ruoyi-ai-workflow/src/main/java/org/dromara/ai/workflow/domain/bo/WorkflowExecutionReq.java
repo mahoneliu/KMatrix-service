@@ -12,4 +12,5 @@ public class WorkflowExecutionReq {
     private String message;
     private Long sessionId;
     private Long userId;
+    private java.util.List<Long> tempFileIds;
 }

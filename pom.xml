@@ -383,6 +383,11 @@
             </dependency>
             <dependency>
                 <groupId>org.dromara</groupId>
+                <artifactId>ruoyi-ai-storage</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.dromara</groupId>
                 <artifactId>ruoyi-ai-knowledge</artifactId>
                 <version>${revision}</version>
             </dependency>

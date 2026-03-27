@@ -43,13 +43,18 @@ import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MapstructUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
 import org.dromara.ai.app.service.IChatRateLimitService;
+import org.dromara.ai.app.service.ChatServiceAbortMixin;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import cn.hutool.json.JSONUtil;
+import org.dromara.ai.storage.domain.KmTempFile;
+import org.dromara.ai.storage.service.IKmFileService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -76,6 +81,8 @@ public class KmChatServiceImpl implements IKmChatService {
     private final ModelBuilder modelBuilder;
     private final KmAppMapper appMapper;
     private final IChatRateLimitService rateLimitService;
+    private final IKmFileService kmFileService;
+    private final ChatServiceAbortMixin abortMixin;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -178,7 +185,16 @@ public class KmChatServiceImpl implements IKmChatService {
                             isNewSession);
                     try {
                         // 先执行工作流获取 instanceId
-                        WorkflowExecutionReq req = WorkflowExecutionReq.builder().appId(app.getAppId()).dslData(app.getDslData()).enableExecutionDetail(app.getEnableExecutionDetail()).showExecutionInfo(bo.getShowExecutionInfo()).message(bo.getMessage()).sessionId(sessionId).userId(userId).build();
+                        WorkflowExecutionReq req = WorkflowExecutionReq.builder()
+                                .appId(app.getAppId())
+                                .dslData(app.getDslData())
+                                .enableExecutionDetail(app.getEnableExecutionDetail())
+                                .showExecutionInfo(bo.getShowExecutionInfo())
+                                .message(buildMultimodalMessage(bo.getMessage(), bo.getTempFileIds()))
+                                .sessionId(sessionId)
+                                .userId(userId)
+                                .tempFileIds(bo.getTempFileIds())
+                                .build();
                         Map<String, Object> result = workflowExecutor.executeWorkflow(req, emitter);
 
                         String aiResponse = (String) result.get("finalResponse");
@@ -191,12 +207,12 @@ public class KmChatServiceImpl implements IKmChatService {
                         }
 
                         // 保存用户消息（带 instanceId）
-                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, null, effectiveUserId);
+                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, null, effectiveUserId, bo.getRequestId());
 
                         // 保存AI响应
                         if (aiResponse != null) {
                             KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId,
-                                    totalTokens, effectiveUserId);
+                                    totalTokens, effectiveUserId, bo.getRequestId());
                             // 发送消息ID给前端，以便进行评价
                             sendSseEvent(emitter, SseEventType.DONE,
                                     Map.of("messageId", assistantMessage.getMessageId().toString()));
@@ -518,7 +534,7 @@ public class KmChatServiceImpl implements IKmChatService {
      * 保存消息
      */
     private KmChatMessage saveMessage(Long sessionId, String role, String content, Long userId) {
-        return saveMessage(sessionId, role, content, null, null, userId);
+        return saveMessage(sessionId, role, content, null, null, userId, null);
     }
 
     /**
@@ -526,12 +542,21 @@ public class KmChatServiceImpl implements IKmChatService {
      */
     private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens,
             Long userId) {
+        return saveMessage(sessionId, role, content, instanceId, totalTokens, userId, null);
+    }
+
+    /**
+     * 保存带有进度实例、Token 使用情况和请求ID的消息
+     */
+    private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens,
+            Long userId, String requestId) {
         KmChatMessage message = new KmChatMessage();
         message.setSessionId(sessionId);
         message.setRole(role);
         message.setContent(content);
         message.setInstanceId(instanceId);
         message.setTotalTokens(totalTokens);
+        message.setRequestId(requestId);
         message.setCreateTime(new Date());
 
         // 手动设置BaseEntity字段
@@ -801,8 +826,113 @@ public class KmChatServiceImpl implements IKmChatService {
     private void sendSseEvent(SseEmitter emitter, SseEventType eventType, Object data) {
         try {
             emitter.send(SseEmitter.event().name(eventType.getEventName()).data(data));
+        } catch (IllegalStateException e) {
+            // 连接已关闭或已完成，这是正常的中止行为
+            log.debug("SSE连接已关闭: {}", eventType);
+        } catch (java.io.IOException e) {
+            // 客户端中止连接，这是正常的中止行为
+            if (e.getMessage() != null && e.getMessage().contains("中止")) {
+                log.debug("客户端中止了连接: {}", eventType);
+            } else {
+                log.warn("发送SSE事件失败: {}", eventType, e);
+            }
         } catch (Exception e) {
             log.error("发送SSE事件失败: {}", eventType, e);
         }
+    }
+
+    @Override
+    public Object abortRequest(String requestId, Long userId) {
+        return abortMixin.abortRequest(requestId, userId);
+    }
+
+    @Override
+    public List<KmChatSessionVo> getResumableSessions(Long appId, Long userId) {
+        return abortMixin.getResumableSessions(appId, userId);
+    }
+
+    @Override
+    public KmChatSessionVo resumeSession(Long sessionId, Long userId) {
+        return abortMixin.resumeSession(sessionId, userId);
+    }
+
+    @Override
+    public Boolean clearAbortStatus(Long sessionId, Long userId) {
+        return abortMixin.clearAbortStatus(sessionId, userId);
+    }
+
+    /**
+     * 构建多模态消息
+     * 当有附件时，将消息和附件组装为 LlmChatNode 期望的 JSON 数组格式：
+     * [{type:text, text:...}, {type:image, ossId:..., url:...}, ...]
+     *
+     * @param message     用户文本消息
+     * @param tempFileIds 临时文件 ID 列表（可为空）
+     * @return 纯文本消息 or JSON 数组多模态消息
+     */
+    private String buildMultimodalMessage(String message, List<Long> tempFileIds) {
+        if (tempFileIds == null || tempFileIds.isEmpty()) {
+            return message;
+        }
+
+        List<Map<String, Object>> contents = new ArrayList<>();
+
+        // 1. 文本部分
+        if (StrUtil.isNotBlank(message)) {
+            Map<String, Object> textContent = new HashMap<>();
+            textContent.put("type", "text");
+            textContent.put("text", message);
+            contents.add(textContent);
+        }
+
+        // 2. 附件部分
+        for (Long tempFileId : tempFileIds) {
+            try {
+                KmTempFile tempFile = kmFileService.getTempFile(tempFileId);
+                if (tempFile == null) {
+                    log.warn("临时文件不存在，跳过: tempFileId={}", tempFileId);
+                    continue;
+                }
+
+                String ext = tempFile.getFileExtension() != null ? tempFile.getFileExtension().toLowerCase() : "";
+                Map<String, Object> fileContent = new HashMap<>();
+
+                if (isImageExtension(ext)) {
+                    fileContent.put("type", "image");
+                    fileContent.put("url", tempFile.getFilePath());
+                    if (tempFile.getOssId() != null) {
+                        fileContent.put("ossId", String.valueOf(tempFile.getOssId()));
+                    }
+                } else if (isAudioExtension(ext)) {
+                    fileContent.put("type", "audio");
+                    fileContent.put("url", tempFile.getFilePath());
+                    if (tempFile.getOssId() != null) {
+                        fileContent.put("ossId", String.valueOf(tempFile.getOssId()));
+                    }
+                } else {
+                    // 其他文件类型附加文件名提示到文本
+                    fileContent.put("type", "text");
+                    fileContent.put("text", "[附件: " + tempFile.getOriginalFilename() + "]");
+                }
+                contents.add(fileContent);
+                log.info("多模态附件解析成功: tempFileId={}, type={}, ext={}", tempFileId, fileContent.get("type"), ext);
+            } catch (Exception e) {
+                log.error("解析临时文件失败: tempFileId={}", tempFileId, e);
+            }
+        }
+
+        if (contents.size() == 1 && "text".equals(contents.get(0).get("type"))) {
+            return message; // 只有纯文本，退回普通格式
+        }
+
+        return JSONUtil.toJsonStr(contents);
+    }
+
+    private boolean isImageExtension(String ext) {
+        return java.util.Set.of("jpg", "jpeg", "png", "gif", "webp", "bmp", "svg").contains(ext);
+    }
+
+    private boolean isAudioExtension(String ext) {
+        return java.util.Set.of("mp3", "wav", "ogg", "m4a", "aac", "flac").contains(ext);
     }
 }

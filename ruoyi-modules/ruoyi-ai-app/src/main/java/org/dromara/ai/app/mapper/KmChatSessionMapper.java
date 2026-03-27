@@ -30,4 +30,15 @@ public interface KmChatSessionMapper extends BaseMapperPlus<KmChatSession, KmCha
             "ORDER BY date ASC" +
             "</script>")
     List<Map<String, Object>> getUserTrendByAppId(@Param("appId") Long appId, @Param("startTime") Date startTime);
+
+    /**
+     * 查询可恢复的会话列表
+     */
+    @Select("<script>" +
+            "SELECT * FROM km_chat_session " +
+            "WHERE app_id = #{appId} AND user_id = #{userId} " +
+            "AND is_resumable = '1' " +
+            "ORDER BY abort_timestamp DESC NULLS LAST" +
+            "</script>")
+    List<KmChatSession> selectResumableSessions(@Param("appId") Long appId, @Param("userId") Long userId);
 }

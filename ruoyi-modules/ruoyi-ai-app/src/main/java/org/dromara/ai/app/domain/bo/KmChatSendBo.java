@@ -61,4 +61,16 @@ public class KmChatSendBo {
      * 用户类型 (anonymous_user/system_user/third_user)
      */
     private String userType;
+
+    /**
+     * 附件临时文件 ID 列表（多模态聊天时携带，对应 km_temp_file.id）
+     * 前端先调用 /ai/admin/chat/attachment/upload 上传，再把返回的 id 填入此字段
+     */
+    private java.util.List<Long> tempFileIds;
+
+    /**
+     * 请求ID（前端生成的唯一标识，用于中断请求时追踪）
+     */
+    private String requestId;
 }
+

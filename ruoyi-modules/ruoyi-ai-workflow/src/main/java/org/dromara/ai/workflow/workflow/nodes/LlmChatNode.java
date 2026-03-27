@@ -25,9 +25,11 @@ import org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider;
 import org.dromara.ai.model.mapper.KmModelMapper;
 import org.dromara.ai.model.mapper.KmModelProviderMapper;
 import org.dromara.ai.model.util.ModelBuilder;
+import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
+import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.dromara.ai.workflow.workflow.nodes.tool.ToolBinding;
 import org.dromara.ai.workflow.workflow.nodes.tool.ToolExecutionDispatcher;
 import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
@@ -62,6 +64,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
     private final ModelBuilder modelBuilder;
     private final org.springframework.beans.factory.ObjectProvider<IChatMessageProvider> chatMessageProvider;
     private final IToolProvider toolProviderService;
+    private final org.springframework.beans.factory.ObjectProvider<org.dromara.system.service.ISysOssService> sysOssServiceProvider;
 
     /** 默认历史消息条数限制 */
     private static final int DEFAULT_HISTORY_LIMIT = 10;
@@ -117,9 +120,19 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 获取会话ID用于加载历史对话
         Long sessionId = context.getSessionId();
 
-        // 构建消息列表（包含历史对话）
+        // 收集待发送的文件 (从全局 _files 和当前节点输入中搜集)
+        List<KmWorkflowFile> workflowFiles = new ArrayList<>();
+        // 从全局获取初始上传的文件
+        Object globalFiles = context.getGlobalValue(WorkflowState.KEY_FILES);
+        if (globalFiles instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
+            workflowFiles.addAll(list);
+        }
+        
+        // 构建消息列表（包含历史对话和文件）
         List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
-                historyLimit, chatContext);
+                historyLimit, chatContext, workflowFiles);
         log.info(
                 "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}",
                 chatContext, userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId,
@@ -191,7 +204,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 1. 兼容旧的 tools 配置
         Object toolsObj = context.getConfig("tools");
         if (toolsObj instanceof List) {
-            toolRefs.addAll((List<Map<String, Object>>) toolsObj);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> legacyTools = (List<Map<String, Object>>) toolsObj;
+            toolRefs.addAll(legacyTools);
         }
 
         // 2. 处理 builtinToolIds
@@ -402,7 +417,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
      * @return 完整的消息列表
      */
     private List<ChatMessage> buildMessages(String userInput, String systemPrompt, String userPrompt,
-            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext) {
+            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext, List<KmWorkflowFile> files) {
         List<ChatMessage> messages = new ArrayList<>();
 
         // 1. 添加系统提示
@@ -412,27 +427,145 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
         // 2. 加载并添加历史对话
         if (Boolean.TRUE.equals(historyEnabled) && sessionId != null) {
-            if(chatMessageProvider.getIfAvailable() != null) { List<ChatMessage> historyMessages = chatMessageProvider.getIfAvailable().loadHistoryMessages(sessionId, historyLimit); messages.addAll(historyMessages); log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, historyMessages.size()); }
+            if (chatMessageProvider.getIfAvailable() != null) {
+                List<ChatMessage> historyMessages = chatMessageProvider.getIfAvailable().loadHistoryMessages(sessionId, historyLimit);
+                messages.addAll(historyMessages);
+                log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, historyMessages.size());
+            }
         }
 
         // 3. 添加当前用户消息
-        // 优先使用配置的用户提示词,如果没有配置则使用 userInput
-        String defaultUserPrompt = "请回答问题：" + userInput;
+        String contextPrefix = "";
         if (chatContext != null && !chatContext.isEmpty()) {
-            defaultUserPrompt = "已知信息：" + chatContext + "\n" + defaultUserPrompt;
+            contextPrefix += "已知信息：" + chatContext + "\n";
         }
-        String finalUserMessage = (userPrompt != null && !userPrompt.isEmpty()) ? userPrompt : defaultUserPrompt;
-        if (finalUserMessage != null) {
-            messages.add(new UserMessage(finalUserMessage));
+        if (userPrompt != null && !userPrompt.isEmpty()) {
+            contextPrefix += userPrompt + "\n";
         }
 
-        log.info("LLM_CHAT节点 - : buildMessages finalUserMessage={}, AiMessageList={}", finalUserMessage,
-                messages);
+        boolean processed = false;
+        if (JSONUtil.isTypeJSONArray(userInput)) {
+            try {
+                cn.hutool.json.JSONArray array = JSONUtil.parseArray(userInput);
+                // 检查是否包含多模态标识（至少有一个元素包含 type 字段）
+                boolean hasMultimodal = false;
+                for (int i = 0; i < array.size(); i++) {
+                    Object item = array.get(i);
+                    if (item != null) {
+                        cn.hutool.json.JSONObject obj = JSONUtil.parseObj(item);
+                        if (obj.containsKey("type")) {
+                            hasMultimodal = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasMultimodal) {
+                    StringBuilder textPart = new StringBuilder(contextPrefix);
+                    List<dev.langchain4j.data.message.Content> contents = new ArrayList<>();
+
+                    for (int i = 0; i < array.size(); i++) {
+                        Object item = array.get(i);
+                        if (item == null) continue;
+                        cn.hutool.json.JSONObject obj = JSONUtil.parseObj(item);
+                        String type = obj.getStr("type");
+                        if ("text".equals(type)) {
+                            textPart.append(obj.getStr("text"));
+                        } else if ("image".equals(type)) {
+                            if (textPart.length() > 0) {
+                                contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                                textPart.setLength(0);
+                            }
+                            String url = resolveOssUrl(obj.getStr("ossId"), obj.getStr("url"));
+                            if (StrUtil.isNotBlank(url)) {
+                                contents.add(dev.langchain4j.data.message.ImageContent.from(url));
+                            }
+                        } else if ("audio".equals(type)) {
+                            if (textPart.length() > 0) {
+                                contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                                textPart.setLength(0);
+                            }
+                            String url = resolveOssUrl(obj.getStr("ossId"), obj.getStr("url"));
+                            try {
+                                contents.add(dev.langchain4j.data.message.AudioContent.from(url));
+                            } catch (Throwable e) {
+                                log.warn("LC4J当前版本可能不支持AudioContent: {}", e.getMessage());
+                            }
+                        }
+                    }
+
+                    if (textPart.length() > 0) {
+                        contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                    }
+                    if (!contents.isEmpty()) {
+                        messages.add(dev.langchain4j.data.message.UserMessage.from(contents));
+                        processed = true;
+                        log.info("LLM_CHAT节点 - : buildMessages JSON多模态转化成功, 内容元素数={}", contents.size());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析 JSON 多模态输入失败，将作为普通文本处理: {}, msg: {}", e.getMessage(), userInput);
+            }
+        }
+
+        // 4. 如果尚未处理（不是 JSON 多模态），则按普通文本或工作流文件列表处理
+        if (!processed) {
+            StringBuilder fullText = new StringBuilder(contextPrefix);
+            fullText.append(userInput);
+
+            List<dev.langchain4j.data.message.Content> contents = new ArrayList<>();
+            // 处理工作流流转的文件对象
+            if (files != null && !files.isEmpty()) {
+                for (KmWorkflowFile file : files) {
+                    if ("image".equals(file.getType())) {
+                        String url = resolveOssUrl(file.getOssId() != null ? file.getOssId().toString() : null, file.getUrl());
+                        if (StrUtil.isNotBlank(url)) {
+                            contents.add(dev.langchain4j.data.message.ImageContent.from(url));
+                        }
+                    } else if ("audio".equals(file.getType())) {
+                        String url = resolveOssUrl(file.getOssId() != null ? file.getOssId().toString() : null, file.getUrl());
+                        if (StrUtil.isNotBlank(url)) {
+                            try {
+                                contents.add(dev.langchain4j.data.message.AudioContent.from(url));
+                            } catch (Throwable e) {
+                                log.warn("LC4J当前版本不支持音频内容: {}", e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!contents.isEmpty()) {
+                contents.add(0, dev.langchain4j.data.message.TextContent.from(fullText.toString()));
+                messages.add(dev.langchain4j.data.message.UserMessage.from(contents));
+                log.info("LLM_CHAT节点 - : buildMessages 工作流文件多模态转化成功");
+            } else {
+                messages.add(dev.langchain4j.data.message.UserMessage.from(fullText.toString()));
+                log.info("LLM_CHAT节点 - : buildMessages 普通文本转化完成");
+            }
+        }
 
         return messages;
     }
 
-    
+    private String resolveOssUrl(String ossIdStr, String fallbackUrl) {
+        if (StrUtil.isNotBlank(fallbackUrl)) {
+            return fallbackUrl;
+        }
+        if (StrUtil.isNotBlank(ossIdStr) && sysOssServiceProvider.getIfAvailable() != null) {
+            try {
+                Long ossId = Long.parseLong(ossIdStr);
+                org.dromara.system.domain.vo.SysOssVo ossVo = sysOssServiceProvider.getIfAvailable().getById(ossId);
+                if (ossVo != null) {
+                    return ossVo.getUrl();
+                }
+            } catch (Exception e) {
+                log.warn("解析ossId转URL失败: {}", ossIdStr, e);
+            }
+        }
+        return null;
+    }
+
 
     @Override
     public String getNodeType() {

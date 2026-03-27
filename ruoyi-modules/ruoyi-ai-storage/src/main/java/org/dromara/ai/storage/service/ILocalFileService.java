@@ -1,6 +1,6 @@
-package org.dromara.ai.knowledge.service;
+package org.dromara.ai.storage.service;
 
-import org.dromara.ai.knowledge.domain.vo.LocalFileVo;
+import org.dromara.ai.storage.domain.vo.LocalFileVo;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.InputStream;
@@ -8,8 +8,8 @@ import java.io.InputStream;
 /**
  * 本地文件存储服务接口
  *
- * @author AI Assistant
- * @date 2026-02-06
+ * @author Mahone
+ * @date 2026-03-28
  */
 public interface ILocalFileService {
 

@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
+import java.util.List;
+
 
 /**
  * AI模型配置业务对象 km_model
@@ -82,5 +84,11 @@ public class KmModelBo extends BaseEntity {
      * 是否为系统默认模型(0-否 1-是)
      */
     private Integer isDefault;
+
+    /**
+     * 模型能力标签(JSON数组)
+     */
+    private List<String> abilities;
+
 
 }

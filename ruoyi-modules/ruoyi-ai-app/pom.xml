@@ -46,6 +46,13 @@
             <version>${revision}</version>
         </dependency>
 
+        <!-- 存储模块（聊天附件上传功能） -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai-storage</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.dromara</groupId>
             <artifactId>ruoyi-common-security</artifactId>
