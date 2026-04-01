@@ -256,7 +256,7 @@ ai:
     # 存储类型: 1-OSS, 2-本地文件
     type: 2
     # 本地文件存储路径(仅当 type=2 时生效)
-    local-path: F:\kmatrix\uploads
+    local-path: C:\uploads
   # 是否开启全系统统一向量模型。true:全系统强制使用一个默认向量模型；false:允许每个知识库使用不同向量模型
   unified-embedding-model: true
   reranker:

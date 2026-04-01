@@ -50,6 +50,15 @@ public interface IKmAppService {
     Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid);
 
     /**
+     * 通过模板创建应用
+     *
+     * @param templateId 模板ID
+     * @param appName    应用名称
+     * @return 新创建的应用ID
+     */
+    Long createAppFromTemplate(Long templateId, String appName);
+
+    /**
      * 发布应用
      * 
      * @param appId  应用ID

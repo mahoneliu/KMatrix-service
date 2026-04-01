@@ -47,10 +47,54 @@ public class StartNode extends AbstractWorkflowNode {
         historyContext.add(userInput);
         context.setGlobalValue(WorkflowState.KEY_HISTORY_CONTEXT, historyContext);
 
+        // ================== 解析多模态参数提取 ==================
+        List<KmWorkflowFile> extractedFilesFromInput = new ArrayList<>();
+        List<Long> extractedOssIds = new ArrayList<>();
+        
+        // 如果 userInput 是 JSON 数组格式（代表是从前端 Chat 窗口传上来的多模态数据）
+        if (StrUtil.isNotBlank(userInput) && cn.hutool.json.JSONUtil.isTypeJSONArray(userInput)) {
+            try {
+                cn.hutool.json.JSONArray array = cn.hutool.json.JSONUtil.parseArray(userInput);
+                for (int i = 0; i < array.size(); i++) {
+                    cn.hutool.json.JSONObject obj = array.getJSONObject(i);
+                    // 找到了多模态文件对象 (排除普通 text 类型的字符串片段)
+                    if (obj != null && obj.containsKey("type") && !("text".equals(obj.getStr("type")))) {
+                        KmWorkflowFile file = new KmWorkflowFile();
+                        file.setType(obj.getStr("type"));
+                        file.setUrl(obj.getStr("url"));
+                        file.setName(obj.getStr("name"));
+                        
+                        String ossIdStr = obj.getStr("ossId");
+                        String tempFileIdStr = obj.getStr("tempFileId");
+                        
+                        if (StrUtil.isNotBlank(tempFileIdStr) && !"undefined".equals(tempFileIdStr)) {
+                            try {
+                                file.setTempFileId(Long.parseLong(tempFileIdStr));
+                            } catch (Exception ignore) {}
+                        }
+                        
+                        if (StrUtil.isNotBlank(ossIdStr) && !"undefined".equals(ossIdStr)) {
+                            try {
+                                Long ossId = Long.parseLong(ossIdStr);
+                                file.setOssId(ossId);
+                                extractedOssIds.add(ossId);
+                            } catch (Exception ignore) {}
+                        }
+                        extractedFilesFromInput.add(file);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("START节点解析多模态 userInput 失败", e);
+            }
+        }
+        // =======================================================
+
         // 2. 处理初始上传的文件
+        List<KmWorkflowFile> workflowFiles = new ArrayList<>();
+        
         List<Long> tempFileIds = (List<Long>) context.getGlobalValue(WorkflowState.KEY_TEMP_FILE_IDS);
         if (tempFileIds != null && !tempFileIds.isEmpty()) {
-            List<KmWorkflowFile> workflowFiles = tempFileIds.stream()
+            workflowFiles.addAll(tempFileIds.stream()
                 .map(id -> {
                     KmTempFile tempFile = kmFileService.getTempFile(id);
                     if (tempFile == null) return null;
@@ -64,17 +108,31 @@ public class StartNode extends AbstractWorkflowNode {
                             .build();
                 })
                 .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toList());
-            
-            context.setGlobalValue(WorkflowState.KEY_FILES, workflowFiles);
-            output.addOutput(WorkflowState.KEY_FILES, workflowFiles);
+                .collect(Collectors.toList()));
+        }
+        
+        // 合并文件: 把从 chat 中解析出的文件也加入其中
+        if (!extractedFilesFromInput.isEmpty()) {
+            workflowFiles.addAll(extractedFilesFromInput);
+        }
+
+        // 把文件合并集合推入全局状态并导出为 files
+        if (!workflowFiles.isEmpty()) {
+            context.setGlobalValue("files", workflowFiles);
+            output.addOutput("files", workflowFiles);
+        }
+
+        // 导出 ossIds 和 单一 ossId 给其他专门处理文件的下游节点
+        if (!extractedOssIds.isEmpty()) {
+            output.addOutput("ossIds", extractedOssIds);
+            output.addOutput("ossId", extractedOssIds.get(0).toString());
         }
 
         // 3.保存用户名到全局状态
         String username = LoginHelper.getUsername();
         context.setGlobalValue(WorkflowState.KEY_USER_NAME, username);
 
-        // 3.保存到输出
+        // 4.保存到输出
         output.addOutput(KEY_USER_INPUT, userInput);
 
         log.info("START节点执行完成, userInput={}", userInput);

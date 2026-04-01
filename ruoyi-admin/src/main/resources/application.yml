@@ -274,7 +274,7 @@ ai:
     # 存储类型: 1-OSS, 2-本地文件
     type: 2
     # 本地文件存储路径(仅当 type=2 时生效)
-    local-path: F:/kmatrix/uploads
+    local-path: C:/uploads
   reranker:
     # 是否启用 ONNX BGE-Reranker 模型
     enabled: true
@@ -283,6 +283,8 @@ ai:
     model-path: F:\reranker\model.onnx
     # Tokenizer 文件路径
     tokenizer-path: F:\reranker\tokenizer.json
+  # 记录log for AI
+  log-chat: true
 
 --- # 知识库分块配置
 km:

@@ -296,8 +296,11 @@ public class KmChatController extends BaseController {
         validateAndParseToken(authHeader); // 确保是合法用户或Token
         KmTempFile tempFile = kmFileService.saveTempFile(null, file);
         Map<String, Object> result = new HashMap<>();
-        result.put("ossId", tempFile.getId());
+        result.put("id", tempFile.getId());
         result.put("tempFileId", tempFile.getId());
+        if (tempFile.getOssId() != null) {
+            result.put("ossId", tempFile.getOssId());
+        }
         result.put("originalFilename", tempFile.getOriginalFilename());
         result.put("fileExtension", tempFile.getFileExtension());
         result.put("fileSize", tempFile.getFileSize());

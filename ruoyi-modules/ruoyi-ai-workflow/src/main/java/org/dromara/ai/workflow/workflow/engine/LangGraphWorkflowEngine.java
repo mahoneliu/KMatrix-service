@@ -424,7 +424,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             // 保存输出到本地变量（不直接修改 state，通过返回 Map 更新）
             Map<String, Object> nodeOutputs = new HashMap<>(state.getNodeOutputs());
             nodeOutputs.put(nodeConfig.getId(), output.getOutputs());
-            Map<String, Object> globalState = context.getGlobalState();
+            
+            // 必须创建一个全新的 Map 对象，否则 LangGraph4j 可能会因为引用相同而忽略状态更新
+            Map<String, Object> globalState = new HashMap<>(context.getGlobalState());
 
             // 更新节点执行记录（调试模式：不写数据库）
             if (!isDebug) {

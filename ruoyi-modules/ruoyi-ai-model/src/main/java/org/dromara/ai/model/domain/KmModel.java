@@ -9,7 +9,6 @@ import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 import java.util.List;
 
-
 /**
  * AI模型配置对象 km_model
  *
@@ -46,7 +45,8 @@ public class KmModel extends BaseEntity {
     private String modelName;
 
     /**
-     * 模型类型: 1-LLM, 2-向量模型, 3-重排序模型, 4-语音模型, 5-图像模型, 6-视频模型
+     * 模型类型: 0-多模态模型, 1-LLM, 2-向量模型, 3-重排序模型, 4-语音模型, 5-图像模型, 6-视频模型
+     * 
      * @see org.dromara.ai.api.enums.AiModelType
      */
     private String modelType;

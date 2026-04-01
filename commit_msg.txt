@@ -1,0 +1,16 @@
+feat(ai): 实现多模态工作流支持并迁移模板创建应用逻辑
+
+- 增强工作流节点对多模态（图像、音频、视频）参数的支持
+- 将本地文件存储路径默认配置更新为 C:/uploads
+- 执行 SQL 迁移，增加多模态参数及对话会话相关字段
+- 将工作流模板创建应用的逻辑从 workflow 模块迁移至 app 模块
+- 实现 service 层逻辑并提供 REST 控制层接口
+
+feat(ai): implement multimodal workflow support and migrate template logic
+
+- Support multimodal parameters in workflow nodes (Image/Audio/Video)
+- Update local file storage configuration to C:/uploads
+- Add SQL migrations for multimodal parameters and chat session fields
+- Migrate workflow template creation logic from workflow to app module
+- Add createAppFromTemplate interface and implementation in IKmAppService/KmAppServiceImpl
+- Expose /ai/app/createFromTemplate endpoint in KmAppController

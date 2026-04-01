@@ -17,7 +17,7 @@ VALUES (1, 'APP_INFO', '基础信息', 'mdi:information', '#10b981', 'basic', '�
 -- 2. START节点
 INSERT INTO km_node_definition (node_def_id, node_type, node_label, node_icon, node_color, category, description, is_system, is_enabled, input_params, output_params, version,create_time)
 VALUES (2, 'START', '开始', 'mdi:play-circle', '#10b981', 'basic', '工作流的入口节点', '1', '1', '[]', 
-'[{"key":"userInput","label":"用户输入","type":"string","required":true,"description":"用户的输入内容"},{"key":"sessionId","label":"会话ID","type":"string","required":true,"description":"当前会话的唯一标识"},{"key":"userId","label":"用户ID","type":"string","required":false,"description":"当前用户的ID"}]',
+'[{"key":"userInput","label":"用户输入","type":"string","required":true,"description":"用户的输入内容"},{"key":"sessionId","label":"会话ID","type":"string","required":true,"description":"当前会话的唯一标识"},{"key":"userId","label":"用户ID","type":"string","required":false,"description":"当前用户的ID"},{"key":"files","label":"多模态文件上传(全局)","type":"array","required":false,"description":"调试与对话窗口直接上传的多模态文件信息列表"},{"key":"ossIds","label":"文件ID列表","type":"array","required":false,"description":"调试窗口上传的文件对应的 OSS ID 列表"},{"key":"ossId","label":"单文件ID","type":"string","required":false,"description":"调试窗口上传的文件对应的首个 OSS ID"}]',
 1, NOW());
 
 -- 3. END节点
@@ -29,7 +29,7 @@ VALUES (3, 'END', '结束', 'mdi:stop-circle', '#ef4444', 'basic', '工作流的
 -- 4. LLM_CHAT节点
 INSERT INTO km_node_definition (node_def_id, node_type, node_label, node_icon, node_color, category, description, is_system, is_enabled, input_params, output_params, version, create_time)
 VALUES (4, 'LLM_CHAT', 'LLM 对话', 'mdi:robot', '#3b82f6', 'ai', '调用大语言模型进行对话', '0', '1',
-'[{"key":"userInput","label":"用户输入","type":"string","required":true,"description":"传递给 LLM 的用户输入"},{"key":"systemPrompt","label":"系统提示词","type":"string","required":false,"description":"可选的系统提示词,用于覆盖节点配置"}]',
+'[{"key":"userInput","label":"用户输入","type":"string","required":true,"description":"传递给 LLM 的用户输入"},{"key":"systemPrompt","label":"系统提示词","type":"string","required":false,"description":"可选的系统提示词,用于覆盖节点配置"},{"key":"files","label":"多模态文件对象","type":"array","required":false,"description":"多模态组件的文件对象列表(优先识别)"},{"key":"ossIds","label":"文件ID列表(ossIds)","type":"array","required":false,"description":"图片或音频的 OSS ID 列表"}]',
 '[{"key":"response","label":"AI 回复","type":"string","required":true,"description":"LLM 生成的回复内容"}]',
 1, NOW());
 

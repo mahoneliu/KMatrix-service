@@ -35,7 +35,6 @@ public class WorkflowState extends AgentState implements Serializable {
     public static final String KEY_DEBUG = "debug";
     public static final String KEY_SHOW_EXECUTION_INFO = "showExecutionInfo";
     public static final String KEY_TEMP_FILE_IDS = "tempFileIds";
-    public static final String KEY_FILES = "_files"; 
 
     public static final String KEY_NODE_OUTPUTS = "nodeOutputs";
     public static final String KEY_ERROR = "error";

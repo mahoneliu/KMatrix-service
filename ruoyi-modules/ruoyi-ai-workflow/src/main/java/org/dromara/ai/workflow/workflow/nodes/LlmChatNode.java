@@ -29,7 +29,6 @@ import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.dromara.ai.workflow.workflow.nodes.tool.ToolBinding;
 import org.dromara.ai.workflow.workflow.nodes.tool.ToolExecutionDispatcher;
 import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
@@ -46,6 +45,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import org.dromara.common.oss.core.OssClient;
+import org.dromara.common.oss.factory.OssFactory;
+import org.dromara.common.core.utils.file.FileUtils;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.dromara.system.service.ISysOssService;
+import org.dromara.system.domain.vo.SysOssVo;
+import org.dromara.ai.storage.domain.KmTempFile;
+import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.common.mybatis.helper.DataPermissionHelper;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.AudioContent;
+import com.baomidou.mybatisplus.core.plugins.IgnoreStrategy;
+import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * LLM对话节点
@@ -62,15 +80,25 @@ public class LlmChatNode extends AbstractWorkflowNode {
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
     private final ModelBuilder modelBuilder;
-    private final org.springframework.beans.factory.ObjectProvider<IChatMessageProvider> chatMessageProvider;
+    private final ObjectProvider<IChatMessageProvider> chatMessageProvider;
     private final IToolProvider toolProviderService;
-    private final org.springframework.beans.factory.ObjectProvider<org.dromara.system.service.ISysOssService> sysOssServiceProvider;
+    private final ObjectProvider<ISysOssService> sysOssService;
+    private final ObjectProvider<IKmFileService> kmFileService;
 
     /** 默认历史消息条数限制 */
     private static final int DEFAULT_HISTORY_LIMIT = 10;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
+        try {
+            return doExecute(context);
+        } catch (Throwable t) {
+            log.error("LlmChatNode 执行发生异常: {}", t.getMessage(), t);
+            throw t;
+        }
+    }
+
+    private NodeOutput doExecute(NodeContext context) throws Exception {
         log.info("执行LLM_CHAT节点");
 
         NodeOutput output = new NodeOutput();
@@ -120,23 +148,78 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 获取会话ID用于加载历史对话
         Long sessionId = context.getSessionId();
 
-        // 收集待发送的文件 (从全局 _files 和当前节点输入中搜集)
+        // 收集待发送的文件 (优先级: files > ossIds > 全局 _files)
         List<KmWorkflowFile> workflowFiles = new ArrayList<>();
-        // 从全局获取初始上传的文件
-        Object globalFiles = context.getGlobalValue(WorkflowState.KEY_FILES);
-        if (globalFiles instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
-            workflowFiles.addAll(list);
+        Boolean enableMultimodal = context.getConfigAsBoolean("enableMultimodal", false);
+
+        if (Boolean.TRUE.equals(enableMultimodal)) {
+            // 1. 优先尝试提取 inputs 中的 files
+            Object inputFiles = context.getInput("files");
+            if (inputFiles instanceof List) {
+                for (Object item : (List<?>) inputFiles) {
+                    if (item instanceof KmWorkflowFile) {
+                        workflowFiles.add((KmWorkflowFile) item);
+                    } else if (item instanceof Map) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> map = (Map<String, Object>) item;
+                        KmWorkflowFile wf = new KmWorkflowFile();
+                        wf.setUrl((String) map.get("url"));
+                        wf.setType((String) map.get("type"));
+                        wf.setOssId(map.get("ossId") instanceof Number ? ((Number) map.get("ossId")).longValue() : null);
+                        wf.setTempFileId(map.get("tempFileId") instanceof Number ? ((Number) map.get("tempFileId")).longValue() : null);
+                        wf.setName((String) map.get("name"));
+                        workflowFiles.add(wf);
+                    }
+                }
+            } else if (inputFiles instanceof KmWorkflowFile) {
+                workflowFiles.add((KmWorkflowFile) inputFiles);
+            }
+
+            // 2. 如果无 files，尝试提取 inputs/config 中的 ossIds
+            if (workflowFiles.isEmpty()) {
+                Object inputOssIds = context.getInput("ossIds");
+                if (inputOssIds == null) {
+                    inputOssIds = context.getInput("ossId");
+                }
+                if (inputOssIds != null) {
+                    List<Object> idList = new ArrayList<>();
+                    if (inputOssIds instanceof List) {
+                        idList.addAll((List<?>) inputOssIds);
+                    } else {
+                        idList.add(inputOssIds);
+                    }
+                    for (Object idObj : idList) {
+                        try {
+                            Long idVal = idObj instanceof Number ? ((Number) idObj).longValue() : Long.parseLong(idObj.toString());
+                            KmWorkflowFile wf = new KmWorkflowFile();
+                            wf.setOssId(idVal);
+                            wf.setType("image"); // 降级默认为图片
+                            workflowFiles.add(wf);
+                        } catch (Exception e) {
+                            log.warn("LlmChatNode 多模态解析 ossId 失败: {}", idObj);
+                        }
+                    }
+                }
+            }
+
+            // 3. 最后兜底兼容全局的初始上传文件
+            if (workflowFiles.isEmpty()) {
+                Object globalFiles = context.getGlobalValue("files");
+                if (globalFiles instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
+                    workflowFiles.addAll(list);
+                }
+            }
         }
         
         // 构建消息列表（包含历史对话和文件）
         List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
-                historyLimit, chatContext, workflowFiles);
+                historyLimit, chatContext, workflowFiles, enableMultimodal);
         log.info(
-                "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}",
+                "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}, 多模态={}",
                 chatContext, userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId,
-                messages.size());
+                messages.size(), enableMultimodal);
 
         SseEmitter emitter = context.getSseEmitter();
 
@@ -417,7 +500,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
      * @return 完整的消息列表
      */
     private List<ChatMessage> buildMessages(String userInput, String systemPrompt, String userPrompt,
-            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext, List<KmWorkflowFile> files) {
+            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext, List<KmWorkflowFile> files, Boolean enableMultimodal) {
         List<ChatMessage> messages = new ArrayList<>();
 
         // 1. 添加系统提示
@@ -427,8 +510,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
         // 2. 加载并添加历史对话
         if (Boolean.TRUE.equals(historyEnabled) && sessionId != null) {
-            if (chatMessageProvider.getIfAvailable() != null) {
-                List<ChatMessage> historyMessages = chatMessageProvider.getIfAvailable().loadHistoryMessages(sessionId, historyLimit);
+            IChatMessageProvider provider = chatMessageProvider.getIfAvailable();
+            if (provider != null) {
+                List<ChatMessage> historyMessages = provider.loadHistoryMessages(sessionId, historyLimit);
                 messages.addAll(historyMessages);
                 log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, historyMessages.size());
             }
@@ -444,7 +528,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
         }
 
         boolean processed = false;
-        if (JSONUtil.isTypeJSONArray(userInput)) {
+        if (Boolean.TRUE.equals(enableMultimodal) && JSONUtil.isTypeJSONArray(userInput)) {
             try {
                 cn.hutool.json.JSONArray array = JSONUtil.parseArray(userInput);
                 // 检查是否包含多模态标识（至少有一个元素包含 type 字段）
@@ -462,7 +546,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
                 if (hasMultimodal) {
                     StringBuilder textPart = new StringBuilder(contextPrefix);
-                    List<dev.langchain4j.data.message.Content> contents = new ArrayList<>();
+                    List<Content> contents = new ArrayList<>();
 
                     for (int i = 0; i < array.size(); i++) {
                         Object item = array.get(i);
@@ -473,21 +557,35 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             textPart.append(obj.getStr("text"));
                         } else if ("image".equals(type)) {
                             if (textPart.length() > 0) {
-                                contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                                contents.add(TextContent.from(textPart.toString()));
                                 textPart.setLength(0);
                             }
-                            String url = resolveOssUrl(obj.getStr("ossId"), obj.getStr("url"));
+                            String fileIdRef = obj.getStr("tempFileId");
+                            if (StrUtil.isBlank(fileIdRef) || "undefined".equals(fileIdRef)) {
+                                fileIdRef = obj.getStr("ossId");
+                            }
+                            if ("undefined".equals(fileIdRef)) {
+                                fileIdRef = null;
+                            }
+                            String url = resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"));
                             if (StrUtil.isNotBlank(url)) {
-                                contents.add(dev.langchain4j.data.message.ImageContent.from(url));
+                                contents.add(ImageContent.from(url));
                             }
                         } else if ("audio".equals(type)) {
                             if (textPart.length() > 0) {
-                                contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                                contents.add(TextContent.from(textPart.toString()));
                                 textPart.setLength(0);
                             }
-                            String url = resolveOssUrl(obj.getStr("ossId"), obj.getStr("url"));
+                            String fileIdRef = obj.getStr("tempFileId");
+                            if (StrUtil.isBlank(fileIdRef) || "undefined".equals(fileIdRef)) {
+                                fileIdRef = obj.getStr("ossId");
+                            }
+                            if ("undefined".equals(fileIdRef)) {
+                                fileIdRef = null;
+                            }
+                            String url = resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"));
                             try {
-                                contents.add(dev.langchain4j.data.message.AudioContent.from(url));
+                                contents.add(AudioContent.from(url));
                             } catch (Throwable e) {
                                 log.warn("LC4J当前版本可能不支持AudioContent: {}", e.getMessage());
                             }
@@ -495,10 +593,10 @@ public class LlmChatNode extends AbstractWorkflowNode {
                     }
 
                     if (textPart.length() > 0) {
-                        contents.add(dev.langchain4j.data.message.TextContent.from(textPart.toString()));
+                        contents.add(TextContent.from(textPart.toString()));
                     }
                     if (!contents.isEmpty()) {
-                        messages.add(dev.langchain4j.data.message.UserMessage.from(contents));
+                        messages.add(UserMessage.from(contents));
                         processed = true;
                         log.info("LLM_CHAT节点 - : buildMessages JSON多模态转化成功, 内容元素数={}", contents.size());
                     }
@@ -513,20 +611,23 @@ public class LlmChatNode extends AbstractWorkflowNode {
             StringBuilder fullText = new StringBuilder(contextPrefix);
             fullText.append(userInput);
 
-            List<dev.langchain4j.data.message.Content> contents = new ArrayList<>();
+            List<Content> contents = new ArrayList<>();
             // 处理工作流流转的文件对象
             if (files != null && !files.isEmpty()) {
                 for (KmWorkflowFile file : files) {
+                    String fileIdRef = file.getTempFileId() != null 
+                            ? file.getTempFileId().toString() 
+                            : (file.getOssId() != null ? file.getOssId().toString() : null);
                     if ("image".equals(file.getType())) {
-                        String url = resolveOssUrl(file.getOssId() != null ? file.getOssId().toString() : null, file.getUrl());
+                        String url = resolveOssUrlOrBase64(fileIdRef, file.getUrl());
                         if (StrUtil.isNotBlank(url)) {
-                            contents.add(dev.langchain4j.data.message.ImageContent.from(url));
+                            contents.add(ImageContent.from(url));
                         }
                     } else if ("audio".equals(file.getType())) {
-                        String url = resolveOssUrl(file.getOssId() != null ? file.getOssId().toString() : null, file.getUrl());
+                        String url = resolveOssUrlOrBase64(fileIdRef, file.getUrl());
                         if (StrUtil.isNotBlank(url)) {
                             try {
-                                contents.add(dev.langchain4j.data.message.AudioContent.from(url));
+                                contents.add(AudioContent.from(url));
                             } catch (Throwable e) {
                                 log.warn("LC4J当前版本不支持音频内容: {}", e.getMessage());
                             }
@@ -536,11 +637,11 @@ public class LlmChatNode extends AbstractWorkflowNode {
             }
 
             if (!contents.isEmpty()) {
-                contents.add(0, dev.langchain4j.data.message.TextContent.from(fullText.toString()));
-                messages.add(dev.langchain4j.data.message.UserMessage.from(contents));
+                contents.add(0, TextContent.from(fullText.toString()));
+                messages.add(UserMessage.from(contents));
                 log.info("LLM_CHAT节点 - : buildMessages 工作流文件多模态转化成功");
             } else {
-                messages.add(dev.langchain4j.data.message.UserMessage.from(fullText.toString()));
+                messages.add(UserMessage.from(fullText.toString()));
                 log.info("LLM_CHAT节点 - : buildMessages 普通文本转化完成");
             }
         }
@@ -548,20 +649,92 @@ public class LlmChatNode extends AbstractWorkflowNode {
         return messages;
     }
 
-    private String resolveOssUrl(String ossIdStr, String fallbackUrl) {
-        if (StrUtil.isNotBlank(fallbackUrl)) {
-            return fallbackUrl;
-        }
-        if (StrUtil.isNotBlank(ossIdStr) && sysOssServiceProvider.getIfAvailable() != null) {
+    private String resolveOssUrlOrBase64(String ossIdStr, String fallbackUrl) {
+        if (StrUtil.isNotBlank(ossIdStr) && !"undefined".equals(ossIdStr)) {
             try {
-                Long ossId = Long.parseLong(ossIdStr);
-                org.dromara.system.domain.vo.SysOssVo ossVo = sysOssServiceProvider.getIfAvailable().getById(ossId);
-                if (ossVo != null) {
-                    return ossVo.getUrl();
+                Long fileId = Long.parseLong(ossIdStr);
+                
+                // 开启最强力的全局忽略：忽略数据权限和多租户，确保异步线程(无租户Context)也能读到数据
+                InterceptorIgnoreHelper.handle(IgnoreStrategy.builder().dataPermission(true).tenantLine(true).build());
+                try {
+                    // 1. 优先尝试作为聊天产生的 KmTempFile 获取
+                    IKmFileService fileService = kmFileService.getIfAvailable();
+                    if (fileService != null) {
+                        KmTempFile tempFile = fileService.getTempFile(fileId);
+                        if (tempFile != null) {
+                            String absolutePath = "未知路径";
+                            try {
+                                // 尝试探测绝对路径用于日志诊断
+                                try {
+                                    java.lang.reflect.Method getAbs = fileService.getClass().getMethod("getAbsolutePath", String.class);
+                                    absolutePath = (String) getAbs.invoke(fileService, tempFile.getFilePath());
+                                } catch (Exception ignore) {}
+
+                                log.info("尝试读取本地文件流进行 Base64 转换, ID: {}, 物理路径: {}", fileId, absolutePath);
+                                
+                                try (java.io.InputStream is = fileService.getFileStream(tempFile.getStoreType(), tempFile.getOssId(), tempFile.getFilePath())) {
+                                    byte[] data = is.readAllBytes();
+                                    if (data.length == 0) {
+                                        throw new RuntimeException("读取到的流数据为空");
+                                    }
+                                    String base64 = Base64.getEncoder().encodeToString(data);
+                                    String mimeType = "image/jpeg";
+                                    if (StrUtil.isNotBlank(tempFile.getFileExtension())) {
+                                        String inferred = FileUtils.getMimeType("dummy." + tempFile.getFileExtension());
+                                        if (StrUtil.isNotBlank(inferred)) {
+                                            mimeType = inferred;
+                                        }
+                                    }
+                                    return "data:" + mimeType + ";base64," + base64;
+                                }
+                            } catch (Exception ex) {
+                                log.error("通过临时文件(ID:{})转码Base64内容失败: {}", fileId, ex.getMessage(), ex);
+                            }
+                        }
+                    }
+                    
+                    // 2. 如果不是临时文件，或者读取流失败，尝试作为普通 SysOssVo 获取
+                    ISysOssService ossService = sysOssService.getIfAvailable();
+                    if (ossService != null) {
+                        SysOssVo ossVo = ossService.getById(fileId);
+                        if (ossVo != null) {
+                            try {
+                                OssClient storage = OssFactory.instance(ossVo.getService());
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                storage.download(ossVo.getFileName(), baos, null);
+                                byte[] bytes = baos.toByteArray();
+                                String base64 = Base64.getEncoder().encodeToString(bytes);
+                                String mimeType = "image/jpeg";
+                                if (StrUtil.isNotBlank(ossVo.getFileSuffix())) {
+                                    String inferred = FileUtils.getMimeType("dummy." + ossVo.getFileSuffix());
+                                    if (StrUtil.isNotBlank(inferred)) {
+                                        mimeType = inferred;
+                                    }
+                                }
+                                return "data:" + mimeType + ";base64," + base64;
+                            } catch (Exception ex) {
+                                log.error("通过通用OSS管理转码Base64图片失败: {}, 将回退使用URL", fileId, ex);
+                                return ossVo.getUrl();
+                            }
+                        }
+                    }
+                } finally {
+                    // 必须清理，防止污染当前线程后续操作
+                    InterceptorIgnoreHelper.clearIgnoreStrategy();
                 }
             } catch (Exception e) {
-                log.warn("解析ossId转URL失败: {}", ossIdStr, e);
+                log.error("解析ossId转Base64失败: {}, 错误: {}", ossIdStr, e.getMessage(), e);
+                throw new RuntimeException("多模态数据解析失败: " + e.getMessage());
             }
+        }
+        
+        if (StrUtil.isNotBlank(fallbackUrl)) {
+            // 如果是在转换 Base64 场景下，且使用了相对路径，说明转换失败了
+            if (fallbackUrl.startsWith("/")) {
+                log.error("核心逻辑错误: 无法根据 ID 找到文件流，且降级到了无效的相对路径: {}", fallbackUrl);
+                throw new RuntimeException("文件资源转换失败，无法从 ID 解析到 Base64 内容，请检查本地存储是否完整。路径: " + fallbackUrl);
+            }
+            return fallbackUrl;
         }
         return null;
     }
@@ -585,13 +758,13 @@ public class LlmChatNode extends AbstractWorkflowNode {
         try {
             String jsonStr = text;
             if (text.contains("```json")) {
-                java.util.regex.Matcher m = java.util.regex.Pattern.compile("```json\\s*([\\s\\S]*?)\\s*```")
+                Matcher m = Pattern.compile("```json\\s*([\\s\\S]*?)\\s*```")
                         .matcher(text);
                 if (m.find()) {
                     jsonStr = m.group(1);
                 }
             } else if (text.contains("```")) {
-                java.util.regex.Matcher m = java.util.regex.Pattern.compile("```\\s*([\\s\\S]*?)\\s*```").matcher(text);
+                Matcher m = Pattern.compile("```\\s*([\\s\\S]*?)\\s*```").matcher(text);
                 if (m.find()) {
                     jsonStr = m.group(1);
                 }

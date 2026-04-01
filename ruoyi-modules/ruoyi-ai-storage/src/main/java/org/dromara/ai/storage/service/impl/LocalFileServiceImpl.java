@@ -188,12 +188,12 @@ public class LocalFileServiceImpl implements ILocalFileService {
     private void validatePath(String absolutePath) {
         try {
             String basePath = storageProperties.getLocalPath();
-            Path basePathNormalized = Paths.get(basePath).toRealPath();
-            Path filePathNormalized = Paths.get(absolutePath).toRealPath();
+            Path basePathNormalized = Paths.get(basePath).normalize().toAbsolutePath();
+            Path filePathNormalized = Paths.get(absolutePath).normalize().toAbsolutePath();
             if (!filePathNormalized.startsWith(basePathNormalized)) {
                 throw new ServiceException("非法的文件路径访问");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new ServiceException("路径验证失败: " + e.getMessage());
         }
     }

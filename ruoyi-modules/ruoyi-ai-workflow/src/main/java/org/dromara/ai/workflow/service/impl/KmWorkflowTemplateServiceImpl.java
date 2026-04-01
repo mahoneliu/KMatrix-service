@@ -130,11 +130,7 @@ public class KmWorkflowTemplateServiceImpl implements IKmWorkflowTemplateService
         return baseMapper.deleteByIds(ids) > 0;
     }
 
-    /**
-     * 通过模板创建应用
-     */
-    @Override
-    public Long createAppFromTemplate(Long templateId, String appName) { throw new org.dromara.common.core.exception.ServiceException("This method has been moved to App module"); }
+
 
     /**
      * 复制模板为自定义模板

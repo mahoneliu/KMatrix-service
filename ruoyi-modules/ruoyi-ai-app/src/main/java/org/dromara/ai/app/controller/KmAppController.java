@@ -79,6 +79,22 @@ public class KmAppController extends BaseController {
     }
 
     /**
+     * 通过模板创建应用
+     */
+    @SaCheckPermission("ai:app:add")
+    @Log(title = "通过模板创建应用", businessType = BusinessType.INSERT)
+    @PostMapping("/createFromTemplate/{templateId}")
+    public R<Long> createAppFromTemplate(@PathVariable Long templateId,
+            @RequestBody Map<String, String> body) {
+        String appName = body.get("appName");
+        if (appName == null || appName.isBlank()) {
+            throw new org.dromara.common.core.exception.ServiceException(MessageUtils.message("ai.msg.app.name_required"));
+        }
+        Long appId = appService.createAppFromTemplate(templateId, appName);
+        return R.ok(appId);
+    }
+
+    /**
      * 修改AI应用
      */
     @SaCheckPermission("ai:app:edit")

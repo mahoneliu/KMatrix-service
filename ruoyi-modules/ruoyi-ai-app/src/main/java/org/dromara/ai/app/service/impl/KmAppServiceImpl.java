@@ -28,6 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.dromara.common.json.utils.JsonUtils;
 import org.dromara.ai.app.service.IKmAppTokenService;
+import org.dromara.common.core.exception.ServiceException;
+import org.dromara.ai.workflow.service.IKmWorkflowTemplateService;
+import org.dromara.ai.workflow.domain.vo.KmWorkflowTemplateVo;
+import org.dromara.ai.api.domain.vo.config.AppWorkflowConfig;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -54,8 +58,7 @@ public class KmAppServiceImpl implements IKmAppService {
     private final KmChatMessageMapper chatMessageMapper;
     private final KmAppAccessStatMapper appAccessStatMapper;
     private final org.dromara.ai.app.service.IAppCapabilityService appCapabilityService;
-
-
+    private final IKmWorkflowTemplateService templateService;
     /**
      * 查询AI应用
      */
@@ -130,6 +133,36 @@ public class KmAppServiceImpl implements IKmAppService {
             return add.getAppId().toString();
         }
         return null;
+    }
+
+    /**
+     * 通过模板创建应用
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createAppFromTemplate(Long templateId, String appName) {
+        KmWorkflowTemplateVo template = templateService.queryById(templateId);
+        if (template == null) {
+            throw new ServiceException(MessageUtils.message("ai.msg.workflow.template_not_found"));
+        }
+
+        KmAppBo bo = new KmAppBo();
+        bo.setAppName(appName);
+        bo.setDescription(template.getDescription());
+        bo.setIcon(template.getIcon());
+        bo.setAppType(AiAppType.CUSTOM_WORKFLOW.getCode());
+        bo.setStatus("0"); // 草稿状态
+        bo.setGraphData(template.getGraphData());
+        bo.setDslData(template.getDslData());
+        bo.setSourceTemplateId(templateId);
+        bo.setSourceTemplateScope(template.getScopeType());
+
+        if (StringUtils.isNotBlank(template.getWorkflowConfig())) {
+            bo.setWorkflowConfig(JsonUtils.parseObject(template.getWorkflowConfig(), AppWorkflowConfig.class));
+        }
+
+        String appIdStr = this.insertByBo(bo);
+        return Long.valueOf(appIdStr);
     }
 
     /**

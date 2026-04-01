@@ -24,7 +24,7 @@ INSERT IGNORE INTO km_node_definition (
     16, 'AUDIO_ASR', '语音转录', 'mdi-microphone', '#3B82F6', 
     'ai', '调用ASR模型将音频文件转录为文字', '0', '1', 
     '0', '0', 
-    '[{"key": "ossId", "type": "string", "label": "音频附件ID", "required": true, "description": "上游传入的音频OSS ID"}]', 
+    '[{"key": "ossId", "type": "string", "label": "音频附件ID", "required": false, "description": "上游传入的音频OSS ID"},{"key":"files","label":"多模态文件对象","type":"array","required":false,"description":"多模态组件的文件对象列表(优先识别)"},{"key":"ossIds","label":"文件ID列表(ossIds)","type":"array","required":false,"description":"音频的 OSS ID 列表"}]', 
     '[{"key": "transcription", "type": "string", "label": "转录文本", "required": true, "description": "语音转录后的文字内容"}]', 
     1, NOW(), NOW()
 );
@@ -38,7 +38,7 @@ INSERT IGNORE INTO km_node_definition (
     17, 'IMAGE_OCR', '图像识别', 'mdi-text-recognition', '#F59E0B', 
     'ai', '调用视觉大模型或OCR服务识别图像中的内容', '0', '1', 
     '0', '0', 
-    '[{"key": "ossId", "type": "string", "label": "图片附件ID", "required": true, "description": "上游传入的图片OSS ID"}]', 
+    '[{"key": "ossId", "type": "string", "label": "图片附件ID", "required": false, "description": "上游传入的图片OSS ID"},{"key":"files","label":"多模态文件对象","type":"array","required":false,"description":"多模态组件的文件对象列表(优先识别)"},{"key":"ossIds","label":"文件ID列表(ossIds)","type":"array","required":false,"description":"图片的 OSS ID 列表"}]', 
     '[{"key": "text", "type": "string", "label": "识别结果", "required": true, "description": "图像识别出来的文本"}]', 
     1, NOW(), NOW()
 );

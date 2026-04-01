@@ -1,6 +1,6 @@
 package org.dromara.ai.workflow.controller;
 
-import org.dromara.common.core.utils.MessageUtils;
+
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
@@ -125,21 +125,7 @@ public class KmWorkflowTemplateController extends BaseController {
         return toAjax(templateService.deleteWithValidByIds(Arrays.asList(templateIds), true));
     }
 
-    /**
-     * 通过模板创建应用
-     */
-    @SaCheckPermission("ai:app:add")
-    @Log(title = "通过模板创建应用", businessType = BusinessType.INSERT)
-    @PostMapping("/createApp/{templateId}")
-    public R<Long> createAppFromTemplate(@PathVariable Long templateId,
-            @RequestBody Map<String, String> body) {
-        String appName = body.get("appName");
-        if (appName == null || appName.isBlank()) {
-            throw new ServiceException(MessageUtils.message("ai.msg.app.name_required"));
-        }
-        Long appId = templateService.createAppFromTemplate(templateId, appName);
-        return R.ok(appId);
-    }
+
 
     /**
      * 复制模板为自定义模板
