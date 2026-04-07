@@ -2616,7 +2616,7 @@ CREATE TABLE km_node_connection_rule (
     update_time         TIMESTAMP,
     remark              VARCHAR(500),
     PRIMARY KEY (rule_id),
-    CONSTRAINT uk_km_node_conn UNIQUE (source_node_type, target_node_type)
+    CONSTRAINT uk_km_node_conn UNIQUE (source_node_type, target_node_type, rule_type)
 );
 COMMENT ON TABLE km_node_connection_rule IS '节点连接规则表';
 COMMENT ON COLUMN km_node_connection_rule.rule_id IS '规则ID';

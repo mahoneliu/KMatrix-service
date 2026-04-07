@@ -103,6 +103,7 @@ public class KmAppServiceImpl implements IKmAppService {
         lqw.like(StringUtils.isNotBlank(bo.getAppName()), KmApp::getAppName, bo.getAppName());
         lqw.eq(StringUtils.isNotBlank(bo.getAppType()), KmApp::getAppType, bo.getAppType());
         lqw.eq(StringUtils.isNotBlank(bo.getStatus()), KmApp::getStatus, bo.getStatus());
+        lqw.eq(StringUtils.isNotBlank(bo.getUseType()), KmApp::getUseType, bo.getUseType());
         return lqw;
     }
 

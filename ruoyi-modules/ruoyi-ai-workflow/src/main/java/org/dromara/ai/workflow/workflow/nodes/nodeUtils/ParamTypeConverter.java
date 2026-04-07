@@ -77,9 +77,14 @@ public class ParamTypeConverter {
                     // 必填参数抛异常
                     throw e;
                 } else {
-                    // 非必填参数使用默认值
-                    log.warn("参数 [{}] 转换失败，使用默认值: {}", key, def.getDefaultValue());
-                    result.put(key, parseDefaultValue(def.getDefaultValue(), targetType));
+                    // 非必填参数：若有默认值则用默认值，否则置 null 让节点自行兜底
+                    if (def.getDefaultValue() != null && !def.getDefaultValue().isEmpty()) {
+                        log.warn("参数 [{}] 转换失败，使用默认值: {}", key, def.getDefaultValue());
+                        result.put(key, parseDefaultValue(def.getDefaultValue(), targetType));
+                    } else {
+                        log.warn("参数 [{}] 转换失败，置为 null 由节点兜底处理", key);
+                        result.put(key, null);
+                    }
                 }
             }
         }
@@ -249,7 +254,13 @@ public class ParamTypeConverter {
                 throw new RuntimeException("无法将字符串解析为对象: " + str);
             }
         }
-        throw new RuntimeException("无法转换为对象类型");
+        // 尝试将其他类型（POJO、List 等）序列化后再反序列化为 Map
+        try {
+            String json = OBJECT_MAPPER.writeValueAsString(value);
+            return OBJECT_MAPPER.readValue(json, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("无法转换为对象类型: " + value.getClass().getSimpleName(), e);
+        }
     }
 
     @SuppressWarnings("unchecked")

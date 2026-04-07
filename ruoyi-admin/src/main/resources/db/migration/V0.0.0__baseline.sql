@@ -3161,10 +3161,10 @@ VALUES
     ('2100', '大模型', '2000', '1', 'model', null, '', '1', '0', 'M', '0', '0', '', 'mdi-robot-outline', 103, 1, now(), null, null, '大模型管理目录'),
     
     -- 三级菜单：大模型下的具体功能
-    ('2101', '模型管理', '2100', '1', 'model-manager', 'ai/model-manager/index', '', '1', '0', 'C', '0', '0', 'ai:model:list', 'mdi-robot', 103, 1, now(), null, null, '模型配置管理'),
-    ('2102', 'MCP服务', '2100', '2', 'mcp-manager', 'ai/mcp-manager/index', '', '1', '0', 'C', '0', '0', 'ai:mcpServer:list', 'mdi-cloud-braces', 103, 1, now(), null, null, 'MCP Server管理'),
-    ('2103', '工具管理', '2100', '3', 'tool-manager', 'ai/tool-manager/index', '', '1', '0', 'C', '0', '0', 'ai:builtinTool:list', 'mdi-hammer-wrench', 103, 1, now(), null, null, '内置Python工具管理'),
-    ('2104', '技能管理', '2100', '4', 'skill-manager', 'ai/skill-manager/index', '', '1', '0', 'C', '0', '0', 'ai:skill:list', 'mdi-brain', 103, 1, now(), null, null, '技能抽象管理'),
+    ('2101', '模型管理', '2100', '1', 'model-manager', 'ai/model/model-manager/index', '', '1', '0', 'C', '0', '0', 'ai:model:list', 'mdi-robot', 103, 1, now(), null, null, '模型配置管理'),
+    ('2102', 'MCP服务', '2100', '2', 'mcp-manager', 'ai/model/mcp-manager/index', '', '1', '0', 'C', '0', '0', 'ai:mcpServer:list', 'mdi-cloud-braces', 103, 1, now(), null, null, 'MCP Server管理'),
+    ('2103', '工具管理', '2100', '3', 'tool-manager', 'ai/model/tool-manager/index', '', '1', '0', 'C', '0', '0', 'ai:builtinTool:list', 'mdi-hammer-wrench', 103, 1, now(), null, null, '内置Python工具管理'),
+    ('2104', '技能管理', '2100', '4', 'skill-manager', 'ai/model/skill-manager/index', '', '1', '0', 'C', '0', '0', 'ai:skill:list', 'mdi-brain', 103, 1, now(), null, null, '技能抽象管理'),
     
     -- 大模型-模型管理按钮权限
     ('2111', '模型查询', '2101', '1', '', '', '', '1', '0', 'F', '0', '0', 'ai:model:query', '#', 103, 1, now(), null, null, ''),
@@ -3196,9 +3196,10 @@ VALUES
     ('2200', '知识库', '2000', '2', 'knowledge', null, '', '1', '0', 'M', '0', '0', '', 'mdi-database', 103, 1, now(), null, null, '知识库管理目录'),
     
     -- 三级菜单：知识库下的具体功能
-    ('2201', '知识库管理', '2200', '1', 'knowledge-manager', 'ai/knowledge-manager/index', '', '1', '0', 'C', '0', '0', 'ai:knowledge:list', 'mdi-database-outline', 103, 1, now(), null, null, '知识库列表管理'),
-    ('2202', '知识库详情', '2200', '2', 'knowledge-detail', 'ai/knowledge-detail/index', '', '1', '1', 'C', '1', '0', 'ai:knowledge:view', 'mdi-database-search', 103, 1, now(), null, null, '知识库详情页面（隐藏）'),
-    ('2203', '分块管理', '2200', '3', 'chunk-manager', 'ai/chunk-manager/index', '', '1', '1', 'C', '1', '0', 'ai:chunkManager:list', 'mdi-file-document-multiple', 103, 1, now(), null, null, '文档分块管理（隐藏）'),
+    ('2201', '知识库管理', '2200', '1', 'knowledge-manager', 'ai/knowledge/knowledge-manager/index', '', '1', '0', 'C', '0', '0', 'ai:knowledge:list', 'mdi-database-outline', 103, 1, now(), null, null, '知识库列表管理'),
+    ('2202', '知识库详情', '2200', '2', 'knowledge-detail', 'ai/knowledge/knowledge-detail/index', '', '1', '1', 'C', '1', '0', 'ai:knowledge:view', 'mdi-database-search', 103, 1, now(), null, null, '知识库详情页面（隐藏）'),
+    ('2203', '分块管理', '2200', '3', 'chunk-manager', 'ai/knowledge/chunk-manager/index', '', '1', '1', 'C', '1', '0', 'ai:chunkManager:list', 'mdi-file-document-multiple', 103, 1, now(), null, null, '文档分块管理（隐藏）'),
+    ('2204', '文档上传', '2200', '4', 'document-upload', 'ai/knowledge/document-upload/index', '', '1', '1', 'C', '1', '0', 'ai:document:upload', 'mdi-file-upload', 103, 1, now(), null, null, '文档上传页面（隐藏）'),
     
     -- 知识库-知识库管理按钮权限
     ('2211', '知识库查询', '2201', '1', '', '', '', '1', '0', 'F', '0', '0', 'ai:knowledge:query', '#', 103, 1, now(), null, null, ''),
@@ -3213,10 +3214,10 @@ VALUES
     ('2300', '工作流', '2000', '3', 'workflow', null, '', '1', '0', 'M', '0', '0', '', 'mdi-workflow', 103, 1, now(), null, null, '工作流管理目录'),
     
     -- 三级菜单：工作流下的具体功能
-    ('2301', '工作流模板', '2300', '1', 'workflow-template', 'ai/workflow-template/index', '', '1', '0', 'C', '0', '0', 'ai:workflowTemplate:list', 'mdi-file-tree', 103, 1, now(), null, null, '工作流模板管理'),
-    ('2302', '节点定义', '2300', '2', 'node-definition', 'ai/node-definition/index', '', '1', '1', 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi-sitemap', 103, 1, now(), null, null, '工作流节点定义'),
-    ('2303', '工作流编排', '2300', '3', 'workflow-editor', 'ai/workflow/index', '', '1', '1', 'C', '1', '0', 'ai:app:workflow', 'mdi-graph', 103, 1, now(), null, null, '工作流编排页面（隐藏）'),
-    ('2304', '模板编排', '2300', '4', 'template-editor', 'ai/template-editor/index', '', '1', '1', 'C', '1', '0', 'ai:templateEditor:view', 'mdi-file-edit', 103, 1, now(), null, null, '模板工作流编排（隐藏）'),
+    ('2301', '工作流模板', '2300', '1', 'workflow-template', 'ai/workflow/workflow-template/index', '', '1', '0', 'C', '0', '0', 'ai:workflowTemplate:list', 'mdi-file-tree', 103, 1, now(), null, null, '工作流模板管理'),
+    ('2302', '节点定义', '2300', '2', 'node-definition', 'ai/workflow/node-definition/index', '', '1', '1', 'C', '0', '0', 'ai:nodeDefinition:list', 'mdi-sitemap', 103, 1, now(), null, null, '工作流节点定义'),
+    ('2303', '工作流编排', '2300', '3', 'workflow-editor', 'ai/workflow/editor/index', '', '1', '1', 'C', '1', '0', 'ai:app:workflow', 'mdi-graph', 103, 1, now(), null, null, '工作流编排页面（隐藏）'),
+    ('2304', '模板编排', '2300', '4', 'template-editor', 'ai/workflow/template-editor/index', '', '1', '1', 'C', '1', '0', 'ai:templateEditor:view', 'mdi-file-edit', 103, 1, now(), null, null, '模板工作流编排（隐藏）'),
     
     -- 工作流-工作流模板按钮权限
     ('2311', '模板查询', '2301', '1', '', '', '', '1', '0', 'F', '0', '0', 'ai:workflowTemplate:query', '#', 103, 1, now(), null, null, ''),
@@ -3240,11 +3241,11 @@ VALUES
     ('2400', '应用管理', '2000', '4', 'app', null, '', '1', '0', 'M', '0', '0', '', 'mdi-application', 103, 1, now(), null, null, '应用管理目录'),
     
     -- 三级菜单：应用管理下的具体功能
-    ('2401', '应用列表', '2400', '1', 'app-manager', 'ai/app-manager/index', '', '1', '0', 'C', '0', '0', 'ai:app:list', 'mdi-apps', 103, 1, now(), null, null, 'AI应用列表管理'),
-    ('2402', '应用详情', '2400', '2', 'app-detail', 'ai/app-detail/index', '', '1', '1', 'C', '1', '0', 'ai:appDetail:view', 'mdi-application-outline', 103, 1, now(), null, null, '应用详情页面（隐藏）'),
-    ('2403', 'AI对话', '2400', '3', 'chat', 'ai/chat/index', '', '1', '1', 'C', '1', '0', 'ai:chat:view', 'mdi-chat', 103, 1, now(), null, null, 'AI聊天对话页面（隐藏）'),
-    ('2404', '数据源管理', '2400', '4', 'datasource-manager', 'ai/datasource-manager/index', '', '1', '1', 'C', '0', '0', 'ai:datasourceManager:list', 'mdi-database-plus', 103, 1, now(), null, null, '数据源管理'),
-    ('2405', '限流配置', '2400', '5', 'rateLimit', 'ai/rateLimit/index', '', '1', '0', 'C', '0', '0', 'ai:rateLimit:list', 'mdi-timer-sand', 103, 1, now(), null, null, 'AI对话频率与Token限制管理'),
+    ('2401', '应用列表', '2400', '1', 'app-manager', 'ai/app/app-manager/index', '', '1', '0', 'C', '0', '0', 'ai:app:list', 'mdi-apps', 103, 1, now(), null, null, 'AI应用列表管理'),
+    ('2402', '应用详情', '2400', '2', 'app-detail', 'ai/app/app-detail/index', '', '1', '1', 'C', '1', '0', 'ai:appDetail:view', 'mdi-application-outline', 103, 1, now(), null, null, '应用详情页面（隐藏）'),
+    ('2403', 'AI对话', '2400', '3', 'chat', 'ai/app/chat/index', '', '1', '1', 'C', '1', '0', 'ai:chat:view', 'mdi-chat', 103, 1, now(), null, null, 'AI聊天对话页面（隐藏）'),
+    ('2404', '数据源管理', '2400', '4', 'datasource-manager', 'ai/workflow/datasource-manager/index', '', '1', '1', 'C', '0', '0', 'ai:datasourceManager:list', 'mdi-database-plus', 103, 1, now(), null, null, '数据源管理'),
+    ('2405', '限流配置', '2400', '5', 'rateLimit', 'ai/app/rate-limit/index', '', '1', '0', 'C', '0', '0', 'ai:rateLimit:list', 'mdi-timer-sand', 103, 1, now(), null, null, 'AI对话频率与Token限制管理'),
 
     -- 应用管理-应用列表按钮权限
     ('2411', '应用查询', '2401', '1', '', '', '', '1', '0', 'F', '0', '0', 'ai:app:query', '#', 103, 1, now(), null, null, ''),

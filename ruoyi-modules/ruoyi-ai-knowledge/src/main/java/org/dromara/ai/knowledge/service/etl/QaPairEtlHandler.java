@@ -15,6 +15,7 @@ import org.dromara.ai.knowledge.domain.KmDocument;
 import org.dromara.ai.knowledge.domain.bo.ChunkResult;
 import org.dromara.ai.api.enums.FileStoreType;
 import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.common.core.utils.MessageUtils;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -57,7 +58,7 @@ public class QaPairEtlHandler implements EtlHandler {
         // 1. 读取 Excel/CSV 文件 (返回原始行数据，包括可能的表头)
         List<List<String>> rawRows = readExcelFileAsRows(document);
         if (CollUtil.isEmpty(rawRows)) {
-            throw new RuntimeException("QA 文件内容为空");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.content_empty"));
         }
 
         // 2. 检测是否需要跳过表头
@@ -65,7 +66,7 @@ public class QaPairEtlHandler implements EtlHandler {
         log.info("Header detection: startIndex={}, totalRows={}", startIndex, rawRows.size());
 
         if (rawRows.size() <= startIndex) {
-            throw new RuntimeException("QA 文件没有有效数据行");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.no_valid_data"));
         }
 
         // 3. 处理每行数据 (第一列=问题，第二列=答案)
@@ -141,7 +142,7 @@ public class QaPairEtlHandler implements EtlHandler {
             }
         } catch (Exception e) {
             log.error("Failed to read QA file: {}", document.getId(), e);
-            throw new RuntimeException("QA 文件读取失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.file_read_failed", e.getMessage()));
         }
     }
 

@@ -63,24 +63,25 @@ public class KmDataset extends BaseEntity {
     private String sourceType;
 
     /**
-     * 最小分块大小 (token)
+     * 支持的文件格式 (逗号分隔,如: "pdf,docx,txt" 或 "*" 表示全部)
+     */
+    private String allowedFileTypes;
+
+    /**
+     * 最小分块大小 (字符数)
      */
     private Integer minChunkSize;
 
     /**
-     * 最大分块大小 (token)
+     * 最大分块大小 (字符数)
      */
     private Integer maxChunkSize;
 
     /**
-     * 分块重叠大小 (token)
+     * 分块重叠大小 (字符数)
      */
     private Integer chunkOverlap;
 
-    /**
-     * 支持的文件格式 (逗号分隔,如: "pdf,docx,txt" 或 "*" 表示全部)
-     */
-    private String allowedFileTypes;
 
     /**
      * 子块大小 (字符数), NULL 表示使用系统默认子块大小

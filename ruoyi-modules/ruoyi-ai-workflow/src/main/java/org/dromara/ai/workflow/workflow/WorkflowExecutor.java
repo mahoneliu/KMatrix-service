@@ -44,6 +44,8 @@ public class WorkflowExecutor {
      */
     public Map<String, Object> executeWorkflowDebug(WorkflowExecutionReq req, SseEmitter emitter) throws Exception { return executeWorkflow(req, emitter, true); }
 
+
+
     /**
      * 执行工作流（内部统一实现）
      *
@@ -78,6 +80,8 @@ public class WorkflowExecutor {
         globalState.put(WorkflowState.KEY_USER_ID, req.getUserId());
         globalState.put(WorkflowState.KEY_SHOW_EXECUTION_INFO, showExecutionInfo);
         globalState.put(WorkflowState.KEY_TEMP_FILE_IDS, req.getTempFileIds());
+        globalState.put(WorkflowState.KEY_DOCUMENT_ID, req.getDocumentId());
+        log.info("req.getDocumentId():{}",req.getDocumentId());
 
         // 初始化app参数
         // globalState.put(ChatWorkflowState.KEY_APP, app);
@@ -88,6 +92,10 @@ public class WorkflowExecutor {
 
         Map<String, Object> initData = new HashMap<>();
         initData.put("globalState", globalState);
+        // 同时将 documentId 放到顶层，确保 LangGraph4j 能正确传递
+        if (req.getDocumentId() != null) {
+            initData.put(WorkflowState.KEY_DOCUMENT_ID, req.getDocumentId());
+        }
 
         WorkflowState chatWorkflowState = new WorkflowState(initData);
 
@@ -144,6 +152,9 @@ public class WorkflowExecutor {
     }
 
     private void sendSseEvent(SseEmitter emitter, SseEventType eventType, Map<String, Object> data) {
+        if (emitter == null) {
+            return;
+        }
         try {
             emitter.send(SseEmitter.event().name(eventType.getEventName()).data(data));
         } catch (Exception e) {

@@ -13,4 +13,5 @@ public class WorkflowExecutionReq {
     private Long sessionId;
     private Long userId;
     private java.util.List<Long> tempFileIds;
+    private Long documentId;
 }

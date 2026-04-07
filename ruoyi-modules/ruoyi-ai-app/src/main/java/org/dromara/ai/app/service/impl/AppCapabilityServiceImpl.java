@@ -68,6 +68,8 @@ public class AppCapabilityServiceImpl implements IAppCapabilityService {
 
                         if ("FILE_STORAGE".equals(finalType)) {
                             capabilities.add("file-storage");
+                        } else if ("FILE_PARSE".equals(finalType)) {
+                            capabilities.add("file-parse");
                         } else if ("AUDIO_ASR".equals(finalType)) {
                             capabilities.add("audio");
                             capabilities.add("audio-asr");

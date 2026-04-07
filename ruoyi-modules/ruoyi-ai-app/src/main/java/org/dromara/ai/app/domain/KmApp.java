@@ -132,6 +132,11 @@ public class KmApp extends BaseEntity {
     private String sourceTemplateScope;
 
     /**
+     * 应用用途（1-chat对话 2-fileProcess文件处理）
+     */
+    private String useType;
+
+    /**
      * 删除标志
      */
     private String delFlag;

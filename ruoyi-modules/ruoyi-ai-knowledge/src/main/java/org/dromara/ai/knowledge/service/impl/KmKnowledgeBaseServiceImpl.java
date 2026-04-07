@@ -167,6 +167,16 @@ public class KmKnowledgeBaseServiceImpl implements IKmKnowledgeBaseService {
         webLink.setChunkOverlap(50);
         // 网页链接不需要文件上传,无需设置 allowedFileTypes
         datasetMapper.insert(webLink);
+
+        // 工作流编排数据集
+        KmDataset workflowFile = new KmDataset();
+        workflowFile.setKbId(kbId);
+        workflowFile.setName("工作流编排");
+        workflowFile.setProcessType(DatasetProcessType.WORKFLOW_FILE);
+        workflowFile.setSourceType(KmDataset.SourceType.FILE_UPLOAD);
+        workflowFile.setIsSystem(true);
+        workflowFile.setAllowedFileTypes("*");
+        datasetMapper.insert(workflowFile);
     }
 
     /**

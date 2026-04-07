@@ -83,6 +83,11 @@ public class KmNodeDefinition extends BaseEntity {
     private String allowCustomOutputParams;
 
     /**
+     * 是否需要AI大模型高级配置选项 (0否/1是)
+     */
+    private String requireAiConfig;
+
+    /**
      * 输入参数定义 (JSON Array)
      */
     @TableField(typeHandler = NodeParamListTypeHandler.class)

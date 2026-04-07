@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 数据集Service业务层处理
@@ -73,6 +75,7 @@ public class KmDatasetServiceImpl implements IKmDatasetService {
     @Transactional(rollbackFor = Exception.class)
     public Long insertByBo(KmDatasetBo bo) {
         KmDataset add = MapstructUtils.convert(bo, KmDataset.class);
+        add.setConfig(buildConfig(bo));
         boolean flag = baseMapper.insert(add) > 0;
         if (flag) {
             return add.getId();
@@ -82,12 +85,43 @@ public class KmDatasetServiceImpl implements IKmDatasetService {
 
     /**
      * 修改数据集
+     * 注意：MyBatis-Plus updateById 对带 typeHandler 的字段不可靠，
+     * 改用专用 Mapper 方法显式更新 config 列
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean updateByBo(KmDatasetBo bo) {
         KmDataset update = MapstructUtils.convert(bo, KmDataset.class);
-        return baseMapper.updateById(update) > 0;
+        // 先更新普通字段（config 设为 null 避免 updateById 误操作）
+        update.setConfig(null);
+        baseMapper.updateById(update);
+        // 再单独更新 config，确保 typeHandler 正确处理
+        Map<String, Object> newConfig = buildConfig(bo);
+        baseMapper.updateConfig(bo.getId(), newConfig);
+        return true;
+    }
+
+    /**
+     * 根据 Bo 构建 config Map：
+     * 保留现有 config 中其他字段，合并 workflowId / maxConcurrency
+     */
+    private Map<String, Object> buildConfig(KmDatasetBo bo) {
+        Map<String, Object> config = bo.getConfig() != null
+                ? new HashMap<>(bo.getConfig())
+                : new HashMap<>();
+        // 统一使用 appId key（调度器读取 config.appId）
+        config.remove("workflowId");
+        if (bo.getWorkflowId() != null) {
+            config.put("appId", bo.getWorkflowId());
+        } else {
+            config.remove("appId");
+        }
+        if (bo.getMaxConcurrency() != null) {
+            config.put("maxConcurrency", bo.getMaxConcurrency());
+        } else {
+            config.remove("maxConcurrency");
+        }
+        return config;
     }
 
     /**

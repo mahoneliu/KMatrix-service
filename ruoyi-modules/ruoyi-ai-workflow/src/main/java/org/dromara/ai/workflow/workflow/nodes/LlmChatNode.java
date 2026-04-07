@@ -45,25 +45,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import org.dromara.common.oss.core.OssClient;
-import org.dromara.common.oss.factory.OssFactory;
-import org.dromara.common.core.utils.file.FileUtils;
-import java.io.ByteArrayOutputStream;
-import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.dromara.system.service.ISysOssService;
-import org.dromara.system.domain.vo.SysOssVo;
-import org.dromara.ai.storage.domain.KmTempFile;
-import org.dromara.ai.storage.service.IKmFileService;
-import org.dromara.common.mybatis.helper.DataPermissionHelper;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.AudioContent;
-import com.baomidou.mybatisplus.core.plugins.IgnoreStrategy;
-import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
 import org.springframework.beans.factory.ObjectProvider;
+import org.dromara.common.core.utils.MessageUtils;
+import org.dromara.ai.workflow.workflow.nodes.nodeUtils.WorkflowNodeUtils;
 
 /**
  * LLM对话节点
@@ -82,8 +72,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
     private final ModelBuilder modelBuilder;
     private final ObjectProvider<IChatMessageProvider> chatMessageProvider;
     private final IToolProvider toolProviderService;
-    private final ObjectProvider<ISysOssService> sysOssService;
-    private final ObjectProvider<IKmFileService> kmFileService;
+    private final WorkflowNodeUtils workflowNodeUtils;
 
     /** 默认历史消息条数限制 */
     private static final int DEFAULT_HISTORY_LIMIT = 10;
@@ -140,7 +129,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
         String userInput = (String) context.getInput("userInput");
         if (userInput == null) {
-            throw new RuntimeException("userInput不能为空");
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.missing_user_input"));
         }
         String chatContext = (String) context.getInput("chatContext");
         log.info("LLM_CHAT节点 - : chatContext={}", chatContext);
@@ -567,7 +556,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             if ("undefined".equals(fileIdRef)) {
                                 fileIdRef = null;
                             }
-                            String url = resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"));
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "image/jpeg");
                             if (StrUtil.isNotBlank(url)) {
                                 contents.add(ImageContent.from(url));
                             }
@@ -583,11 +572,17 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             if ("undefined".equals(fileIdRef)) {
                                 fileIdRef = null;
                             }
-                            String url = resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"));
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "audio/mpeg");
                             try {
                                 contents.add(AudioContent.from(url));
                             } catch (Throwable e) {
                                 log.warn("LC4J当前版本可能不支持AudioContent: {}", e.getMessage());
+                            }
+                        } else if ("file".equals(type)) {
+                            // 通用文件：将文件名作为文本提示，实际内容由 FILE_PARSE 节点处理
+                            String fileName = obj.getStr("name");
+                            if (StrUtil.isNotBlank(fileName)) {
+                                textPart.append("[文件: ").append(fileName).append("]");
                             }
                         }
                     }
@@ -619,12 +614,12 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             ? file.getTempFileId().toString() 
                             : (file.getOssId() != null ? file.getOssId().toString() : null);
                     if ("image".equals(file.getType())) {
-                        String url = resolveOssUrlOrBase64(fileIdRef, file.getUrl());
+                        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, file.getUrl(), "image/jpeg");
                         if (StrUtil.isNotBlank(url)) {
                             contents.add(ImageContent.from(url));
                         }
                     } else if ("audio".equals(file.getType())) {
-                        String url = resolveOssUrlOrBase64(fileIdRef, file.getUrl());
+                        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, file.getUrl(), "audio/mpeg");
                         if (StrUtil.isNotBlank(url)) {
                             try {
                                 contents.add(AudioContent.from(url));
@@ -641,6 +636,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 messages.add(UserMessage.from(contents));
                 log.info("LLM_CHAT节点 - : buildMessages 工作流文件多模态转化成功");
             } else {
+                if (StrUtil.isBlank(fullText)) {
+                    throw new RuntimeException(MessageUtils.message("llm.chat.input.empty"));
+                }
                 messages.add(UserMessage.from(fullText.toString()));
                 log.info("LLM_CHAT节点 - : buildMessages 普通文本转化完成");
             }
@@ -648,97 +646,6 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
         return messages;
     }
-
-    private String resolveOssUrlOrBase64(String ossIdStr, String fallbackUrl) {
-        if (StrUtil.isNotBlank(ossIdStr) && !"undefined".equals(ossIdStr)) {
-            try {
-                Long fileId = Long.parseLong(ossIdStr);
-                
-                // 开启最强力的全局忽略：忽略数据权限和多租户，确保异步线程(无租户Context)也能读到数据
-                InterceptorIgnoreHelper.handle(IgnoreStrategy.builder().dataPermission(true).tenantLine(true).build());
-                try {
-                    // 1. 优先尝试作为聊天产生的 KmTempFile 获取
-                    IKmFileService fileService = kmFileService.getIfAvailable();
-                    if (fileService != null) {
-                        KmTempFile tempFile = fileService.getTempFile(fileId);
-                        if (tempFile != null) {
-                            String absolutePath = "未知路径";
-                            try {
-                                // 尝试探测绝对路径用于日志诊断
-                                try {
-                                    java.lang.reflect.Method getAbs = fileService.getClass().getMethod("getAbsolutePath", String.class);
-                                    absolutePath = (String) getAbs.invoke(fileService, tempFile.getFilePath());
-                                } catch (Exception ignore) {}
-
-                                log.info("尝试读取本地文件流进行 Base64 转换, ID: {}, 物理路径: {}", fileId, absolutePath);
-                                
-                                try (java.io.InputStream is = fileService.getFileStream(tempFile.getStoreType(), tempFile.getOssId(), tempFile.getFilePath())) {
-                                    byte[] data = is.readAllBytes();
-                                    if (data.length == 0) {
-                                        throw new RuntimeException("读取到的流数据为空");
-                                    }
-                                    String base64 = Base64.getEncoder().encodeToString(data);
-                                    String mimeType = "image/jpeg";
-                                    if (StrUtil.isNotBlank(tempFile.getFileExtension())) {
-                                        String inferred = FileUtils.getMimeType("dummy." + tempFile.getFileExtension());
-                                        if (StrUtil.isNotBlank(inferred)) {
-                                            mimeType = inferred;
-                                        }
-                                    }
-                                    return "data:" + mimeType + ";base64," + base64;
-                                }
-                            } catch (Exception ex) {
-                                log.error("通过临时文件(ID:{})转码Base64内容失败: {}", fileId, ex.getMessage(), ex);
-                            }
-                        }
-                    }
-                    
-                    // 2. 如果不是临时文件，或者读取流失败，尝试作为普通 SysOssVo 获取
-                    ISysOssService ossService = sysOssService.getIfAvailable();
-                    if (ossService != null) {
-                        SysOssVo ossVo = ossService.getById(fileId);
-                        if (ossVo != null) {
-                            try {
-                                OssClient storage = OssFactory.instance(ossVo.getService());
-                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                                storage.download(ossVo.getFileName(), baos, null);
-                                byte[] bytes = baos.toByteArray();
-                                String base64 = Base64.getEncoder().encodeToString(bytes);
-                                String mimeType = "image/jpeg";
-                                if (StrUtil.isNotBlank(ossVo.getFileSuffix())) {
-                                    String inferred = FileUtils.getMimeType("dummy." + ossVo.getFileSuffix());
-                                    if (StrUtil.isNotBlank(inferred)) {
-                                        mimeType = inferred;
-                                    }
-                                }
-                                return "data:" + mimeType + ";base64," + base64;
-                            } catch (Exception ex) {
-                                log.error("通过通用OSS管理转码Base64图片失败: {}, 将回退使用URL", fileId, ex);
-                                return ossVo.getUrl();
-                            }
-                        }
-                    }
-                } finally {
-                    // 必须清理，防止污染当前线程后续操作
-                    InterceptorIgnoreHelper.clearIgnoreStrategy();
-                }
-            } catch (Exception e) {
-                log.error("解析ossId转Base64失败: {}, 错误: {}", ossIdStr, e.getMessage(), e);
-                throw new RuntimeException("多模态数据解析失败: " + e.getMessage());
-            }
-        }
-        
-        if (StrUtil.isNotBlank(fallbackUrl)) {
-            // 如果是在转换 Base64 场景下，且使用了相对路径，说明转换失败了
-            if (fallbackUrl.startsWith("/")) {
-                log.error("核心逻辑错误: 无法根据 ID 找到文件流，且降级到了无效的相对路径: {}", fallbackUrl);
-                throw new RuntimeException("文件资源转换失败，无法从 ID 解析到 Base64 内容，请检查本地存储是否完整。路径: " + fallbackUrl);
-            }
-            return fallbackUrl;
-        }
-        return null;
-    }
-
 
     @Override
     public String getNodeType() {

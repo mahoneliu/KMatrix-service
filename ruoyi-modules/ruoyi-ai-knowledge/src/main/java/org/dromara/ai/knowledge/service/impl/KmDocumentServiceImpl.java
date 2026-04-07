@@ -23,6 +23,7 @@ import org.dromara.ai.knowledge.mapper.KmDocumentMapper;
 import org.dromara.ai.storage.domain.KmTempFile;
 import org.dromara.ai.storage.domain.dto.KmFileResult;
 import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.ai.knowledge.service.*;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.mybatis.core.page.PageQuery;
@@ -91,7 +92,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             return documentMapper.selectVoById(docId);
         } catch (IOException e) {
             log.error("Failed to upload document", e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.upload_failed", e.getMessage()));
         }
     }
 
@@ -116,7 +117,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         // 3. 获取知识库ID
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
-            throw new RuntimeException("数据集不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
         }
 
         // 4. 创建文档记录
@@ -216,7 +217,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         // 0. 获取知识库ID
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
-            throw new RuntimeException("数据集不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
         }
 
         // 1. 创建文档记录
@@ -251,7 +252,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         // 0. 获取知识库ID
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
-            throw new RuntimeException("数据集不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
         }
 
         // 1. 创建文档记录
@@ -285,7 +286,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         // 0. 获取知识库ID
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
-            throw new RuntimeException("数据集不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
         }
 
         List<KmDocument> documents = new java.util.ArrayList<>();
@@ -489,13 +490,13 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         try {
             KmTempFile tempFile = kmFileService.getTempFile(bo.getTempFileId());
             if (tempFile == null) {
-                throw new RuntimeException("临时文件不存在");
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.temp_file_not_found"));
             }
             String tempPath = tempFile.getFilePath();
 
             String content = parseFileContent(tempPath);
             if (content == null || content.isBlank()) {
-                throw new RuntimeException("文件内容为空");
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.content_empty"));
             }
 
             List<String> chunks;
@@ -505,12 +506,12 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
                 chunks = splitTextRecursive(content, chunkSize, overlap);
             } else if ("CUSTOM".equals(bo.getChunkStrategy())) {
                 if (bo.getSeparators() == null || bo.getSeparators().isEmpty()) {
-                    throw new RuntimeException("自定义分块需要指定分隔符");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.custom_chunk_separator_required"));
                 }
                 String separator = bo.getSeparators().get(0);
                 chunks = splitByCustomSeparator(content, separator);
             } else {
-                throw new RuntimeException("不支持的分块策略: " + bo.getChunkStrategy());
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.unsupported_chunk_strategy", bo.getChunkStrategy()));
             }
 
             List<ChunkPreviewVo> result = new ArrayList<>();
@@ -525,7 +526,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             return result;
         } catch (Exception e) {
             log.error("Failed to preview chunks", e);
-            throw new RuntimeException("分块预览失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.chunk_preview_failed", e.getMessage()));
         }
     }
 
@@ -561,7 +562,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             }
         } catch (Exception e) {
             log.error("Failed to parse file: {}", filePath, e);
-            throw new RuntimeException("文件解析失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.file_parse_failed", e.getMessage()));
         }
     }
 
@@ -604,18 +605,18 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         try {
             KmDataset dataset = datasetMapper.selectById(bo.getDatasetId());
             if (dataset == null) {
-                throw new RuntimeException("数据集不存在");
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
             }
 
             KmTempFile tempRecord = kmFileService.getTempFile(bo.getTempFileId());
             if (tempRecord == null) {
-                throw new RuntimeException("临时文件不存在");
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.temp_file_not_found"));
             }
             String tempPath = tempRecord.getFilePath();
 
             File tempFile = new File(tempPath);
             if (!tempFile.exists()) {
-                throw new RuntimeException("临时文件不存在: " + tempPath);
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.temp_file_not_found"));
             }
 
             String filename = tempFile.getName();
@@ -670,7 +671,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             return documentMapper.selectVoById(docId);
         } catch (Exception e) {
             log.error("Failed to submit chunks", e);
-            throw new RuntimeException("分块提交失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.chunk_submit_failed", e.getMessage()));
         }
     }
 
@@ -678,9 +679,34 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
     public void downloadDocument(Long id, HttpServletResponse response) {
         KmDocument doc = documentMapper.selectById(id);
         if (doc == null) {
-            throw new RuntimeException("文档不存在");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.document_not_found"));
         }
         kmFileService.download(doc.getStoreType(), doc.getOssId(), doc.getFilePath(), doc.getOriginalFilename(), response);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean retryWorkflowDocument(Long documentId) {
+        KmDocument doc = documentMapper.selectById(documentId);
+        if (doc == null) {
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.document_not_found"));
+        }
+        // 只有处于失败状态(3)的文档才允许重跑
+        if (doc.getEmbeddingStatus() == null || doc.getEmbeddingStatus() != 3) {
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.document_not_failed"));
+        }
+
+        // 1. 清理该文档已产生的切片（防止重复向量化）
+        etlService.deleteChunksByDocumentId(documentId);
+
+        // 2. 将状态重置为 0（待处理），清空错误信息
+        KmDocument update = new KmDocument();
+        update.setId(documentId);
+        update.setEmbeddingStatus(0);
+        update.setErrorMsg(null);
+        update.setStatusMeta(StatusMetaUtils.updateStateTime(
+                doc.getStatusMeta(), StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING));
+        return documentMapper.updateById(update) > 0;
     }
 
     private TempFileVo convertToTempFileVo(KmTempFile tempFile) {
@@ -694,3 +720,4 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         return vo;
     }
 }
+

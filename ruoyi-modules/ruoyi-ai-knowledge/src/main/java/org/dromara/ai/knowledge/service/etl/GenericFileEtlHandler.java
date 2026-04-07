@@ -12,9 +12,9 @@ import org.dromara.ai.knowledge.domain.KmDataset;
 import org.dromara.ai.knowledge.domain.KmDocument;
 import org.dromara.ai.knowledge.domain.KmDocumentChunk;
 import org.dromara.ai.knowledge.domain.bo.ChunkResult;
-import org.dromara.ai.api.enums.FileStoreType;
 import org.dromara.ai.knowledge.service.IKmChunkingConfigService;
 import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.common.core.utils.MessageUtils;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -102,7 +102,7 @@ public class GenericFileEtlHandler implements EtlHandler {
         String title = parseResult.title;
 
         if (content == null || content.isBlank()) {
-            throw new RuntimeException("文档内容为空");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.content_empty"));
         }
 
         // 2. 获取父块分块配置 (优先从实体字段读取，兼容旧 config JSON)
@@ -114,7 +114,7 @@ public class GenericFileEtlHandler implements EtlHandler {
         // 3. 父块分块
         List<String> parentChunks = splitText(content, chunkSize, overlap);
         if (CollUtil.isEmpty(parentChunks)) {
-            throw new RuntimeException("分块失败");
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.chunking_failed"));
         }
 
         // 4. 获取子块分块配置
@@ -208,7 +208,7 @@ public class GenericFileEtlHandler implements EtlHandler {
             }
         } catch (Exception e) {
             log.error("Failed to parse document: {}", document.getId(), e);
-            throw new RuntimeException("文档解析失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.file_parse_failed", e.getMessage()));
         }
     }
 

@@ -34,8 +34,6 @@ KMatrix 不仅仅是一个文档存储库，更是一个 **AI Agent 孵化平台
 
 KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单操作即可上手，一天至数天即可完成知识库的构建和AI对话App的打造，同时也提供高度自定义的灵活性，满足企业级应用的复杂需求。
 
------------------------------------
-
 ## ✨ 核心亮点
 
 - **🚀 现代技术栈**：后端基于 **RuoYi-Vue-Plus** (Spring Boot 3 + JDK 17)，前端基于 **Soybean Admin** (Vue 3 + Vite + Naive UI)，紧跟技术潮流，性能卓越，开发体验极佳。
@@ -48,7 +46,7 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
   - **父子分块**策略，子分块匹配更加精准，减少噪音，同时返回父分块，提供更完整、连贯的上下文。
   - 支持QA对，为精准问题提供更有针对性的答案；同时支持为自然文件分块提供AI问题生成，自动获得QA对的效果。
   - 支持 PDF、Word、PPT、Xls、Markdown 等多种格式解析，支持手工调整分块内容。
-- **⛓️ 可视化工作流 (Workflow)**：内置基于 **Vue Flow** 的工作流编排引擎，支持节点拖拽、连线配置。用户可自定义 AI 处理流程（如：知识检索 -> LLM 思考 -> 结果格式化）。
+- **⛓️ 可视化工作流 (Workflow)**：内置基于 **Vue Flow** 的工作流编排引擎，支持节点拖拽、连线，并且拥有完善的表单动态渲染引擎，可以在界面完成节点属性和参数配置，然后专注于代码实现 AI 工作流逻辑（如：知识检索 -> LLM 思考 -> 结果格式化）。
 - **🔌 无缝嵌入**：拷贝一行脚本即可嵌入到第三方业务系统，让已有系统快速拥有智能问答能力。
 - **🌍 模型中立**：支持对接各种大模型，包括本地私有大模型（DeepSeek R1 / Llama 3 / Qwen 2 等）、国内公共大模型（通义千问 / 字节豆包 / 智谱 AI / Kimi 等）和国外公共大模型（OpenAI / Gemini 等）。
 - **🧩 模块化设计**：前后端完全分离。
@@ -57,8 +55,6 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 - **🎨 极致 UI 体验**：使用 Naive UI 组件库，精心打磨的界面交互，提供类 Dify 的流畅编排体验；支持暗黑模式、主题定制、多语言。
 - **🔒 安全可控**：支持完全私有化部署，结合 Sa-Token 认证与精细化权限控制，确保企业知识资产安全。
 - 更详细的功能介绍，请参考 👉🏻 [KMatrix spec](http://docs.kykms.cn/docs/kmatrix/spec)。
-
------------------------------------
 
 ## 🛠️ 技术架构
 
@@ -83,8 +79,6 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 - **脚手架**: Soybean Admin
 - **包管理**: pnpm (Monorepo)
 
------------------------------------
-
 ## 📂 项目结构
 
 KMatrix 采用前后端分离架构，代码组织如下：
@@ -106,8 +100,6 @@ KMatrix/
 ```
 
 当前代码为KMatrix的后端项目，前端项目链接：[https://gitee.com/kyxxjs/kmatrix-web](https://gitee.com/kyxxjs/kmatrix-web)
-
------------------------------------
 
 ## 🚀 快速开始
 
@@ -171,8 +163,6 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
     pnpm dev:chat
     ```
 
------------------------------------
-
 ## 🔗 链接与交流
 
 - **在线试用**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) 账密：test/666666  或 testadmin/admin123,  注：数据每天会重置。
@@ -183,7 +173,9 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
   ![微信](./docs/images/wechat.jpg)
 - **邮箱**: <service@mail.kykms.cn>
 
------------------------------------
+## 📸 系统截图示例
+
+  ![截图](./docs/images/sample.gif)
 
 ## 🤝 特别鸣谢
 
@@ -193,8 +185,6 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 - **Soybean Admin**: [https://github.com/soybeanjs/soybean-admin](https://github.com/soybeanjs/soybean-admin)
 - **LangChain4j**: [https://github.com/langchain4j/langchain4j](https://github.com/langchain4j/langchain4j)
 - **Vue Flow**: [https://github.com/bcakmakoglu/vue-flow](https://github.com/bcakmakoglu/vue-flow)
-
------------------------------------
 
 ## 📄 版权声明
 

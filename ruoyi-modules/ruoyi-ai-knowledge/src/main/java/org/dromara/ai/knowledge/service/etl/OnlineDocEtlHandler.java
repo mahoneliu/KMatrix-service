@@ -1,7 +1,6 @@
 package org.dromara.ai.knowledge.service.etl;
 
 import cn.hutool.core.collection.CollUtil;
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +126,7 @@ public class OnlineDocEtlHandler implements EtlHandler {
 
     private List<String> splitText(String text, int chunkSize, int overlap) {
         var splitter = DocumentSplitters.recursive(chunkSize, overlap);
-        Document doc = Document.from(text);
+        dev.langchain4j.data.document.Document doc = dev.langchain4j.data.document.Document.from(text);
         List<TextSegment> segments = splitter.split(doc);
 
         List<String> result = new ArrayList<>();
@@ -136,4 +135,5 @@ public class OnlineDocEtlHandler implements EtlHandler {
         }
         return result;
     }
+
 }

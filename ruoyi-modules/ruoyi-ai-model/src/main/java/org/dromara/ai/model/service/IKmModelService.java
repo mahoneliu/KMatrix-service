@@ -69,6 +69,14 @@ public interface IKmModelService {
     Boolean hasDefaultModel(String modelType);
 
     /**
+     * 获取指定类型的系统默认模型
+     *
+     * @param modelType 模型类型
+     * @return 默认模型对象，未找到返回 null
+     */
+    KmModelVo getDefaultModel(String modelType);
+
+    /**
      * 测试模型对话 (流式)
      *
      * @param bo 发送消息对象

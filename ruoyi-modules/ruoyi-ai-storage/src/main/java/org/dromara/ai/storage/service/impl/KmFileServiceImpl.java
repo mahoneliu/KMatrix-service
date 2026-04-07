@@ -13,6 +13,7 @@ import org.dromara.ai.storage.domain.vo.LocalFileVo;
 import org.dromara.ai.storage.mapper.KmTempFileMapper;
 import org.dromara.ai.storage.service.IKmFileService;
 import org.dromara.ai.storage.service.ILocalFileService;
+import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.system.domain.vo.SysOssVo;
 import org.dromara.system.service.ISysOssService;
@@ -76,7 +77,7 @@ public class KmFileServiceImpl implements IKmFileService {
             return builder.build();
         } catch (IOException e) {
             log.error("Failed to upload multipart file", e);
-            throw new RuntimeException("文件上传失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.upload_failed", e.getMessage()));
         }
     }
 
@@ -174,7 +175,7 @@ public class KmFileServiceImpl implements IKmFileService {
     @Override
     public void download(Integer storeType, Long ossId, String filePath, String originalFilename, HttpServletResponse response) {
         if (storeType == null) {
-            throw new RuntimeException("存储类型非法");
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.invalid_store_type"));
         }
         FileStoreType type = FileStoreType.fromValue(storeType);
         try {
@@ -182,11 +183,11 @@ public class KmFileServiceImpl implements IKmFileService {
                 if (ossId != null) {
                     ossService.download(ossId, response);
                 } else {
-                    throw new RuntimeException("OSS文件ID丢失");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.file.oss_id_missing"));
                 }
             } else if (type.isLocal()) {
                 if (StringUtils.isBlank(filePath)) {
-                    throw new RuntimeException("文件路径丢失");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.file.path_missing"));
                 }
                 response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
                 String fileName = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
@@ -195,7 +196,7 @@ public class KmFileServiceImpl implements IKmFileService {
                 try (InputStream is = localFileService.getFileStream(filePath);
                      OutputStream os = response.getOutputStream()) {
                     if (is == null) {
-                        throw new RuntimeException("文件流获取失败");
+                        throw new RuntimeException(MessageUtils.message("ai.msg.file.stream_get_failed"));
                     }
                     byte[] buffer = new byte[4096];
                     int bytesRead;
@@ -204,18 +205,18 @@ public class KmFileServiceImpl implements IKmFileService {
                     }
                 }
             } else {
-                throw new RuntimeException("不支持的存储类型: " + type);
+                throw new RuntimeException(MessageUtils.message("ai.msg.file.unsupported_store_type", type));
             }
         } catch (Exception e) {
             log.error("Failed to download file: {}", filePath, e);
-            throw new RuntimeException("下载失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.download_failed", e.getMessage()));
         }
     }
 
     @Override
     public InputStream getFileStream(Integer storeType, Long ossId, String filePath) {
         if (storeType == null) {
-            throw new RuntimeException("存储类型非法");
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.invalid_store_type"));
         }
         FileStoreType type = FileStoreType.fromValue(storeType);
         try {
@@ -223,24 +224,24 @@ public class KmFileServiceImpl implements IKmFileService {
                 if (ossId != null) {
                     SysOssVo ossVo = ossService.getById(ossId);
                     if (ossVo == null) {
-                        throw new RuntimeException("OSS文件不存在: " + ossId);
+                        throw new RuntimeException(MessageUtils.message("ai.msg.file.oss_id_missing"));
                     }
                     OssClient storage = OssFactory.instance(ossVo.getService());
                     return storage.getObjectContent(ossVo.getFileName());
                 } else {
-                    throw new RuntimeException("OSS文件ID丢失");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.file.oss_id_missing"));
                 }
             } else if (type.isLocal()) {
                 if (StringUtils.isBlank(filePath)) {
-                    throw new RuntimeException("文件路径丢失");
+                    throw new RuntimeException(MessageUtils.message("ai.msg.file.path_missing"));
                 }
                 return localFileService.getFileStream(filePath);
             } else {
-                throw new RuntimeException("不支持的存储类型: " + type);
+                throw new RuntimeException(MessageUtils.message("ai.msg.file.unsupported_store_type", type));
             }
         } catch (Exception e) {
             log.error("Failed to get file stream: {}", filePath, e);
-            throw new RuntimeException("获取文件流失败: " + e.getMessage());
+            throw new RuntimeException(MessageUtils.message("ai.msg.file.get_stream_failed", e.getMessage()));
         }
     }
 }

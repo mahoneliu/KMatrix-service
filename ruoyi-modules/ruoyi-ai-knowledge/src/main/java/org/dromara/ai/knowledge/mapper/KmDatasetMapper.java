@@ -3,8 +3,10 @@ package org.dromara.ai.knowledge.mapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.dromara.ai.knowledge.domain.KmDataset;
 import org.dromara.ai.knowledge.domain.vo.KmDatasetVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
@@ -23,10 +25,19 @@ public interface KmDatasetMapper extends BaseMapperPlus<KmDataset, KmDatasetVo> 
      * @param lqw 查询条件
      * @return 数据集列表
      */
+    @org.apache.ibatis.annotations.Results({
+        @org.apache.ibatis.annotations.Result(property = "config", column = "config", typeHandler = org.dromara.ai.api.handler.UniversalJsonTypeHandler.class)
+    })
     @Select("SELECT d.*, " +
             "(SELECT COUNT(1) FROM km_document doc WHERE doc.dataset_id = d.id AND doc.del_flag = '0') AS document_count "
             +
             "FROM km_dataset d ${ew.customSqlSegment}")
     List<KmDatasetVo> selectVoListWithStats(
             @Param(Constants.WRAPPER) Wrapper<KmDataset> queryWrapper);
+
+    /**
+     * 单独更新 config 字段（绕过 MyBatis-Plus updateById 对 typeHandler 字段的限制）
+     */
+    @Update("UPDATE km_dataset SET config = #{config, typeHandler=org.dromara.ai.api.handler.UniversalJsonTypeHandler} WHERE id = #{id}")
+    int updateConfig(@Param("id") Long id, @Param("config") Map<String, Object> config);
 }

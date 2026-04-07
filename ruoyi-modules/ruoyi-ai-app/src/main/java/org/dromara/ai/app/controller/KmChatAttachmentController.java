@@ -55,6 +55,7 @@ public class KmChatAttachmentController {
         result.put("fileSize", tempFile.getFileSize());
         result.put("url", tempFile.getUrl());
         result.put("fileUrl", tempFile.getUrl());
+        result.put("filePath", tempFile.getFilePath());
         return R.ok(result);
     }
 }

@@ -19,6 +19,7 @@ import org.dromara.ai.app.domain.KmChatMessage;
 import org.dromara.ai.app.domain.KmChatSession;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
+import org.dromara.ai.model.domain.vo.KmModelVo;
 import org.dromara.ai.workflow.domain.KmNodeExecution;
 import org.dromara.ai.workflow.domain.bo.WorkflowExecutionReq;
 import org.dromara.ai.app.domain.bo.KmChatSendBo;
@@ -34,6 +35,7 @@ import org.dromara.ai.app.mapper.KmChatMessageMapper;
 import org.dromara.ai.app.mapper.KmChatSessionMapper;
 import org.dromara.ai.model.mapper.KmModelMapper;
 import org.dromara.ai.model.mapper.KmModelProviderMapper;
+import org.dromara.ai.model.service.IKmModelService;
 import org.dromara.ai.workflow.mapper.KmNodeExecutionMapper;
 import org.dromara.ai.app.service.IKmAppService;
 import org.dromara.ai.app.service.IKmChatService;
@@ -83,6 +85,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final KmAppMapper appMapper;
     private final IChatRateLimitService rateLimitService;
     private final IKmFileService kmFileService;
+    private final IKmModelService modelService;
     private final ChatServiceAbortMixin abortMixin;
     private final ChatStreamHandler chatStreamHandler;
 
@@ -230,11 +233,16 @@ public class KmChatServiceImpl implements IKmChatService {
 
                         // 异步生成标题（仅在首次对话时）
                         if (isNewSession && aiResponse != null) {
-                            KmModel model = loadModel(app.getModelId());
-                            KmModelProvider provider = loadProvider(model.getProviderId());
                             try {
+                                KmModel model = null;
+                                String providerKey = null;
+                                if (app.getModelId() != null) {
+                                    model = loadModel(app.getModelId());
+                                    KmModelProvider provider = loadProvider(model.getProviderId());
+                                    providerKey = provider.getProviderKey();
+                                }
                                 generateSessionTitle(sessionId, bo.getMessage(), aiResponse, model,
-                                        provider.getProviderKey(), emitter);
+                                        providerKey, emitter);
                             } catch (Exception e) {
                                 log.warn("生成工作流标题失败", e);
                             }
@@ -593,6 +601,17 @@ public class KmChatServiceImpl implements IKmChatService {
     private void generateSessionTitle(Long sessionId, String userMessage, String aiResponse,
             KmModel model, String providerKey, SseEmitter emitter) {
         try {
+            // 如果应用未绑定模型，采用系统默认模型
+            if (model == null) {
+                KmModelVo defaultModelVo = modelService.getDefaultModel("1"); // 1 为 LLM
+                if (defaultModelVo == null) {
+                    log.warn("无法生成会话标题：未配置应用模型且系统无默认模型, sessionId={}", sessionId);
+                    return;
+                }
+                model = MapstructUtils.convert(defaultModelVo, KmModel.class);
+                KmModelProvider provider = loadProvider(model.getProviderId());
+                providerKey = provider.getProviderKey();
+            }
             // 构建标题生成prompt
             String titlePrompt = String.format(
                     "请根据以下对话生成一个简洁的标题(5-15个字),只返回标题内容,不要其他解释:\n\n" +
@@ -920,9 +939,14 @@ public class KmChatServiceImpl implements IKmChatService {
                         fileContent.put("ossId", String.valueOf(tempFile.getOssId()));
                     }
                 } else {
-                    // 其他文件类型附加文件名提示到文本
-                    fileContent.put("type", "text");
-                    fileContent.put("text", "[附件: " + tempFile.getOriginalFilename() + "]");
+                    // 通用文件：保留 type=file 及文件引用，供下游节点（FILE_STORAGE/FILE_PARSE）使用
+                    fileContent.put("type", "file");
+                    fileContent.put("tempFileId", String.valueOf(tempFileId));
+                    if (tempFile.getOssId() != null) {
+                        fileContent.put("ossId", String.valueOf(tempFile.getOssId()));
+                    }
+                    fileContent.put("url", tempFile.getFilePath());
+                    fileContent.put("name", tempFile.getOriginalFilename());
                 }
                 contents.add(fileContent);
                 log.info("多模态附件解析成功: tempFileId={}, type={}, ext={}", tempFileId, fileContent.get("type"), ext);

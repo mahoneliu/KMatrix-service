@@ -88,7 +88,8 @@ public class KmAppController extends BaseController {
             @RequestBody Map<String, String> body) {
         String appName = body.get("appName");
         if (appName == null || appName.isBlank()) {
-            throw new org.dromara.common.core.exception.ServiceException(MessageUtils.message("ai.msg.app.name_required"));
+            throw new org.dromara.common.core.exception.ServiceException(
+                    MessageUtils.message("ai.msg.app.name_required"));
         }
         Long appId = appService.createAppFromTemplate(templateId, appName);
         return R.ok(appId);
@@ -131,6 +132,7 @@ public class KmAppController extends BaseController {
      * 更新公开访问开关
      */
     @SaCheckPermission("ai:app:edit")
+    @DemoBlock
     @Log(title = "更新公开访问", businessType = BusinessType.UPDATE)
     @PatchMapping("/{appId}/public-access")
     public R<Void> updatePublicAccess(@PathVariable Long appId,

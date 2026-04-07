@@ -22,8 +22,6 @@
     </a>
 </p>
 
------------------------------------
-
 ## 📖 Introduction
 
 **KMatrix** is a newly designed version of **KYKMS (Keyi Knowledge Management System)**, focusing on deep integration of traditional document management with advanced AI technologies.
@@ -33,8 +31,6 @@ In the digital era, enterprises accumulate vast amounts of unstructured data but
 KMatrix is not just a document repository; it is an **AI Agent Incubation Platform**. Users can easily build intelligent Q&A assistants, customer service bots, document analysis experts, or business auxiliary bots based on local knowledge bases using a drag-and-drop workflow designer. It also supports natural language queries for databases to address long-tail business needs.
 
 Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box** experience. With simple operations, anyone can build a knowledge base and create AI dialogue apps within one or a few days. At the same time, it offers high flexibility for customization to meet complex enterprise-level requirements.
-
------------------------------------
 
 ## ✨ Core Highlights
 
@@ -48,7 +44,7 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
   - Implements **parent-child chunking**: child chunks for precise matching and noise reduction, parent chunks for complete and coherent context.
   - Supports QA pairs for targeted answers and AI-generated questions for document chunks to automatically improve retrieval.
   - Supports parsing of various formats including PDF, Word, PPT, Excel, and Markdown, and supports manual adjustment of chunk content.
-- **⛓️ Visual Workflow**: Built-in workflow orchestration engine based on **Vue Flow**, supporting node drag-and-drop and connection configuration. Users can customize AI processing flows (e.g., Knowledge Retrieval -> LLM Reasoning -> Result Formatting).
+- **⛓️ Visual Workflow**: Built-in workflow orchestration engine based on **Vue Flow**, supporting node drag-and-drop and connection configuration. Users can focus on coding the AI workflow logic (e.g., Knowledge Retrieval -> LLM Reasoning -> Result Formatting) with the help of the dynamic form engine for node properties and parameters.
 - **🔌 Seamless Embedding**: Embed an intelligent Q&A assistant into third-party business systems by copying just one line of script.
 - **🌍 Model Agnostic**: Supports integration with various LLMs, including local private models (DeepSeek R1 / Llama 3 / Qwen 2, etc.) and public cloud models from both domestic (Tongyi Qianwen / ByteDance Doubao / Zhipu AI / Kimi, etc.) and international providers (OpenAI / Gemini, etc.).
 - **🧩 Modular Design**: Complete separation of frontend and backend.
@@ -57,8 +53,6 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 - **🎨 Ultimate UI Experience**: Uses Naive UI components for meticulously crafted interface interactions. Provides a smooth, Dify-like orchestration experience; supports dark mode, theme customization, and multi-language.
 - **🔒 Secure and Controllable**: Supports full on-premise deployment. Combined with Sa-Token authentication and granular permission control, it ensures the security of enterprise knowledge assets.
 - For more detailed features, please refer to 👉🏻 [KMatrix spec](http://docs.kykms.cn/docs/kmatrix/spec).
-
------------------------------------
 
 ## 🛠️ Technical Architecture
 
@@ -83,8 +77,6 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 - **Boilerplate**: Soybean Admin
 - **Package Management**: pnpm (Monorepo)
 
------------------------------------
-
 ## 📂 Project Structure
 
 KMatrix follows a frontend-backend separation architecture. The code is organized as follows:
@@ -106,8 +98,6 @@ KMatrix/
 ```
 
 This repository contains the backend project. Link to the frontend project: [https://github.com/mahoneliu/Kmatrix-ui](https://github.com/mahoneliu/Kmatrix-ui)
-
------------------------------------
 
 ## 🚀 Quick Start
 
@@ -171,8 +161,6 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
     pnpm dev:chat
     ```
 
------------------------------------
-
 ## 🔗 Links and Contact
 
 - **Online Demo**: [http://kmatrix-admin.kykms.cn](http://kmatrix-admin.kykms.cn) (Credentials: test/666666 or testadmin/admin123), Note: Data will be reset daily.
@@ -183,7 +171,9 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
   ![WeChat](./docs/images/wechat.jpg)
 - **Email**: <service@mail.kykms.cn>
 
------------------------------------
+## 📸 System Screenshot Example
+
+![Screenshot](./docs/images/sample.gif)
 
 ## 🤝 Special Thanks
 

@@ -30,4 +30,9 @@ public final class DatasetProcessType {
      * 网页链接: 用户输入网页链接
      */
     public static final String WEB_LINK = "WEB_LINK";
+
+    /**
+     * 工作流文件: 通过绑定的 LangGraph 工作流对上传文件进行自定义处理
+     */
+    public static final String WORKFLOW_FILE = "WORKFLOW_FILE";
 }

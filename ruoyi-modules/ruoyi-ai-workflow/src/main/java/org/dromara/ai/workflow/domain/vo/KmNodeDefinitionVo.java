@@ -1,4 +1,5 @@
 package org.dromara.ai.workflow.domain.vo;
+
 import org.dromara.ai.workflow.domain.vo.NodeParamDefinitionVo;
 
 import lombok.Data;
@@ -69,6 +70,11 @@ public class KmNodeDefinitionVo implements Serializable {
      * 是否允许自定义输出参数 (0否/1是)
      */
     private String allowCustomOutputParams;
+
+    /**
+     * 是否需要AI大模型高级配置选项 (0否/1是)
+     */
+    private String requireAiConfig;
 
     /**
      * 输入参数定义

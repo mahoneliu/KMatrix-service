@@ -184,6 +184,13 @@ public class KmEtlServiceImpl implements IKmEtlService {
                     processType = DatasetProcessType.GENERIC_FILE;
                 }
 
+                // 工作流编排类型：直接将文档状态置为待处理(0)，由 KmWorkflowDatasetScheduler 异步调度
+                if (DatasetProcessType.WORKFLOW_FILE.equals(processType)) {
+                    log.info("WORKFLOW_FILE 类型文档 {}，重置状态为待处理，等待调度器触发工作流", documentId);
+                    updateDocumentStatus(documentId, null, 0, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING);
+                    return;
+                }
+
                 EtlHandler handler = findHandler(processType);
                 List<ChunkResult> innerChunks;
 
@@ -194,6 +201,13 @@ public class KmEtlServiceImpl implements IKmEtlService {
                 } else {
                     // 使用 Handler 处理，返回分块列表
                     innerChunks = handler.process(document, dataset);
+
+                    // null 表示 handler 已接管（如工作流模式），跳过向量化
+                    if (innerChunks == null) {
+                        log.info("Handler for processType {} took ownership of document {}, skipping vectorization",
+                                processType, documentId);
+                        return;
+                    }
 
                     if (CollUtil.isEmpty(innerChunks)) {
                         throw new RuntimeException("文档分块结果为空");

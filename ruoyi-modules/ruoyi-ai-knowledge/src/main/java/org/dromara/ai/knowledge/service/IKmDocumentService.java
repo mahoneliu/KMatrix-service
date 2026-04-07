@@ -243,4 +243,13 @@ public interface IKmDocumentService {
          * @param response 响应对象
          */
         void downloadDocument(Long id, HttpServletResponse response);
+
+        /**
+         * 重试工作流文档处理（针对 WORKFLOW_FILE 类型数据集中处理失败的文档）
+         * 将文档状态重置为「待处理(0)」并清理已生成的切片，等待调度器重新触发工作流
+         *
+         * @param documentId 文档ID
+         * @return 是否成功
+         */
+        Boolean retryWorkflowDocument(Long documentId);
 }

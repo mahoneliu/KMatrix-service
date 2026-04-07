@@ -1,7 +1,5 @@
 -- ----------------------------
--- KMatrix AI 模块全量数据库脚本 (PostgreSQL 版 - 整合版)
--- 整合日期: 2026-01-27
--- 包含内容：基础表结构 + 所有增量字段 + pgvector 集成 + 完整初始化数据
+-- 此脚本已经弃用，因为采用flyway方案，实际sql位于ruoyi-admin/src/main/resources/db/migration下面
 -- ----------------------------
 
 -- 启用 pgvector 扩展

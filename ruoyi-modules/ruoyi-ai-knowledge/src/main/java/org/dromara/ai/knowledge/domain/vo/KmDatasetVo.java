@@ -71,24 +71,49 @@ public class KmDatasetVo implements Serializable {
     private String sourceType;
 
     /**
-     * 最小分块大小
+     * 支持的文件格式 (逗号分隔)
+     */
+    private String allowedFileTypes;
+
+    /**
+     * 关联的工作流应用ID（从config中读取，兼容旧key appId）
+     */
+    public Long getWorkflowId() {
+        if (config == null) return null;
+        Object val = config.containsKey("workflowId") ? config.get("workflowId") : config.get("appId");
+        if (val == null) return null;
+        if (val instanceof Long l) return l;
+        if (val instanceof Number n) return n.longValue();
+        try { return Long.parseLong(val.toString()); } catch (Exception e) { return null; }
+    }
+
+    /**
+     * 最大并行处理文档数（从config中读取）
+     */
+    public Integer getMaxConcurrency() {
+        if (config == null) return 1;
+        Object val = config.get("maxConcurrency");
+        if (val == null) return 1;
+        if (val instanceof Integer i) return i;
+        if (val instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(val.toString()); } catch (Exception e) { return 1; }
+    }
+
+    /**
+     * 最小分块大小 (字符数)
      */
     private Integer minChunkSize;
 
     /**
-     * 最大分块大小
+     * 最大分块大小 (字符数)
      */
     private Integer maxChunkSize;
 
     /**
-     * 分块重叠大小
+     * 分块重叠大小 (字符数)
      */
     private Integer chunkOverlap;
 
-    /**
-     * 支持的文件格式 (逗号分隔)
-     */
-    private String allowedFileTypes;
 
     /**
      * 子块大小 (字符数)

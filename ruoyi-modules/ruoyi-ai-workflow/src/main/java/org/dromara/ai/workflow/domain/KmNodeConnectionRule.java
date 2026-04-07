@@ -50,4 +50,9 @@ public class KmNodeConnectionRule extends BaseEntity {
      */
     private String isEnabled;
 
+    /**
+     * 备注
+     */
+    private String remark;
+
 }

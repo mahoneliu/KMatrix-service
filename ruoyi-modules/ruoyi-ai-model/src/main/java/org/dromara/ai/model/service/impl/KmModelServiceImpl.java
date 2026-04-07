@@ -194,6 +194,14 @@ public class KmModelServiceImpl implements IKmModelService {
     }
 
     @Override
+    public KmModelVo getDefaultModel(String modelType) {
+        return baseMapper.selectVoOne(Wrappers.lambdaQuery(KmModel.class)
+                .eq(KmModel::getModelType, modelType)
+                .eq(KmModel::getIsDefault, 1)
+                .eq(KmModel::getStatus, "0"));
+    }
+
+    @Override
     public String testConnection(KmModelBo bo) {
         log.info("开始测试模型连接: modelName={}, modelKey={}, providerId={}",
                 bo.getModelName(), bo.getModelKey(), bo.getProviderId());

@@ -46,12 +46,20 @@ public class KmMcpServerServiceImpl implements IKmMcpServerService {
 
     @Override
     public Boolean insertByBo(KmMcpServerBo bo) {
+        // Normalize blank serverConfig to null to avoid invalid JSON error in PostgreSQL
+        if (StrUtil.isBlank(bo.getServerConfig())) {
+            bo.setServerConfig(null);
+        }
         KmMcpServer add = MapstructUtils.convert(bo, KmMcpServer.class);
         return baseMapper.insert(add) > 0;
     }
 
     @Override
     public Boolean updateByBo(KmMcpServerBo bo) {
+        // Normalize blank serverConfig to null to avoid invalid JSON error in PostgreSQL
+        if (StrUtil.isBlank(bo.getServerConfig())) {
+            bo.setServerConfig(null);
+        }
         KmMcpServer update = MapstructUtils.convert(bo, KmMcpServer.class);
         return baseMapper.updateById(update) > 0;
     }
