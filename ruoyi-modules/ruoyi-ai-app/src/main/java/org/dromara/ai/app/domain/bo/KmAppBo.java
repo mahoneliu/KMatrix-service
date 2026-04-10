@@ -7,6 +7,7 @@ import org.dromara.ai.app.domain.KmApp;
 import org.dromara.ai.api.domain.vo.config.AppKnowledgeConfig;
 import org.dromara.ai.api.domain.vo.config.AppModelConfig;
 import org.dromara.ai.api.domain.vo.config.AppParametersConfig;
+import org.dromara.ai.api.domain.vo.config.AppUiSetting;
 import org.dromara.ai.api.domain.vo.config.AppWorkflowConfig;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
@@ -91,6 +92,11 @@ public class KmAppBo extends BaseEntity {
      * 应用参数配置(全局/接口/会话)
      */
     private AppParametersConfig parameters;
+
+    /**
+     * 对话界面 / 欢迎页等前端 UI 配置
+     */
+    private AppUiSetting uiSetting;
 
     /**
      * 关联LLM模型ID

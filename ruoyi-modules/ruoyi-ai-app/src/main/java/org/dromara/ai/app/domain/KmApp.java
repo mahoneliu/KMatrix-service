@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import org.dromara.ai.api.domain.vo.config.AppKnowledgeConfig;
 import org.dromara.ai.api.domain.vo.config.AppModelConfig;
 import org.dromara.ai.api.domain.vo.config.AppParametersConfig;
+import org.dromara.ai.api.domain.vo.config.AppUiSetting;
 import org.dromara.ai.api.domain.vo.config.AppWorkflowConfig;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
@@ -100,6 +101,12 @@ public class KmApp extends BaseEntity {
      */
     @TableField(typeHandler = JsonTypeHandler.class)
     private AppParametersConfig parameters;
+
+    /**
+     * 对话界面 / 欢迎页等前端 UI 配置
+     */
+    @TableField(typeHandler = JsonTypeHandler.class)
+    private AppUiSetting uiSetting;
 
     /**
      * 关联LLM模型ID
