@@ -6,6 +6,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.dromara.ai.app.domain.KmChatMessage;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 发送消息业务对象 km_chat_message
  *
@@ -72,5 +75,22 @@ public class KmChatSendBo {
      * 请求ID（前端生成的唯一标识，用于中断请求时追踪）
      */
     private String requestId;
+
+    /**
+     * 自定义参数，用于传递外部上下文信息
+     * 例如：{"userId": 1234, "userName": "Alice", "customField": "value"}
+     * 参数将通过 globalState 注入到工作流中
+     */
+    private Map<String, Object> customParams;
+
+    /**
+     * 初始化自定义参数为空的 HashMap
+     * 避免空指针异常
+     */
+    public void initCustomParams() {
+        if (this.customParams == null) {
+            this.customParams = new HashMap<>();
+        }
+    }
 }
 

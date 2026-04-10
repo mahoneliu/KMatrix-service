@@ -159,13 +159,13 @@ public class VariableResolver {
             String outputKey = parts[1];
 
             Map<String, Object> outputs = state.getNodeOutput(nodeId);
-            if (outputs != null) {
+            if (outputs != null && null != outputs.get(outputKey)) {
                 return outputs.get(outputKey);
             }
         } else if (context != null) {
             // 从当前节点入参获取
             Map<String, Object> inputs = context.getNodeInputs();
-            if (inputs != null) {
+            if (inputs != null && null != inputs.get(expr)) {
                 return inputs.get(expr);
             }
         }
