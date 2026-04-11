@@ -90,6 +90,17 @@ public class WorkflowExecutor {
             globalState.put(WorkflowState.KEY_DEBUG, true); // 标记调试模式
         }
 
+        // 注入自定义参数到 globalState
+        log.info("处理 customParameters: {}", req.getCustomParameters());
+        if (req.getCustomParameters() != null && !req.getCustomParameters().isEmpty()) {
+            for (Map.Entry<String, Object> entry : req.getCustomParameters().entrySet()) {
+                globalState.put(entry.getKey(), entry.getValue());
+                log.info("注入 custom parameter: {} = {}", entry.getKey(), entry.getValue());
+            }
+        } else {
+            log.warn("customParameters 为空，无法注入到 globalState");
+        }
+
         Map<String, Object> initData = new HashMap<>();
         initData.put("globalState", globalState);
         // 同时将 documentId 放到顶层，确保 LangGraph4j 能正确传递

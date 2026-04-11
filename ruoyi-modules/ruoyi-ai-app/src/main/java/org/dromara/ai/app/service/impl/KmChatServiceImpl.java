@@ -194,7 +194,8 @@ public class KmChatServiceImpl implements IKmChatService {
                 }
 
                 // 5. 检查应用类型
-                log.info("开始处理流式对话: appId={}, appType={}", app.getAppId(), app.getAppType());
+                log.info("开始处理流式对话：appId={}, appType={}", app.getAppId(), app.getAppType());
+                log.info("收到自定义参数 customParams: {}", bo.getCustomParams());
 
                 if (AiAppType.CUSTOM_WORKFLOW.getCode().equals(app.getAppType())
                         || AiAppType.FIXED_TEMPLATE.getCode().equals(app.getAppType())) {
@@ -212,7 +213,9 @@ public class KmChatServiceImpl implements IKmChatService {
                                 .sessionId(sessionId)
                                 .userId(userId)
                                 .tempFileIds(bo.getTempFileIds())
+                                .customParameters(bo.getCustomParams())
                                 .build();
+                        log.info("构建的 WorkflowExecutionReq customParameters: {}", req.getCustomParameters());
                         Map<String, Object> result = workflowExecutor.executeWorkflow(req, emitter);
 
                         String aiResponse = (String) result.get("finalResponse");
@@ -849,7 +852,16 @@ public class KmChatServiceImpl implements IKmChatService {
             // 4. 使用虚拟会话ID（不写库，完全内存处理）
             Long debugSessionId = -1L; // 负数表示调试会话，不会创建session记录
 
-            WorkflowExecutionReq req = WorkflowExecutionReq.builder().appId(debugApp.getAppId()).dslData(debugApp.getDslData()).enableExecutionDetail(debugApp.getEnableExecutionDetail()).showExecutionInfo(bo.getShowExecutionInfo()).message(bo.getMessage()).sessionId(debugSessionId).userId(userId).build();
+            WorkflowExecutionReq req = WorkflowExecutionReq.builder()
+                                .appId(debugApp.getAppId())
+                                .dslData(debugApp.getDslData())
+                                .enableExecutionDetail(debugApp.getEnableExecutionDetail())
+                                .showExecutionInfo(bo.getShowExecutionInfo())
+                                .message(bo.getMessage())
+                                .sessionId(debugSessionId)
+                                .userId(userId)
+                                .customParameters(bo.getCustomParams())
+                                .build();
             workflowExecutor.executeWorkflowDebug(req, emitter);
 
             // 工作流完成（executeWorkflowDebug内部已发送done事件，与streamChat行为一致）
