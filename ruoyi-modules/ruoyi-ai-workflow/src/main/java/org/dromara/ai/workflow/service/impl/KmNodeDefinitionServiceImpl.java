@@ -11,6 +11,7 @@ import org.dromara.ai.workflow.domain.KmNodeDefinition;
 import org.dromara.ai.workflow.domain.bo.KmNodeDefinitionBo;
 import org.dromara.ai.workflow.domain.vo.KmNodeDefinitionVo;
 import org.dromara.ai.workflow.mapper.KmNodeDefinitionMapper;
+import org.dromara.ai.workflow.service.ConnectionRuleCacheService;
 import org.dromara.ai.workflow.service.IKmNodeDefinitionService;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.MessageUtils;
@@ -34,6 +35,7 @@ import java.util.List;
 public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
 
     private final KmNodeDefinitionMapper nodeDefinitionMapper;
+    private final ConnectionRuleCacheService connectionRuleCacheService;
 
     /**
      * 获取所有节点类型定义
@@ -91,7 +93,10 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
     @Override
     @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public void refreshCache() {
-        log.info("【节点定义】手动刷新全量缓存");
+        log.info("【节点定义】开始手动刷新全量缓存...");
+        connectionRuleCacheService.evictRulesCache();
+        connectionRuleCacheService.evictModeCache();
+        log.info("【节点定义】手动刷新全量缓存成功（包含节点定义与连接规则）");
     }
 
     // ========== 节点定义管理方法实现 ==========
@@ -142,7 +147,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 新增节点定义
      */
     @Override
-    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public Long addNodeDefinition(KmNodeDefinitionBo bo) {
         // 1. 校验节点类型是否已存在
         LambdaQueryWrapper<KmNodeDefinition> wrapper = new LambdaQueryWrapper<>();
@@ -170,7 +175,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 复制节点定义
      */
     @Override
-    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public Long copyNodeDefinition(Long nodeDefId, String newNodeType) {
         // 1. 查询原节点
         KmNodeDefinition source = nodeDefinitionMapper.selectById(nodeDefId);
@@ -204,7 +209,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 更新节点定义
      */
     @Override
-    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public void updateNodeDefinition(KmNodeDefinitionBo bo) {
         // 1. 查询原节点
         KmNodeDefinition entity = nodeDefinitionMapper.selectById(bo.getNodeDefId());
@@ -233,7 +238,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 删除节点定义
      */
     @Override
-    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public void deleteNodeDefinition(Long nodeDefId) {
         KmNodeDefinition entity = nodeDefinitionMapper.selectById(nodeDefId);
         if (entity == null) {
@@ -254,7 +259,7 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
      * 批量删除节点定义
      */
     @Override
-    @CacheEvict(value = "workflow:nodeDefinitions", allEntries = true)
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
     public void deleteNodeDefinitions(Long[] nodeDefIds) {
         for (Long nodeDefId : nodeDefIds) {
             deleteNodeDefinition(nodeDefId);
