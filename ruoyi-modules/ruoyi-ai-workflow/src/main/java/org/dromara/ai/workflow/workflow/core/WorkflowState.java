@@ -44,6 +44,11 @@ public class WorkflowState extends AgentState implements Serializable {
     public static final String KEY_FINISHED = "finished";
     public static final String KEY_GLOBAL_STATE = "globalState";
     public static final String KEY_TOTAL_TOKENS = "totalTokens";
+    public static final String KEY_DURATION_MS = "durationMs";
+
+    public static final String KEY_INTERFACE = "interface";
+    public static final String KEY_APP = "app";
+    public static final String KEY_SESSION = "session";
 
     public WorkflowState() {
         super(new HashMap<>());

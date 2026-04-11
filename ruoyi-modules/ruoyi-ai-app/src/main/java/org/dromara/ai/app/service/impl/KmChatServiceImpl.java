@@ -213,9 +213,10 @@ public class KmChatServiceImpl implements IKmChatService {
                                 .sessionId(sessionId)
                                 .userId(userId)
                                 .tempFileIds(bo.getTempFileIds())
-                                .customParameters(bo.getCustomParams())
+                                .apiParameters(bo.getCustomParams())
+                                .parametersConfig(app.getParameters())
                                 .build();
-                        log.info("构建的 WorkflowExecutionReq customParameters: {}", req.getCustomParameters());
+                        log.info("构建的 WorkflowExecutionReq customParameters: {}", req.getApiParameters());
                         Map<String, Object> result = workflowExecutor.executeWorkflow(req, emitter);
 
                         String aiResponse = (String) result.get("finalResponse");
@@ -860,7 +861,7 @@ public class KmChatServiceImpl implements IKmChatService {
                                 .message(bo.getMessage())
                                 .sessionId(debugSessionId)
                                 .userId(userId)
-                                .customParameters(bo.getCustomParams())
+                                .apiParameters(bo.getCustomParams())
                                 .build();
             workflowExecutor.executeWorkflowDebug(req, emitter);
 

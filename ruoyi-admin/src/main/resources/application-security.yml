@@ -1,0 +1,24 @@
+# Security 配置
+security:
+  # 排除路径
+  excludes:
+    - /*.html
+    - /**/*.html
+    - /**/*.css
+    - /**/*.js
+    - /favicon.ico
+    - /error
+    - /*/api-docs
+    - /*/api-docs/**
+    - /warm-flow-ui/config
+    - /ai/chat/stream
+    - /ai/chat/**
+    - /ai/workflow/**
+    - /ai/storage/file/**
+    - /chat/**
+
+  # SSE 排除路径 (跳过 ASYNC 鉴权)
+  sseExcludes:
+    - /ai/chat/stream
+    - /ai/admin/chat/stream
+    - /ai/workflow/execute

@@ -15,7 +15,10 @@ import org.dromara.ai.workflow.workflow.engine.LangGraphWorkflowEngine;
 import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.dromara.ai.api.domain.vo.config.AppParametersConfig;
+import org.dromara.ai.api.domain.vo.config.ParamDefinition;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,21 +40,24 @@ public class WorkflowExecutor {
     /**
      * 执行工作流（统一入口，支持调试和正式模式）
      */
-    public Map<String, Object> executeWorkflow(WorkflowExecutionReq req, SseEmitter emitter) throws Exception { return executeWorkflow(req, emitter, false); }
+    public Map<String, Object> executeWorkflow(WorkflowExecutionReq req, SseEmitter emitter) throws Exception {
+        return executeWorkflow(req, emitter, false);
+    }
 
     /**
      * 调试模式执行工作流（不创建instance，不写数据库）
      */
-    public Map<String, Object> executeWorkflowDebug(WorkflowExecutionReq req, SseEmitter emitter) throws Exception { return executeWorkflow(req, emitter, true); }
-
-
+    public Map<String, Object> executeWorkflowDebug(WorkflowExecutionReq req, SseEmitter emitter) throws Exception {
+        return executeWorkflow(req, emitter, true);
+    }
 
     /**
      * 执行工作流（内部统一实现）
      *
      * @param debug true=调试模式（不入库），false=正式模式（入库）
      */
-    private Map<String, Object> executeWorkflow(WorkflowExecutionReq req, SseEmitter emitter, boolean debug) throws Exception {
+    private Map<String, Object> executeWorkflow(WorkflowExecutionReq req, SseEmitter emitter, boolean debug)
+            throws Exception {
 
         // 1. 解析工作流配置
         WorkflowConfig config = objectMapper.readValue(req.getDslData(), WorkflowConfig.class);
@@ -81,7 +87,7 @@ public class WorkflowExecutor {
         globalState.put(WorkflowState.KEY_SHOW_EXECUTION_INFO, showExecutionInfo);
         globalState.put(WorkflowState.KEY_TEMP_FILE_IDS, req.getTempFileIds());
         globalState.put(WorkflowState.KEY_DOCUMENT_ID, req.getDocumentId());
-        log.info("req.getDocumentId():{}",req.getDocumentId());
+        log.info("req.getDocumentId():{}", req.getDocumentId());
 
         // 初始化app参数
         // globalState.put(ChatWorkflowState.KEY_APP, app);
@@ -91,9 +97,9 @@ public class WorkflowExecutor {
         }
 
         // 注入自定义参数到 globalState
-        log.info("处理 customParameters: {}", req.getCustomParameters());
-        if (req.getCustomParameters() != null && !req.getCustomParameters().isEmpty()) {
-            for (Map.Entry<String, Object> entry : req.getCustomParameters().entrySet()) {
+        log.info("处理 customParameters: {}", req.getApiParameters());
+        if (req.getApiParameters() != null && !req.getApiParameters().isEmpty()) {
+            for (Map.Entry<String, Object> entry : req.getApiParameters().entrySet()) {
                 globalState.put(entry.getKey(), entry.getValue());
                 log.info("注入 custom parameter: {} = {}", entry.getKey(), entry.getValue());
             }
@@ -101,8 +107,22 @@ public class WorkflowExecutor {
             log.warn("customParameters 为空，无法注入到 globalState");
         }
 
+        // 分类参数硬注入 (注入到 nodeOutputs 中的虚拟 ID: interface, app, session)
+        Map<String, Map<String, Object>> nodeOutputs = new HashMap<>();
+        AppParametersConfig paramsConfig = req.getParametersConfig();
+        Map<String, Object> apiParams = req.getApiParameters();
+
+        if (paramsConfig != null && apiParams != null && !apiParams.isEmpty()) {
+            injectParamCategory(nodeOutputs, WorkflowState.KEY_INTERFACE, paramsConfig.getInterfaceParams(), apiParams);
+            // app和session参数示例
+            // injectParamCategory(nodeOutputs, "app", paramsConfig.getAppParams(),
+            // apiParams);
+            // injectParamCategory(nodeOutputs, "session", paramsConfig.getSessionParams(),
+            // apiParams);
+        }
         Map<String, Object> initData = new HashMap<>();
-        initData.put("globalState", globalState);
+        initData.put(WorkflowState.KEY_GLOBAL_STATE, globalState);
+        initData.put(WorkflowState.KEY_NODE_OUTPUTS, nodeOutputs);
         // 同时将 documentId 放到顶层，确保 LangGraph4j 能正确传递
         if (req.getDocumentId() != null) {
             initData.put(WorkflowState.KEY_DOCUMENT_ID, req.getDocumentId());
@@ -129,7 +149,7 @@ public class WorkflowExecutor {
 
             if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
-                doneData.put("durationMs", durationMs);
+                doneData.put(WorkflowState.KEY_DURATION_MS, durationMs);
             }
             Integer tokensTotal = (Integer) finalState.data().get(WorkflowState.KEY_TOTAL_TOKENS);
             doneData.put(WorkflowState.KEY_TOTAL_TOKENS, tokensTotal != null ? tokensTotal : 0);
@@ -138,8 +158,8 @@ public class WorkflowExecutor {
 
             // 7. 构建返回结果
             Map<String, Object> result = new HashMap<>();
-            result.put("instanceId", instanceId);
-            result.put("finalResponse", finalResponse != null ? finalResponse : "");
+            result.put(WorkflowState.KEY_INSTANCE_ID, instanceId);
+            result.put(WorkflowState.KEY_FINAL_RESPONSE, finalResponse != null ? finalResponse : "");
 
             Integer totalTokens = (Integer) finalState.data().get(WorkflowState.KEY_TOTAL_TOKENS);
             result.put(WorkflowState.KEY_TOTAL_TOKENS, totalTokens != null ? totalTokens : 0);
@@ -147,7 +167,7 @@ public class WorkflowExecutor {
             // 调试模式：返回额外的统计信息
             if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
-                result.put("durationMs", durationMs);
+                result.put(WorkflowState.KEY_DURATION_MS, durationMs);
             }
 
             return result;
@@ -170,6 +190,22 @@ public class WorkflowExecutor {
             emitter.send(SseEmitter.event().name(eventType.getEventName()).data(data));
         } catch (Exception e) {
             log.error("发送SSE事件失败: {}", eventType, e);
+        }
+    }
+
+    private void injectParamCategory(Map<String, Map<String, Object>> nodeOutputs, String categoryKey,
+            List<ParamDefinition> definitions, Map<String, Object> apiParams) {
+        if (definitions == null || definitions.isEmpty())
+            return;
+        Map<String, Object> categoryOutput = new HashMap<>();
+        for (ParamDefinition def : definitions) {
+            String key = def.getKey();
+            if (apiParams.containsKey(key)) {
+                categoryOutput.put(key, apiParams.get(key));
+            }
+        }
+        if (!categoryOutput.isEmpty()) {
+            nodeOutputs.put(categoryKey, categoryOutput);
         }
     }
 }

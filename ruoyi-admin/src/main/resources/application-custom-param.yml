@@ -1,0 +1,62 @@
+# 自定义参数验证配置
+custom-param:
+  # 是否启用白名单模式
+  # true: 只允许白名单中的参数
+  # false: 允许所有非敏感参数（黑名单模式）
+  whitelist-mode: true
+
+  # 是否启用敏感词检测
+  sensitive-check-enabled: true
+
+  # 是否启用嵌套深度检测
+  depth-check-enabled: true
+
+  # 是否启用参数值大小检测
+  size-check-enabled: true
+
+  # 参数名白名单（支持前缀匹配，如 "ext_" 表示所有以 ext_ 开头的参数）
+  whitelist:
+    - appToken
+    - appId
+    - primaryColor
+    - theme
+    - mode
+    - ext_
+    - ext_color
+    - ext_fontSize
+    - ext_layout
+    - ext_custom
+    - timeout
+    - retryCount
+    - maxResults
+    - sortOrder
+    - filters
+    - search
+    - query
+    - keyword
+    - tags
+    - metadata
+
+  # 敏感参数名模式列表（正则表达式）
+  sensitive-patterns:
+    - ".*password.*"
+    - ".*pwd.*"
+    - ".*token.*"
+    - ".*secret.*"
+    - ".*key.*"
+    - ".*private.*"
+    - ".*credential.*"
+    - ".*api_key.*"
+    - ".*access_key.*"
+    - ".*secret_key.*"
+
+  # 参数名长度限制
+  name-length:
+    min: 2
+    max: 50
+
+  # 参数值大小限制（字节），默认 10KB
+  value-max-size: 10240
+
+  # 嵌套对象深度限制
+  max-depth: 3

@@ -1,0 +1,27 @@
+# AI 配置模块
+ai:
+  # 是否开启全系统统一向量模型。true:全系统强制使用一个默认向量模型；false:允许每个知识库使用不同向量模型
+  unified-embedding-model: false
+  # 文件存储配置
+  file-store:
+    # 存储类型: 1-OSS, 2-本地文件
+    type: 2
+    # 本地文件存储路径(仅当 type=2 时生效)
+    local-path: C:/uploads
+  reranker:
+    # 是否启用 ONNX BGE-Reranker 模型
+    enabled: true
+    # ONNX 模型文件路径 (需要下载 corto-ai/bge-reranker-large-onnx)
+    # 可选 bge-reranker-v2-m3 或 bge-reranker-base
+    model-path: F:\reranker\model.onnx
+    # Tokenizer 文件路径
+    tokenizer-path: F:\reranker\tokenizer.json
+  # 记录log for AI
+  log-chat: true
+  # 知识库文档分块相关配置
+  km:
+    chunking:
+      # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
+      child-chunk-size: 200
+      # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
+      child-chunk-overlap: 20

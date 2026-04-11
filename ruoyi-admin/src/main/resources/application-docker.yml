@@ -22,13 +22,13 @@ ai:
     # 容器内的模型路径
     model-path: /opt/models/model.onnx
     tokenizer-path: /opt/models/tokenizer.json
---- # 知识库分块配置
-km:
-  chunking:
-    # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
-    child-chunk-size: 200
-    # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
-    child-chunk-overlap: 20
+  # 知识库分块配置
+  km:
+    chunking:
+      # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
+      child-chunk-size: 200
+      # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
+      child-chunk-overlap: 20
 
 # Redis 配置 (虽然 dev 也是 localhost，但在 docker profile 里显式配置更安全)
 spring.data:

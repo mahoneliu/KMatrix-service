@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "km.chunking")
+@ConfigurationProperties(prefix = "ai.km.chunking")
 public class KmChunkingProperties {
 
     /**

@@ -1,0 +1,29 @@
+# SpringDoc 接口文档配置
+springdoc:
+  api-docs:
+    # 是否开启接口文档
+    enabled: true
+  info:
+    # 标题
+    title: '标题：KMatrix管理系统_接口文档'
+    # 描述
+    description: '描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...'
+    # 版本
+    version: '版本号: ${project.version}'
+    # 作者信息
+    contact:
+      name: Mahone
+      email: mahone@gmail.com
+      url: https://gitee.com/kyxxjs/kmatrix
+  # 这里定义了两个分组，可定义多个，也可以不定义
+  group-configs:
+    - group: 1.演示模块
+      packages-to-scan: org.dromara.demo
+    - group: 2.通用模块
+      packages-to-scan: org.dromara.web
+    - group: 3.系统模块
+      packages-to-scan: org.dromara.system
+    - group: 4.代码生成模块
+      packages-to-scan: org.dromara.generator
+    # - group: 5.工作流模块
+    #   packages-to-scan: org.dromara.workflow

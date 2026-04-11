@@ -3,6 +3,7 @@ package org.dromara.ai.workflow.domain.bo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
 import lombok.Data;
+import org.dromara.ai.api.domain.vo.config.AppParametersConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -60,19 +61,24 @@ public class WorkflowExecutionReq {
     private Long documentId;
 
     /**
-     * 自定义参数，用于传递外部上下文信息
+     * appInfo 的api参数，用于传递外部上下文信息
      * 例如：{"userRole": "admin", "customField": "value"}
-     * 参数将通过 globalState 注入到工作流中
+     * 参数将通过 appInfo.apiParameters 注入到工作流中
      */
-    private Map<String, Object> customParameters;
+    private Map<String, Object> apiParameters;
+
+    /**
+     * 应用参数配置定义，用于匹配和注入不同类别的参数
+     */
+    private AppParametersConfig parametersConfig;
 
     /**
      * 初始化自定义参数为空的 HashMap
      * 避免空指针异常
      */
-    public void initCustomParameters() {
-        if (this.customParameters == null) {
-            this.customParameters = new HashMap<>();
+    public void initApiParameters() {
+        if (this.apiParameters == null) {
+            this.apiParameters = new HashMap<>();
         }
     }
 }
