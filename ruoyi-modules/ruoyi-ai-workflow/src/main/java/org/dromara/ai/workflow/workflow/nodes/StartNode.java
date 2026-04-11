@@ -163,6 +163,10 @@ public class StartNode extends AbstractWorkflowNode {
             output.addOutput(WorkflowState.KEY_DOCUMENT_ID, documentId);
         }
 
+        // 5.保存用户ID到输出
+        Long userId = LoginHelper.getUserId();
+        output.addOutput(WorkflowState.KEY_USER_ID, userId);
+
         log.info("START节点执行完成, userInput={}", userInput);
         return output;
     }

@@ -116,11 +116,13 @@ public class ChatRateLimitServiceImpl implements IChatRateLimitService {
 
     /**
      * 获取当前用户的有效限流配置（用户级 > 系统默认）
+     * <p>
+     * 如果 userId 不是纯数字（如 app-anon:123:1.2.3.4），跳过用户级配置直接回退到系统默认。
      */
     private ChatRateLimitConfigVo resolveConfig(String userId) {
-        // 1. 先尝试从用户数据库获取用户级别配置
-        try {
-            if (StrUtil.isNotBlank(userId) && isNumeric(userId)) {
+        // 1. 如果是纳米 ID（系统用户），尝试从用户数据库获取用户级别配置
+        if (StrUtil.isNotBlank(userId) && isNumeric(userId)) {
+            try {
                 var userVo = getUserService().selectUserById(Long.parseLong(userId));
                 if (userVo != null && StrUtil.isNotBlank(userVo.getRateLimitConfig())) {
                     ChatRateLimitConfigVo config = objectMapper.readValue(userVo.getRateLimitConfig(),
@@ -129,12 +131,12 @@ public class ChatRateLimitServiceImpl implements IChatRateLimitService {
                         return config;
                     }
                 }
+            } catch (Exception e) {
+                log.warn("读取用户限流配置失败，降级为系统默认値，userId={}, err={}", userId, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("读取用户限流配置失败，降级为系统默认值，userId={}, err={}", userId, e.getMessage());
         }
 
-        // 2. 降级到系统配置
+        // 2. 降级到系统配置（包括匿名访客 Key 和无配置用户）
         try {
             String sysConfigJson = getConfigService().selectConfigByKey(SYS_CONFIG_RATE_LIMIT_KEY);
             if (StrUtil.isNotBlank(sysConfigJson)) {
@@ -236,5 +238,17 @@ public class ChatRateLimitServiceImpl implements IChatRateLimitService {
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+
+    /**
+     * 为「App Token 直连」匿名访客构建限流主体标识，格式：app-anon:{appId}:{clientIp}
+     * <p>
+     * 当客户端跳过匹名 Users Auth 流程直接以 App Token 发起对话时，
+     * 应使用此 Key 限流，避免将请求归因到应用创建者（开发者）账号上。
+     */
+    @Override
+    public String buildAnonRateLimitKey(Long appId, String clientIp) {
+        String ip = StrUtil.isBlank(clientIp) ? "unknown" : clientIp;
+        return "app-anon:" + appId + ":" + ip;
     }
 }

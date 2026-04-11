@@ -33,4 +33,17 @@ public interface IChatRateLimitService {
      * @param userId 用户标识
      */
     void checkTokenLimit(String userId);
+
+    /**
+     * 为「App Token 直连」匿名访客构建专属限流标识。
+     * 格式：app-anon:{appId}:{clientIp}
+     * <p>
+     * 当客户端跳过 Session Token 换取流程，直接以 App Token 发起对话时，
+     * 应使用此 Key 进行限流，避免将消耗归因到应用创建者账号上。
+     *
+     * @param appId    应用 ID
+     * @param clientIp 客户端 IP（已从请求头/连接地址中解析好）
+     * @return 限流 Key
+     */
+    String buildAnonRateLimitKey(Long appId, String clientIp);
 }

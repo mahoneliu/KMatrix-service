@@ -16,6 +16,11 @@ import java.util.List;
 public interface IKmNodeDefinitionService {
 
     /**
+     * 刷新节点定义缓存
+     */
+    void refreshCache();
+
+    /**
      * 根据节点类型获取节点定义
      *
      * @return 节点类型定义列表

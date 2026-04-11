@@ -58,6 +58,19 @@ public class KmNodeDefinitionController extends BaseController {
     // ========== 节点定义管理 CRUD API ==========
 
     /**
+     * 刷新节点全局缓存
+     *
+     * @return 操作结果
+     */
+    @Log(title = "节点定义管理", businessType = BusinessType.CLEAN)
+    @SaCheckPermission("ai:workflow:node:edit")
+    @PostMapping("/definition/refreshCache")
+    public R<Void> refreshCache() {
+        workflowNodeService.refreshCache();
+        return R.ok();
+    }
+
+    /**
      * 分页查询节点定义列表
      *
      * @param bo        查询条件

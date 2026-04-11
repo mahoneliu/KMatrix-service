@@ -53,6 +53,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import cn.hutool.json.JSONUtil;
 import org.dromara.ai.storage.domain.KmTempFile;
 import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.common.core.utils.ServletUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -157,21 +158,25 @@ public class KmChatServiceImpl implements IKmChatService {
                 // 2. 加载应用和模型配置
                 KmAppVo app = loadApp(bo.getAppId());
 
-                // 3. 处理用户 ID (免登录模式使用应用创建者)
-                Long tempUserId = userId;
-                if (tempUserId == null) {
-                    try {
-                        tempUserId = Long.valueOf(app.getCreateBy());
-                    } catch (Exception e) {
-                        log.warn("无法从 createBy 获取用户 ID, appId={}", bo.getAppId());
-                        throw new ServiceException("应用配置异常，无法识别所属用户");
-                    }
+                // 3. 处理用户 ID 和限流主体
+                // 匹名模式：使用各自独立的雪花 userId；
+                // App Token 直连模式：userId 为 null，使用 app-anon:{appId}:{IP} 作为限流主体而不是开发者 ID
+                final Long effectiveUserId;
+                final String rateLimitKey;
+                if (userId != null) {
+                    effectiveUserId = userId;
+                    rateLimitKey = userId.toString();
+                } else {
+                    // App Token 直连：不归属开发者，以 app-anon:{appId}:{IP} 作为限流标识
+                    effectiveUserId = null;
+                    String clientIp = ServletUtils.getClientIP();
+                    rateLimitKey = rateLimitService.buildAnonRateLimitKey(app.getAppId(), clientIp);
+                    log.info("匹名用户为空（App Token 直连），使用 rateLimitKey={} 限流", rateLimitKey);
                 }
-                final Long effectiveUserId = tempUserId;
 
                 // 4. 限流校验
-                rateLimitService.checkRequestLimit(effectiveUserId.toString());
-                rateLimitService.checkTokenLimit(effectiveUserId.toString());
+                rateLimitService.checkRequestLimit(rateLimitKey);
+                rateLimitService.checkTokenLimit(rateLimitKey);
 
                 // 5. 获取或创建会话
                 Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId,
@@ -216,7 +221,7 @@ public class KmChatServiceImpl implements IKmChatService {
 
                         // 记录 Token 消耗
                         if (totalTokens != null && totalTokens > 0) {
-                            rateLimitService.recordTokenUsage(effectiveUserId.toString(), totalTokens);
+                            rateLimitService.recordTokenUsage(rateLimitKey, totalTokens);
                         }
 
                         // 保存用户消息（带 instanceId）
@@ -304,15 +309,26 @@ public class KmChatServiceImpl implements IKmChatService {
             userId = LoginHelper.getUserId();
         }
 
-        // 2. 限流校验
-        rateLimitService.checkRequestLimit(userId.toString());
-        rateLimitService.checkTokenLimit(userId.toString());
+        // 2. 构建限流标识（App Token 直连时 userId 为 null，使用 IP 标识避免归因到开发者）
+        final String rateLimitKey;
+        if (userId != null) {
+            rateLimitKey = userId.toString();
+        } else {
+            String clientIp = ServletUtils.getClientIP();
+            rateLimitKey = rateLimitService.buildAnonRateLimitKey(app.getAppId(), clientIp);
+            log.info("chat() App Token 直连，使用 rateLimitKey={} 限流", rateLimitKey);
+        }
+        final Long effectiveUserId = userId;
 
-        // 3. 获取或创建会话
-        Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), userId, bo.getUserType());
+        // 3. 限流校验
+        rateLimitService.checkRequestLimit(rateLimitKey);
+        rateLimitService.checkTokenLimit(rateLimitKey);
 
-        // 3. 保存用户消息
-        saveMessage(sessionId, "user", bo.getMessage(), userId);
+        // 4. 获取或创建会话
+        Long sessionId = getOrCreateSession(bo.getAppId(), bo.getSessionId(), effectiveUserId, bo.getUserType());
+
+        // 5. 保存用户消息
+        saveMessage(sessionId, "user", bo.getMessage(), effectiveUserId);
 
         // 4. 构建对话上下文
         List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
@@ -333,12 +349,12 @@ public class KmChatServiceImpl implements IKmChatService {
                     tokenUsage.totalTokenCount());
 
             // 记录 Token 消耗
-            rateLimitService.recordTokenUsage(userId.toString(), tokenUsage.totalTokenCount());
+            rateLimitService.recordTokenUsage(rateLimitKey, tokenUsage.totalTokenCount());
         }
 
         // 8. 保存AI响应
         Integer totalTokenCount = tokenUsage != null ? tokenUsage.totalTokenCount() : null;
-        KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, null, totalTokenCount, userId);
+        KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, null, totalTokenCount, effectiveUserId);
 
         return MapstructUtils.convert(assistantMessage, KmChatMessageVo.class);
     }

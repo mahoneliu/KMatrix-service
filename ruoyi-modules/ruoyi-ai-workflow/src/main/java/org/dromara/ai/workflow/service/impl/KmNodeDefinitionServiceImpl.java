@@ -85,6 +85,15 @@ public class KmNodeDefinitionServiceImpl implements IKmNodeDefinitionService {
         }
     }
 
+    /**
+     * 刷新全量缓存
+     */
+    @Override
+    @CacheEvict(value = {"workflow:nodeDefinitions", "workflow:nodeDefinition"}, allEntries = true)
+    public void refreshCache() {
+        log.info("【节点定义】手动刷新全量缓存");
+    }
+
     // ========== 节点定义管理方法实现 ==========
 
     /**

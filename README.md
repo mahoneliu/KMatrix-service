@@ -44,7 +44,7 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
   - Implements **parent-child chunking**: child chunks for precise matching and noise reduction, parent chunks for complete and coherent context.
   - Supports QA pairs for targeted answers and AI-generated questions for document chunks to automatically improve retrieval.
   - Supports parsing of various formats including PDF, Word, PPT, Excel, and Markdown, and supports manual adjustment of chunk content.
-- **⛓️ Visual Workflow**: Built-in workflow orchestration engine based on **Vue Flow**, supporting node drag-and-drop and connection configuration. Users can focus on coding the AI workflow logic (e.g., Knowledge Retrieval -> LLM Reasoning -> Result Formatting) with the help of the dynamic form engine for node properties and parameters.
+- **⛓️ Visual Workflow**: Built-in workflow orchestration engine based on **Vue Flow**, supporting node drag-and-drop and connection configuration. Users can focus on coding the AI workflow logic, with the help of the dynamic form engine for node properties and parameters. Greatly improves the efficiency of node secondary development.
 - **🔌 Seamless Embedding**: Embed an intelligent Q&A assistant into third-party business systems by copying just one line of script.
 - **🌍 Model Agnostic**: Supports integration with various LLMs, including local private models (DeepSeek R1 / Llama 3 / Qwen 2, etc.) and public cloud models from both domestic (Tongyi Qianwen / ByteDance Doubao / Zhipu AI / Kimi, etc.) and international providers (OpenAI / Gemini, etc.).
 - **🧩 Modular Design**: Complete separation of frontend and backend.
