@@ -757,30 +757,6 @@ public class KmChatServiceImpl implements IKmChatService {
                 dislikeDiff += 1;
 
             if (likeDiff != 0 || dislikeDiff != 0) {
-                // 1. 更新 km_app (保留旧逻辑，或可逐步废弃)
-                // com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<KmApp>
-                // wrapper =
-                // new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-                // wrapper.eq(KmApp::getAppId, appId);
-
-                // if (likeDiff > 0) {
-                // wrapper.setSql("like_count = COALESCE(like_count, 0) + " + likeDiff);
-                // } else if (likeDiff < 0) {
-                // wrapper.setSql("like_count = GREATEST(COALESCE(like_count, 0) - " +
-                // Math.abs(likeDiff) + ", 0)");
-                // }
-
-                // if (dislikeDiff > 0) {
-                // wrapper.setSql("dislike_count = COALESCE(dislike_count, 0) + " +
-                // dislikeDiff);
-                // } else if (dislikeDiff < 0) {
-                // wrapper.setSql("dislike_count = GREATEST(COALESCE(dislike_count, 0) - " +
-                // Math.abs(dislikeDiff) + ", 0)");
-                // }
-
-                // appMapper.update(null, wrapper);
-
-                // 2. 更新 km_app_access_stat (新统计体系)
                 appService.updateAccessStat(appId, userId, 0L, likeDiff, dislikeDiff, 0);
             }
         }
@@ -861,7 +837,9 @@ public class KmChatServiceImpl implements IKmChatService {
                                 .message(bo.getMessage())
                                 .sessionId(debugSessionId)
                                 .userId(userId)
+                                .tempFileIds(bo.getTempFileIds())
                                 .apiParameters(bo.getCustomParams())
+                                .parametersConfig(debugApp.getParameters())
                                 .build();
             workflowExecutor.executeWorkflowDebug(req, emitter);
 

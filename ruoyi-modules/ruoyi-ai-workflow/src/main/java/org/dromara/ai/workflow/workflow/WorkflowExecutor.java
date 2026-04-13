@@ -20,6 +20,7 @@ import org.dromara.ai.api.domain.vo.config.ParamDefinition;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 工作流执行器
@@ -112,14 +113,12 @@ public class WorkflowExecutor {
         AppParametersConfig paramsConfig = req.getParametersConfig();
         Map<String, Object> apiParams = req.getApiParameters();
 
-        if (paramsConfig != null && apiParams != null && !apiParams.isEmpty()) {
+        if (paramsConfig != null || (apiParams != null && !apiParams.isEmpty()) )  {
             injectParamCategory(nodeOutputs, WorkflowState.KEY_INTERFACE, paramsConfig.getInterfaceParams(), apiParams);
-            // app和session参数示例
-            // injectParamCategory(nodeOutputs, "app", paramsConfig.getAppParams(),
-            // apiParams);
-            // injectParamCategory(nodeOutputs, "session", paramsConfig.getSessionParams(),
-            // apiParams);
         }
+//        injectParamCategory(nodeOutputs, WorkflowState.KEY_APP, paramsConfig.getAppParams(),apiParams);
+//        injectParamCategory(nodeOutputs,  WorkflowState.KEY_SESSION, paramsConfig.getSessionParams(),apiParams);
+
         Map<String, Object> initData = new HashMap<>();
         initData.put(WorkflowState.KEY_GLOBAL_STATE, globalState);
         initData.put(WorkflowState.KEY_NODE_OUTPUTS, nodeOutputs);
@@ -200,8 +199,11 @@ public class WorkflowExecutor {
         Map<String, Object> categoryOutput = new HashMap<>();
         for (ParamDefinition def : definitions) {
             String key = def.getKey();
-            if (apiParams.containsKey(key)) {
+            //注入传参或者默认值
+            if (Objects.nonNull(apiParams) && apiParams.containsKey(key)) {
                 categoryOutput.put(key, apiParams.get(key));
+            }else if (def.getDefaultValue() != null){
+                categoryOutput.put(key, def.getDefaultValue());
             }
         }
         if (!categoryOutput.isEmpty()) {

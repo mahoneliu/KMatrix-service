@@ -370,7 +370,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
             return false;
         }
 
-        List<KmDocument> docs = documentMapper.selectBatchIds(ids);
+        List<KmDocument> docs = documentMapper.selectByIds(ids);
 
         for (KmDocument doc : docs) {
             // 1. 删除关联切片 (含孤立问题)
