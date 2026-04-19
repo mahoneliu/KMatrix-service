@@ -16,20 +16,9 @@
     </description>
 
     <properties>
-        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-bom</artifactId>
-                <version>${langchain4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+
 
     <dependencies>
         <!-- 模型平台模块（提供 ModelBuilder、EmbeddingModel 等） -->

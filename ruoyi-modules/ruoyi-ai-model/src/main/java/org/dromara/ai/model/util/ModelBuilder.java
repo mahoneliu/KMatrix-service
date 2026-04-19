@@ -3,10 +3,10 @@ package org.dromara.ai.model.util;
 import org.dromara.common.core.utils.MessageUtils;
 
 import cn.hutool.core.util.StrUtil;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.dashscope.QwenChatModel;
-import dev.langchain4j.model.dashscope.QwenStreamingChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.community.model.dashscope.QwenChatModel;
+import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
@@ -19,8 +19,8 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
-import dev.langchain4j.model.dashscope.QwenEmbeddingModel;
-import dev.langchain4j.model.embedding.onnx.bgesmallzh.BgeSmallZhEmbeddingModel;
+import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.bgesmallzhv15.BgeSmallZhV15EmbeddingModel;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.onnx.OnnxScoringModel;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +39,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * AI模型构建器工具类
+ * <p>
+ * 基于 LangChain4j 1.13.0 接口 ({@link ChatModel}, {@link StreamingChatModel})
+ * </p>
  *
  * @author Mahone
  * @date 2025-12-31
@@ -55,7 +58,7 @@ public class ModelBuilder {
     private final Map<Long, EmbeddingModel> embeddingModelCache = new ConcurrentHashMap<>();
     private final Map<Long, ScoringModel> scoringModelCache = new ConcurrentHashMap<>();
 
-    // 将默认超时时间从60秒增加到300秒，以适应DeepSeek等带有长推理过程的模型
+    /** 默认超时时间300秒，以适应DeepSeek等带有长推理过程的模型 */
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(300);
 
     /**
@@ -63,9 +66,9 @@ public class ModelBuilder {
      *
      * @param model       模型配置
      * @param providerKey 供应商标识
-     * @return 聊天模型实例
+     * @return {@link ChatModel} 实例
      */
-    public ChatLanguageModel buildChatModel(KmModel model, String providerKey) {
+    public ChatModel buildChatModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
@@ -77,7 +80,8 @@ public class ModelBuilder {
             case "ollama", "vllm" -> buildOllamaModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model);
             case "gemini" -> buildGeminiModel(model);
-            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+            default ->
+                throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
@@ -88,9 +92,9 @@ public class ModelBuilder {
      * @param providerKey 供应商标识
      * @param temperature 温度参数 (0.0-2.0)
      * @param maxTokens   最大token数
-     * @return 聊天模型实例
+     * @return {@link ChatModel} 实例
      */
-    public ChatLanguageModel buildChatModel(KmModel model, String providerKey, Double temperature, Integer maxTokens) {
+    public ChatModel buildChatModel(KmModel model, String providerKey, Double temperature, Integer maxTokens) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
@@ -99,11 +103,13 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" -> buildOpenAiModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" ->
+                buildOpenAiModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiModel(model, temperature, maxTokens);
-            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+            default ->
+                throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
@@ -112,9 +118,9 @@ public class ModelBuilder {
      *
      * @param model       模型配置
      * @param providerKey 供应商标识
-     * @return 流式聊天模型实例
+     * @return {@link StreamingChatModel} 实例
      */
-    public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey) {
+    public StreamingChatModel buildStreamingChatModel(KmModel model, String providerKey) {
         return buildStreamingChatModel(model, providerKey, null, null);
     }
 
@@ -125,9 +131,9 @@ public class ModelBuilder {
      * @param providerKey 供应商标识
      * @param temperature 温度参数 (0.0-2.0)
      * @param maxTokens   最大token数
-     * @return 流式聊天模型实例
+     * @return {@link StreamingChatModel} 实例
      */
-    public StreamingChatLanguageModel buildStreamingChatModel(KmModel model, String providerKey,
+    public StreamingChatModel buildStreamingChatModel(KmModel model, String providerKey,
             Double temperature, Integer maxTokens) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
@@ -137,102 +143,79 @@ public class ModelBuilder {
                 providerKey, model.getModelKey(), temperature, maxTokens);
 
         return switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" -> buildOpenAiStreamingModel(model, temperature, maxTokens);
+            case "openai", "deepseek", "moonshot", "doubao", "siliconflow" ->
+                buildOpenAiStreamingModel(model, temperature, maxTokens);
             case "ollama", "vllm" -> buildOllamaStreamingModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiStreamingModel(model, temperature, maxTokens);
-            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+            default ->
+                throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
     }
 
-    /**
-     * 构建OpenAI类型模型
-     */
-    private ChatLanguageModel buildOpenAiModel(KmModel model) {
+    // ========== OpenAI 兼容类型 ==========
+
+    private ChatModel buildOpenAiModel(KmModel model) {
         var builder = OpenAiChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (StrUtil.isNotBlank(model.getApiBase())) {
-            builder.baseUrl(model.getApiBase());
-        } else {
-            // 获取provider的默认apiBase
-            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
-            builder.baseUrl(providerVo.getDefaultEndpoint());
-        }
-
+        applyApiBase(builder, model);
         return builder.build();
     }
 
-    /**
-     * 构建OpenAI类型模型(带参数)
-     */
-    private ChatLanguageModel buildOpenAiModel(KmModel model, Double temperature, Integer maxTokens) {
+    private ChatModel buildOpenAiModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = OpenAiChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (StrUtil.isNotBlank(model.getApiBase())) {
-            builder.baseUrl(model.getApiBase());
-        } else {
-            // 获取provider的默认apiBase
-            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
-            builder.baseUrl(providerVo.getDefaultEndpoint());
-        }
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.maxTokens(maxTokens);
-        }
-
+        applyApiBase(builder, model);
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxTokens(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建OpenAI类型流式模型
-     */
-    private StreamingChatLanguageModel buildOpenAiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+    private StreamingChatModel buildOpenAiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = OpenAiStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (StrUtil.isNotBlank(model.getApiBase())) {
-            builder.baseUrl(model.getApiBase());
-        } else {
-            // 获取provider的默认apiBase
-            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
-            builder.baseUrl(providerVo.getDefaultEndpoint());
-        }
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.maxTokens(maxTokens);
-        }
-
+        applyApiBase(builder, model);
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxTokens(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建Ollama类型模型
-     */
-    private ChatLanguageModel buildOllamaModel(KmModel model) {
-        String baseUrl = StrUtil.isNotBlank(model.getApiBase())
-                ? model.getApiBase()
-                : "http://localhost:11434";
+    /** 统一处理 apiBase：优先使用 model 中的配置，否则从 provider 获取 */
+    private void applyApiBase(OpenAiChatModel.OpenAiChatModelBuilder builder, KmModel model) {
+        if (StrUtil.isNotBlank(model.getApiBase())) {
+            builder.baseUrl(model.getApiBase());
+        } else {
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
+        }
+    }
 
+    private void applyApiBase(OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder, KmModel model) {
+        if (StrUtil.isNotBlank(model.getApiBase())) {
+            builder.baseUrl(model.getApiBase());
+        } else {
+            KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());
+            builder.baseUrl(providerVo.getDefaultEndpoint());
+        }
+    }
+
+    // ========== Ollama 类型 ==========
+
+    private ChatModel buildOllamaModel(KmModel model) {
         return OllamaChatModel.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(resolveOllamaBase(model))
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
@@ -240,106 +223,64 @@ public class ModelBuilder {
                 .build();
     }
 
-    /**
-     * 构建Ollama类型模型(带参数)
-     */
-    private ChatLanguageModel buildOllamaModel(KmModel model, Double temperature, Integer maxTokens) {
-        String baseUrl = StrUtil.isNotBlank(model.getApiBase())
-                ? model.getApiBase()
-                : "http://localhost:11434";
-
+    private ChatModel buildOllamaModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = OllamaChatModel.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(resolveOllamaBase(model))
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.numPredict(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.numPredict(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建Ollama类型流式模型
-     */
-    private StreamingChatLanguageModel buildOllamaStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
-        String baseUrl = StrUtil.isNotBlank(model.getApiBase())
-                ? model.getApiBase()
-                : "http://localhost:11434";
-
+    private StreamingChatModel buildOllamaStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = OllamaStreamingChatModel.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(resolveOllamaBase(model))
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.numPredict(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.numPredict(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建通义千问类型模型
-     */
-    private ChatLanguageModel buildQwenModel(KmModel model) {
+    private String resolveOllamaBase(KmModel model) {
+        return StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase() : "http://localhost:11434";
+    }
+
+    // ========== 通义千问 DashScope ==========
+
+    private ChatModel buildQwenModel(KmModel model) {
         return QwenChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
                 .build();
     }
 
-    /**
-     * 构建通义千问类型模型(带参数)
-     */
-    private ChatLanguageModel buildQwenModel(KmModel model, Double temperature, Integer maxTokens) {
+    private ChatModel buildQwenModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = QwenChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey());
-
-        if (temperature != null) {
-            builder.temperature(temperature.floatValue());
-        }
-        if (maxTokens != null) {
-            builder.maxTokens(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature.floatValue());
+        if (maxTokens != null) builder.maxTokens(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建通义千问类型流式模型
-     */
-    private StreamingChatLanguageModel buildQwenStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+    private StreamingChatModel buildQwenStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = QwenStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey());
-
-        if (temperature != null) {
-            builder.temperature(temperature.floatValue());
-        }
-        if (maxTokens != null) {
-            builder.maxTokens(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature.floatValue());
+        if (maxTokens != null) builder.maxTokens(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建Gemini类型模型
-     */
-    private ChatLanguageModel buildGeminiModel(KmModel model) {
+    // ========== Gemini ==========
+
+    private ChatModel buildGeminiModel(KmModel model) {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -350,10 +291,7 @@ public class ModelBuilder {
                 .build();
     }
 
-    /**
-     * 构建Gemini类型模型(带参数)
-     */
-    private ChatLanguageModel buildGeminiModel(KmModel model, Double temperature, Integer maxTokens) {
+    private ChatModel buildGeminiModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = GoogleAiGeminiChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -361,21 +299,12 @@ public class ModelBuilder {
                         GeminiHarmCategory.HARM_CATEGORY_HATE_SPEECH, GeminiHarmBlockThreshold.BLOCK_NONE))
                 .logRequestsAndResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.maxOutputTokens(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxOutputTokens(maxTokens);
         return builder.build();
     }
 
-    /**
-     * 构建Gemini类型流式模型
-     */
-    private StreamingChatLanguageModel buildGeminiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+    private StreamingChatModel buildGeminiStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
         var builder = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -384,23 +313,18 @@ public class ModelBuilder {
                                 GeminiHarmBlockThreshold.BLOCK_NONE)))
                 .logRequestsAndResponses(aiProperties.isLogChat())
                 .timeout(DEFAULT_TIMEOUT);
-
-        if (temperature != null) {
-            builder.temperature(temperature);
-        }
-        if (maxTokens != null) {
-            builder.maxOutputTokens(maxTokens);
-        }
-
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxOutputTokens(maxTokens);
         return builder.build();
     }
+
+    // ========== Embedding 模型 ==========
 
     public EmbeddingModel buildEmbeddingModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
 
-        // 使用缓存，避免重复构建
         if (model.getModelId() != null && embeddingModelCache.containsKey(model.getModelId())) {
             return embeddingModelCache.get(model.getModelId());
         }
@@ -408,11 +332,13 @@ public class ModelBuilder {
         log.info("构建向量化模型: providerKey={}, modelKey={}", providerKey, model.getModelKey());
 
         EmbeddingModel embeddingModel = switch (providerKey.toLowerCase()) {
-            case "openai", "deepseek", "moonshot", "doubao", "vllm", "zhipu", "siliconflow" -> buildOpenAiEmbeddingModel(model);
+            case "openai", "deepseek", "moonshot", "doubao", "vllm", "zhipu", "siliconflow" ->
+                buildOpenAiEmbeddingModel(model);
             case "ollama" -> buildOllamaEmbeddingModel(model);
             case "qwen", "bailian" -> buildQwenEmbeddingModel(model);
             case "local" -> buildLocalEmbeddingModel(model);
-            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+            default ->
+                throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
 
         if (model.getModelId() != null) {
@@ -424,9 +350,10 @@ public class ModelBuilder {
 
     private EmbeddingModel buildLocalEmbeddingModel(KmModel model) {
         if ("bge-small-zh".equalsIgnoreCase(model.getModelKey())) {
-            return new BgeSmallZhEmbeddingModel();
+            return new BgeSmallZhV15EmbeddingModel();
         }
-        throw new ServiceException(MessageUtils.message("ai.msg.embedding.unsupported_local_model", model.getModelKey()));
+        throw new ServiceException(
+                MessageUtils.message("ai.msg.embedding.unsupported_local_model", model.getModelKey()));
     }
 
     private EmbeddingModel buildOpenAiEmbeddingModel(KmModel model) {
@@ -447,12 +374,8 @@ public class ModelBuilder {
     }
 
     private EmbeddingModel buildOllamaEmbeddingModel(KmModel model) {
-        String baseUrl = StrUtil.isNotBlank(model.getApiBase())
-                ? model.getApiBase()
-                : "http://localhost:11434";
-
         return OllamaEmbeddingModel.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(resolveOllamaBase(model))
                 .modelName(model.getModelKey())
                 .logRequests(aiProperties.isLogChat())
                 .logResponses(aiProperties.isLogChat())
@@ -467,19 +390,13 @@ public class ModelBuilder {
                 .build();
     }
 
-    /**
-     * 构建重排序模型 (ScoringModel)
-     *
-     * @param model       模型配置
-     * @param providerKey 供应商标识
-     * @return 重排序模型实例
-     */
+    // ========== Scoring/Reranker 模型 ==========
+
     public ScoringModel buildScoringModel(KmModel model, String providerKey) {
         if (model == null || StrUtil.isBlank(providerKey)) {
             throw new ServiceException(MessageUtils.message("ai.msg.model.config_empty"));
         }
 
-        // 使用缓存
         if (model.getModelId() != null && scoringModelCache.containsKey(model.getModelId())) {
             return scoringModelCache.get(model.getModelId());
         }
@@ -489,7 +406,8 @@ public class ModelBuilder {
         ScoringModel scoringModel = switch (providerKey.toLowerCase()) {
             case "openai", "deepseek", "siliconflow" -> buildOpenAiScoringModel(model);
             case "local" -> buildLocalScoringModel(model);
-            default -> throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
+            default ->
+                throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
 
         if (model.getModelId() != null) {
@@ -507,19 +425,15 @@ public class ModelBuilder {
         String modelPath;
         String tokenizerPath;
 
-        // 如果是内置模型，从配置文件获取绝对路径
         if ("bge-reranker-v2-m3".equals(model.getModelKey())) {
             modelPath = aiProperties.getReranker().getModelPath();
             tokenizerPath = aiProperties.getReranker().getTokenizerPath();
         } else {
-            // 否则认为 ModelKey 就是路径
             modelPath = model.getModelKey();
             int dotIndex = modelPath.lastIndexOf(".");
-            if (dotIndex > 0) {
-                tokenizerPath = modelPath.substring(0, dotIndex) + ".tokenizer.json";
-            } else {
-                tokenizerPath = modelPath + ".tokenizer.json";
-            }
+            tokenizerPath = dotIndex > 0
+                    ? modelPath.substring(0, dotIndex) + ".tokenizer.json"
+                    : modelPath + ".tokenizer.json";
         }
 
         if (StrUtil.isBlank(modelPath) || StrUtil.isBlank(tokenizerPath)) {
@@ -536,7 +450,6 @@ public class ModelBuilder {
     }
 
     private ScoringModel buildOpenAiScoringModel(KmModel model) {
-        // 获取 API Base，优先使用模型自定义，否则查询供应商默认地址
         String apiBase = model.getApiBase();
         if (StrUtil.isBlank(apiBase)) {
             KmModelProviderVo providerVo = kmModelServiceImpl.queryById(model.getProviderId());

@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -99,7 +99,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
         if (provider == null) {
             throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
         }
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+        ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
 
         // 发送thinking事件：分析相关表
         SseHelper.sendThinking(emitter, streamOutput, "📊 正在分析数据库结构，筛选相关表...\n");
@@ -189,7 +189,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
     /**
      * 调用 LLM 生成自然语言回答
      */
-    private String generateAnswer(ChatLanguageModel chatModel, String userQuery, String sql,
+    private String generateAnswer(ChatModel chatModel, String userQuery, String sql,
             List<Map<String, Object>> result, NodeContext context) {
         String systemPrompt = """
                 你是一个数据分析助手。根据用户的问题和SQL查询结果，用简洁清晰的自然语言回答用户的问题。
@@ -219,7 +219,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userPrompt));
 
-        var response = chatModel.generate(messages);
+        var response = chatModel.chat(messages);
 
         // 保存 token 使用信息
         if (response != null && response.tokenUsage() != null) {
@@ -231,7 +231,7 @@ public class DbQueryNode extends AbstractWorkflowNode {
             context.setTokenUsage(tokenUsageMap);
         }
 
-        return response.content().text();
+        return response.aiMessage().text();
     }
 
     @Override

@@ -18,6 +18,7 @@ import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.dromara.system.service.ISysConfigService;
 import org.springframework.stereotype.Component;
 import cn.hutool.core.util.StrUtil;
+import org.dromara.common.core.utils.MessageUtils;
 
 /**
  * 文件存储节点
@@ -41,20 +42,20 @@ public class FileStorageNode extends AbstractWorkflowNode {
         // 1. 获取输入参数，兼容 LinkedHashMap（JSON反序列化结果）和直接对象
         Object raw = context.getInput("file");
         if (raw == null) {
-            throw new IllegalArgumentException("文档存储节点需要输入: file (KmWorkflowFile)");
+            throw new IllegalArgumentException(MessageUtils.message("ai.workflow.node.file_storage.missing_input"));
         }
         KmWorkflowFile file = OBJECT_MAPPER.convertValue(raw, KmWorkflowFile.class);
 
         // 2. 决定 datasetId (参数 > 配置 > 系统兜底)
         Long datasetId = resolveDatasetId(context);
         if (datasetId == null) {
-            throw new RuntimeException("无法确定目标数据集ID，请检查节点配置或系统变量 ai.workflow.default_dataset_id");
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.file_storage.missing_dataset_id"));
         }
 
         // 3. 查询数据集元数据获取 kbId
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
-            throw new RuntimeException("数据集不存在: " + datasetId);
+            throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found") + ": " + datasetId);
         }
 
         // 4. 解析真实文件路径：优先通过 tempFileId 查 KmTempFile 拿相对路径，避免存 URL 前缀
@@ -64,7 +65,7 @@ public class FileStorageNode extends AbstractWorkflowNode {
         if (file.getTempFileId() != null) {
             KmTempFile tempFile = tempFileMapper.selectById(file.getTempFileId());
             if (tempFile == null) {
-                throw new RuntimeException("临时文件不存在: tempFileId=" + file.getTempFileId());
+                throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.temp_file_not_found") + ": tempFileId=" + file.getTempFileId());
             }
             filePath = tempFile.getFilePath();
             storeType = tempFile.getStoreType();

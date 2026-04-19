@@ -8,10 +8,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.output.TokenUsage;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
@@ -119,12 +118,12 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 加载模型
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
-            throw new RuntimeException("模型不存在: " + modelId);
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.common.model_not_found", modelId));
         }
 
         KmModelProvider provider = providerMapper.selectById(model.getProviderId());
         if (provider == null) {
-            throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.provider_not_found", model.getProviderId()));
         }
 
         String userInput = (String) context.getInput("userInput");
@@ -325,8 +324,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
         List<ToolSpecification> toolSpecs = toolBindings.stream().map(ToolBinding::getSpecification).toList();
         Boolean enableToolTrace = context.getConfigAsBoolean("enableToolTrace", false);
 
-        ChatLanguageModel chatModel = null;
-        StreamingChatLanguageModel streamingModel = null;
+        ChatModel chatModel = null;
+        StreamingChatModel streamingModel = null;
         if (Boolean.TRUE.equals(streamOutput)) {
             streamingModel = modelBuilder.buildStreamingChatModel(model, provider.getProviderKey(), temperature,
                     maxTokens);
@@ -334,17 +333,17 @@ public class LlmChatNode extends AbstractWorkflowNode {
             chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature, maxTokens);
         }
 
-        Response<AiMessage> response = null;
+        dev.langchain4j.model.chat.response.ChatResponse response = null;
 
         while (true) {
             if (Boolean.TRUE.equals(streamOutput)) {
                 CountDownLatch latch = new CountDownLatch(1);
-                AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
+                AtomicReference<dev.langchain4j.model.chat.response.ChatResponse> responseRef = new AtomicReference<>();
                 AtomicReference<Exception> errorRef = new AtomicReference<>();
 
-                StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
+                dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler = new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
                     @Override
-                    public void onNext(String token) {
+                    public void onPartialResponse(String token) {
                         if (emitter != null) {
                             try {
                                 emitter.send(SseEmitter.event().data(token));
@@ -355,7 +354,20 @@ public class LlmChatNode extends AbstractWorkflowNode {
                     }
 
                     @Override
-                    public void onComplete(Response<AiMessage> r) {
+                    public void onPartialThinking(dev.langchain4j.model.chat.response.PartialThinking pt) {
+                        if (emitter != null && pt.text() != null) {
+                            try {
+                                emitter.send(SseEmitter.event()
+                                        .name(SseEventType.THINKING.getEventName())
+                                        .data(pt.text()));
+                            } catch (Exception e) {
+                                log.error("发送THINKING消息失败", e);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse r) {
                         responseRef.set(r);
                         latch.countDown();
                     }
@@ -368,16 +380,20 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 };
 
                 if (toolSpecs.isEmpty()) {
-                    streamingModel.generate(messages, handler);
+                    streamingModel.chat(messages, handler);
                 } else {
-                    streamingModel.generate(messages, toolSpecs, handler);
+                    ChatRequest request = ChatRequest.builder()
+                            .messages(messages)
+                            .toolSpecifications(toolSpecs)
+                            .build();
+                    streamingModel.chat(request, handler);
                 }
 
                 try {
                     latch.await();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new RuntimeException("流式生成被中断", e);
+                    throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.interrupted"), e);
                 }
 
                 if (errorRef.get() != null) {
@@ -387,13 +403,17 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 response = responseRef.get();
             } else {
                 if (toolSpecs.isEmpty()) {
-                    response = chatModel.generate(messages);
+                    response = chatModel.chat(messages);
                 } else {
-                    response = chatModel.generate(messages, toolSpecs);
+                    ChatRequest request = ChatRequest.builder()
+                            .messages(messages)
+                            .toolSpecifications(toolSpecs)
+                            .build();
+                    response = chatModel.chat(request);
                 }
             }
 
-            AiMessage aiMessage = response.content();
+            AiMessage aiMessage = response.aiMessage();
             messages.add(aiMessage);
             log.info("LLM_CHAT节点 - IMPORTANT - : aiMessage={}", aiMessage);
 
@@ -471,7 +491,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
         }
 
         // 保存输出
-        AiMessage aiMessage = response.content();
+        AiMessage aiMessage = response.aiMessage();
         String responseText = aiMessage.text();
         log.info("LLM_CHAT节点执行完成, response={}", responseText);
         output.addOutput("response", responseText);
@@ -644,7 +664,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 log.info("LLM_CHAT节点 - : buildMessages 工作流文件多模态转化成功");
             } else {
                 if (StrUtil.isBlank(fullText)) {
-                    throw new RuntimeException(MessageUtils.message("llm.chat.input.empty"));
+                    throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.missing_user_input"));
                 }
                 messages.add(UserMessage.from(fullText.toString()));
                 log.info("LLM_CHAT节点 - : buildMessages 普通文本转化完成");

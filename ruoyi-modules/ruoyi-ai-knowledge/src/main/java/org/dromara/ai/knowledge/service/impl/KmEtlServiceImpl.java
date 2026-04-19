@@ -84,7 +84,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
             KmEmbeddingMapper embeddingMapper,
             KmDatasetMapper datasetMapper,
             ISysOssService ossService,
-            EmbeddingModel embeddingModel,
+            @Lazy EmbeddingModel embeddingModel,
             List<EtlHandler> etlHandlers,
             KmQuestionMapper questionMapper,
             KmQuestionChunkMapMapper questionChunkMapMapper,

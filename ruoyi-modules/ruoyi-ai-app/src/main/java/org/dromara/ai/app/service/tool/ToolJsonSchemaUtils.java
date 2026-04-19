@@ -136,7 +136,7 @@ public class ToolJsonSchemaUtils {
             }
 
             JsonObjectSchema.Builder schemaBuilder = JsonObjectSchema.builder()
-                    .properties(properties);
+                    .addProperties(properties);
             if (!requiredFields.isEmpty()) {
                 schemaBuilder.required(requiredFields);
             }

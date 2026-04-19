@@ -1,4 +1,5 @@
 package org.dromara.ai.app.service.tool;
+
 import org.dromara.ai.workflow.workflow.nodes.tool.*;
 
 import cn.hutool.core.util.StrUtil;
@@ -19,7 +20,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
+import dev.langchain4j.mcp.client.DefaultMcpClient;
+import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +55,9 @@ public class ToolProviderService implements IToolProvider {
     private final KmBuiltinToolMapper builtinToolMapper;
     private final KmMcpServerMapper mcpServerMapper;
     private final KmSkillMapper skillMapper;
+
+    /** 长期保持活性的 MCP Client 缓存 */
+    private final Map<Long, McpClient> mcpClientCache = new ConcurrentHashMap<>();
 
     /**
      * 根据节点 tools 配置解析工具绑定列表
@@ -164,7 +174,8 @@ public class ToolProviderService implements IToolProvider {
 
         try {
             List<Map<String, Object>> innerToolRefs = MAPPER.readValue(toolBindingsJson,
-                    new TypeReference<List<Map<String, Object>>>() {});
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
             List<ToolBinding> innerBindings = resolveBindings(innerToolRefs);
 
             if (innerBindings.isEmpty()) {
@@ -185,10 +196,10 @@ public class ToolProviderService implements IToolProvider {
                     try {
                         String innerResult = inner.getExecutor().execute(request);
                         sb.append("[").append(inner.getToolName()).append("]: ")
-                          .append(innerResult).append("\n");
+                                .append(innerResult).append("\n");
                     } catch (Exception ex) {
                         sb.append("[").append(inner.getToolName()).append(" 执行失败]: ")
-                          .append(ex.getMessage()).append("\n");
+                                .append(ex.getMessage()).append("\n");
                         log.error("技能内工具执行失败: skillId={}, innerTool={}", skillId, inner.getToolName(), ex);
                     }
                 }
@@ -219,7 +230,8 @@ public class ToolProviderService implements IToolProvider {
         }
         try {
             List<Map<String, Object>> innerToolRefs = MAPPER.readValue(skill.getToolBindings(),
-                    new TypeReference<List<Map<String, Object>>>() {});
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
             return resolveBindings(innerToolRefs);
         } catch (Exception e) {
             log.error("提取技能底层工具失败: skillId={}", skillId, e);
@@ -228,7 +240,7 @@ public class ToolProviderService implements IToolProvider {
     }
 
     /**
-     * 动态拉取 MCP Server 工具列表并创建工具绑定
+     * 动态拉取 MCP Server 工具列表并创建工具绑定（LangChain4j 官方标准端点实现）
      */
     private List<ToolBinding> resolveMcpTools(Long serverId, RestTemplate restTemplate) {
         List<ToolBinding> result = new ArrayList<>();
@@ -243,45 +255,54 @@ public class ToolProviderService implements IToolProvider {
             return result;
         }
 
-        // 解析 serverConfig 中的 url
+        // 解析 serverConfig 中的 url (这里应该是 MCP Server 的 SSE 端点，比如 http://localhost:8080/sse)
         String serverUrl = extractServerUrl(server.getServerConfig());
         if (StrUtil.isBlank(serverUrl)) {
             log.error("MCP Server 配置缺少 url 字段: serverId={}", serverId);
             return result;
         }
 
-        // 发送 tools/list 请求获取工具列表
-        List<Map<String, Object>> mcpTools = fetchMcpToolList(serverUrl, serverId, restTemplate);
+        // 提取并连接/复用 McpClient
+        McpClient mcpClient = mcpClientCache.computeIfAbsent(serverId, id -> {
+            log.info("初始化 MCP Client: serverId={}, url={}", id, serverUrl);
+            HttpMcpTransport transport = HttpMcpTransport.builder()
+                    .sseUrl(serverUrl)
+                    .logRequests(true)
+                    .logResponses(true)
+                    .build();
+            return DefaultMcpClient.builder()
+                    .transport(transport)
+                    .toolExecutionTimeout(Duration.ofMillis(MCP_TIMEOUT_MS))
+                    .build();
+        });
 
-        for (Map<String, Object> mcpTool : mcpTools) {
-            String toolName = (String) mcpTool.get("name");
-            String description = (String) mcpTool.getOrDefault("description", "");
+        List<ToolSpecification> tools;
+        try {
+            tools = mcpClient.listTools();
+        } catch (Exception e) {
+            log.error("无法获取 MCP Server 工具列表: serverId={}", serverId, e);
+            return result;
+        }
 
-            if (StrUtil.isBlank(toolName)) {
-                continue;
-            }
-
-            // 解析 MCP 工具的 inputSchema（MCP 标准：inputSchema 字段）
-            Object inputSchemaObj = mcpTool.get("inputSchema");
-            String inputSchemaJson = null;
-            if (inputSchemaObj != null) {
-                try {
-                    inputSchemaJson = MAPPER.writeValueAsString(inputSchemaObj);
-                } catch (Exception e) {
-                    log.warn("序列化 MCP 工具 inputSchema 失败: toolName={}", toolName);
-                }
-            }
-
-            ToolSpecification spec = ToolJsonSchemaUtils.buildToolSpecification(toolName, description, inputSchemaJson);
-            ToolExecutor executor = new McpExecutor(serverId, serverUrl, toolName, restTemplate);
+        for (ToolSpecification spec : tools) {
+            // 使用 Langchain4j 原生的工具执行接口适配 KMatrix 的 ToolExecutor
+            ToolExecutor executor = arguments -> {
+                ToolExecutionRequest mcpReq = ToolExecutionRequest.builder()
+                        .id(java.util.UUID.randomUUID().toString())
+                        .name(spec.name())
+                        .arguments(arguments)
+                        .build();
+                ToolExecutionResult execResult = mcpClient.executeTool(mcpReq);
+                return execResult.resultText();
+            };
 
             result.add(ToolBinding.builder()
-                    .toolName(toolName)
+                    .toolName(spec.name())
                     .specification(spec)
                     .executor(executor)
                     .build());
 
-            log.info("MCP 工具绑定成功: serverId={}, toolName={}", serverId, toolName);
+            log.info("MCP 工具绑定成功: serverId={}, toolName={}", serverId, spec.name());
         }
 
         return result;
@@ -295,7 +316,8 @@ public class ToolProviderService implements IToolProvider {
             return null;
         }
         try {
-            Map<String, Object> config = MAPPER.readValue(serverConfig, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> config = MAPPER.readValue(serverConfig, new TypeReference<Map<String, Object>>() {
+            });
             return (String) config.get("url");
         } catch (Exception e) {
             log.error("解析 serverConfig 失败: {}", serverConfig, e);
@@ -303,53 +325,7 @@ public class ToolProviderService implements IToolProvider {
         }
     }
 
-    /**
-     * 发送 MCP tools/list 请求获取工具定义列表
-     */
-    @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> fetchMcpToolList(String serverUrl, Long serverId, RestTemplate restTemplate) {
-        List<Map<String, Object>> tools = new ArrayList<>();
-
-        try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("jsonrpc", "2.0");
-            requestBody.put("id", System.currentTimeMillis());
-            requestBody.put("method", "tools/list");
-            requestBody.put("params", new HashMap<>());
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-            String responseStr = restTemplate.postForObject(serverUrl, entity, String.class);
-            log.debug("MCP tools/list 响应: serverId={}, response={}", serverId, responseStr);
-
-            Map<String, Object> response = MAPPER.readValue(responseStr, new TypeReference<Map<String, Object>>() {});
-
-            if (response.containsKey("error")) {
-                log.error("MCP tools/list 返回错误: serverId={}, error={}", serverId, response.get("error"));
-                return tools;
-            }
-
-            Object result = response.get("result");
-            if (result instanceof Map) {
-                Object toolsObj = ((Map<String, Object>) result).get("tools");
-                if (toolsObj instanceof List) {
-                    for (Object item : (List<?>) toolsObj) {
-                        if (item instanceof Map) {
-                            tools.add((Map<String, Object>) item);
-                        }
-                    }
-                }
-            }
-
-            log.info("MCP tools/list 成功: serverId={}, 工具数={}", serverId, tools.size());
-        } catch (Exception e) {
-            log.error("MCP tools/list 请求失败: serverId={}, url={}", serverId, serverUrl, e);
-        }
-
-        return tools;
-    }
+    // fetchMcpToolList() 已被官方 API 替代并删除
 
     /**
      * 创建带超时配置的 RestTemplate

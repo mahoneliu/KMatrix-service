@@ -27,6 +27,8 @@ import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -48,9 +50,12 @@ public class KmDocumentChunkServiceImpl implements IKmDocumentChunkService {
     private final KmEmbeddingMapper embeddingMapper;
     private final KmQuestionChunkMapMapper questionChunkMapMapper;
     private final IKmQuestionService questionService;
-    private final EmbeddingModel embeddingModel;
     private final IKmChunkingConfigService chunkingConfigService;
     private final KmDatasetMapper datasetMapper;
+
+    @Autowired
+    @Lazy
+    private EmbeddingModel embeddingModel;
 
     @Override
     public List<KmDocumentChunkVo> listByDocumentId(Long documentId) {

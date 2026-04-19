@@ -11,8 +11,8 @@ import java.util.Map;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.model.mapper.KmModelMapper;
@@ -45,7 +45,7 @@ class AsrNodeTest {
     @Mock
     private ObjectProvider<IKmFileService> kmFileServiceProvider;
     @Mock
-    private ChatLanguageModel chatLanguageModel;
+    private ChatModel chatModel;
 
     @InjectMocks
     private AsrNode node;
@@ -80,12 +80,12 @@ class AsrNodeTest {
         when(providerMapper.selectById(10L)).thenReturn(provider);
 
         // Mock ModelBuilder
-        when(modelBuilder.buildChatModel(any(), anyString(), anyDouble(), anyInt())).thenReturn(chatLanguageModel);
+        when(modelBuilder.buildChatModel(any(), anyString(), anyDouble(), anyInt())).thenReturn(chatModel);
 
-        // Mock response
-        AiMessage aiMsg = AiMessage.from("Recognized text");
-        Response<AiMessage> response = Response.from(aiMsg);
-        when(chatLanguageModel.generate(anyList())).thenReturn(response);
+        // Mock dev.langchain4j.model.chat.response.ChatResponse
+        AiMessage aiMsg = dev.langchain4j.data.message.AiMessage.from("Recognized text");
+        dev.langchain4j.model.chat.response.ChatResponse response = dev.langchain4j.model.chat.response.ChatResponse.builder().aiMessage(aiMsg).build();
+        when(chatModel.chat(any(dev.langchain4j.model.chat.request.ChatRequest.class))).thenReturn(response);
 
         // Execute
         NodeOutput output = node.execute(context);

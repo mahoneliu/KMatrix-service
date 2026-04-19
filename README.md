@@ -135,6 +135,9 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 1. **Environment Setup**:
     - Install Redis.
     - Download the rerank model.
+    - Install ONNX runtime
+      - Linux: apt-get install libgomp1
+      - Windows: [VC_redist.x64.exe](https://download.visualstudio.microsoft.com/download/pr/7ebf5fdb-36dc-4145-b0a0-90d3d5990a61/CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/VC_redist.x64.exe)
     - Install PostgreSQL and enable pgvector extension and pgroonga extension. pgroonga deployment reference 👉🏻[here](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h6qmh45fmedk).
     - Note:
       - PG deployment scripts and rerank model download scripts are available in the `script` directory.

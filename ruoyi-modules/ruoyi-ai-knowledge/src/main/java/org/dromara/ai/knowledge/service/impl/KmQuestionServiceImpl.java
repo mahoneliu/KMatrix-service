@@ -5,7 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +57,10 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
     private final KmDocumentChunkMapper chunkMapper;
     private final KmDocumentMapper documentMapper;
     private final KmEmbeddingMapper embeddingMapper;
-    private final EmbeddingModel embeddingModel;
+
+    @Autowired
+    @Lazy
+    private EmbeddingModel embeddingModel;
 
     private final KmModelMapper modelMapper;
     private final KmModelProviderMapper providerMapper;
@@ -203,7 +206,7 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         }
 
         // 4. 构建聊天模型(使用传入的参数)
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature,
+        ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature,
                 maxTokens);
 
         // 5. 构建提示词
@@ -223,7 +226,7 @@ public class KmQuestionServiceImpl implements IKmQuestionService {
         }
 
         // 6. 调用模型生成问题
-        String response = chatModel.generate(finalPrompt);
+        String response = chatModel.chat(finalPrompt);
 
         // 7. 解析响应
         List<String> questions = parseQuestions(response);

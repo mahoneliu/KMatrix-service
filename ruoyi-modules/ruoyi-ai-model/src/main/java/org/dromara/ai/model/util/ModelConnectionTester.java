@@ -2,8 +2,8 @@ package org.dromara.ai.model.util;
 
 import cn.hutool.core.util.StrUtil;
 import org.dromara.common.core.utils.MessageUtils;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.dashscope.QwenChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -43,7 +43,8 @@ public class ModelConnectionTester {
             }
 
             String type = bo.getModelType();
-            if (StrUtil.isBlank(type)) type = "1"; // 默认聊天模型
+            if (StrUtil.isBlank(type))
+                type = "1"; // 默认聊天模型
 
             return switch (type) {
                 case "2" -> testOpenAiEmbedding(bo, providerName);
@@ -66,8 +67,8 @@ public class ModelConnectionTester {
             builder.baseUrl(bo.getApiBase());
         }
 
-        ChatLanguageModel model = builder.build();
-        String response = model.generate(TEST_MESSAGE);
+        ChatModel model = builder.build();
+        String response = model.chat(TEST_MESSAGE);
         log.info("{} Chat连接测试成功: model={}, response={}", providerName, bo.getModelKey(), response);
         return MessageUtils.message("ai.msg.model.connection_success");
     }
@@ -125,13 +126,13 @@ public class ModelConnectionTester {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = OllamaChatModel.builder()
+            ChatModel model = OllamaChatModel.builder()
                     .baseUrl(apiBase)
                     .modelName(modelKey)
                     .timeout(DEFAULT_TIMEOUT)
                     .build();
 
-            String response = model.generate(TEST_MESSAGE);
+            String response = model.chat(TEST_MESSAGE);
 
             log.info("Ollama 连接测试成功: model={}, response={}", modelKey, response);
             return MessageUtils.message("ai.msg.model.connection_success");
@@ -153,12 +154,12 @@ public class ModelConnectionTester {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = QwenChatModel.builder()
+            ChatModel model = QwenChatModel.builder()
                     .apiKey(apiKey)
                     .modelName(modelKey)
                     .build();
 
-            String response = model.generate(TEST_MESSAGE);
+            String response = model.chat(TEST_MESSAGE);
 
             log.info("通义千问连接测试成功: model={}, response={}", modelKey, response);
             return MessageUtils.message("ai.msg.model.connection_success");
@@ -180,7 +181,7 @@ public class ModelConnectionTester {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = GoogleAiGeminiChatModel.builder()
+            ChatModel model = GoogleAiGeminiChatModel.builder()
                     .apiKey(apiKey)
                     .modelName(modelKey)
                     .safetySettings(Collections.singletonMap(
@@ -188,7 +189,7 @@ public class ModelConnectionTester {
                     .timeout(DEFAULT_TIMEOUT)
                     .build();
 
-            String response = model.generate(TEST_MESSAGE);
+            String response = model.chat(TEST_MESSAGE);
 
             log.info("Gemini 连接测试成功: model={}, response={}", modelKey, response);
             return MessageUtils.message("ai.msg.model.connection_success");

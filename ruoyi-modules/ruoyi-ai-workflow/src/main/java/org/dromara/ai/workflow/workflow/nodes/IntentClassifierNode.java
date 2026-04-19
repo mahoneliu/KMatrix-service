@@ -1,13 +1,10 @@
 package org.dromara.ai.workflow.workflow.nodes;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,6 +19,7 @@ import org.dromara.ai.model.util.ModelBuilder;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
+import org.dromara.common.core.utils.MessageUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.ArrayList;
@@ -76,23 +74,23 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
         messages.add(new UserMessage(text));
 
         String responseText;
-        Response<AiMessage> response = null;
+        dev.langchain4j.model.chat.response.ChatResponse response = null;
 
         if (Boolean.TRUE.equals(streamOutput)) {
             // 流式模式
-            StreamingChatLanguageModel streamingModel = modelBuilder
+            StreamingChatModel streamingModel = modelBuilder
                     .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
 
             StringBuilder fullResponse = new StringBuilder();
             SseEmitter emitter = context.getSseEmitter();
             CountDownLatch latch = new CountDownLatch(1);
-            AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
+            AtomicReference<dev.langchain4j.model.chat.response.ChatResponse> responseRef = new AtomicReference<>();
             AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-            streamingModel.generate(messages,
-                    new StreamingResponseHandler<AiMessage>() {
+            streamingModel.chat(messages,
+                    new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
                         @Override
-                        public void onNext(String token) {
+                        public void onPartialResponse(String token) {
                             fullResponse.append(token);
                             if (emitter != null) {
                                 try {
@@ -108,8 +106,21 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
                         }
 
                         @Override
-                        public void onComplete(
-                                Response<AiMessage> resp) {
+                        public void onPartialThinking(dev.langchain4j.model.chat.response.PartialThinking pt) {
+                            if (emitter != null && pt.text() != null) {
+                                try {
+                                    emitter.send(SseEmitter.event()
+                                            .name(SseEventType.THINKING.getEventName())
+                                            .data(pt.text()));
+                                } catch (Exception e) {
+                                    // ignore
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onCompleteResponse(
+                                dev.langchain4j.model.chat.response.ChatResponse resp) {
                             responseRef.set(resp);
                             latch.countDown();
                         }
@@ -125,11 +136,11 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
                 latch.await();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("意图识别被中断", e);
+                throw new RuntimeException(MessageUtils.message("ai.workflow.node.intent.interrupted"), e);
             }
 
             if (errorRef.get() != null) {
-                throw new RuntimeException("意图识别失败", errorRef.get());
+                throw new RuntimeException(MessageUtils.message("ai.workflow.node.intent.failed"), errorRef.get());
             }
 
             response = responseRef.get();
@@ -137,7 +148,7 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
 
         } else {
             // 阻塞模式
-            ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+            ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
             // 注意: ChatModel 目前 buildChatModel 不支持动态 temperature/maxTokens 参数传递，
             // 如果需要支持非流式下的参数，可能需要修改 ModelBuilder 或使用带有参数的构建方式。
             // 鉴于 ModelBuilder.buildStreamingChatModel 支持参数，这里为了完整性，我们尽量只在流式下支持参数。
@@ -147,8 +158,8 @@ public class IntentClassifierNode extends AbstractWorkflowNode {
             // 为了符合"Ensure all AI nodes have configurable model parameters"，我们应该尽可能支持。
             // 但如果主要是为了 Thinking，那么流式已经支持了。非流式下参数不生效是个已知限制，除非修改 ModelBuilder。
             // 这里我们先专注于流式支持。
-            response = chatModel.generate(messages);
-            responseText = response.content().text();
+            response = chatModel.chat(messages);
+            responseText = response.aiMessage().text();
         }
 
         // 获取并记录 token 使用情况

@@ -8,8 +8,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.Content;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.KmModel;
@@ -64,11 +64,11 @@ public class OcrNode extends AbstractWorkflowNode {
         // 加载模型
         KmModel model = modelMapper.selectById(modelId);
         if (model == null) {
-            throw new RuntimeException("模型不存在: " + modelId);
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.common.model_not_found", modelId));
         }
         KmModelProvider provider = providerMapper.selectById(model.getProviderId());
         if (provider == null) {
-            throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
+            throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.provider_not_found", model.getProviderId()));
         }
 
         // 处理 apiBase
@@ -176,11 +176,11 @@ public class OcrNode extends AbstractWorkflowNode {
         messages.add(UserMessage.from(contents));
 
         // 调用大模型
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), 0.1, 8192);
+        ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), 0.1, 8192);
         log.info("IMAGE_OCR节点 - 开始调用多模态模型进行OCR识别");
-        Response<AiMessage> response = chatModel.generate(messages);
+        dev.langchain4j.model.chat.response.ChatResponse response = chatModel.chat(messages);
 
-        String extractedText = response.content().text();
+        String extractedText = response.aiMessage().text();
         log.info("IMAGE_OCR节点执行成功, 识别文本长度: {}", extractedText.length());
 
         output.addOutput("text", extractedText);
@@ -197,8 +197,6 @@ public class OcrNode extends AbstractWorkflowNode {
 
         return output;
     }
-
-
 
     @Override
     public String getNodeType() {

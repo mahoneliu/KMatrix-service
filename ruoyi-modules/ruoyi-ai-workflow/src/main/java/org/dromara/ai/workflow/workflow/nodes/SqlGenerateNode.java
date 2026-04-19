@@ -4,8 +4,8 @@ import org.dromara.common.core.utils.MessageUtils;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.knowledge.domain.KmDataSource;
@@ -101,7 +101,7 @@ public class SqlGenerateNode extends AbstractWorkflowNode {
         SseHelper.sendThinking(emitter, streamOutput, "📊 正在分析数据库结构，筛选相关表...\n");
 
         // 这一步通常不需要流式，也不太需要用户感知的"thinking"，使用默认阻塞模型
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+        ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
 
         List<String> relevantTables = SqlGenerator.selectRelevantTables(chatModel, tableListPrompt, userQuery);
         log.info("LLM选择的相关表: {}", relevantTables);
@@ -143,7 +143,7 @@ public class SqlGenerateNode extends AbstractWorkflowNode {
         // 6. 生成 SQL
         String generatedSql;
         if (Boolean.TRUE.equals(streamOutput)) {
-            StreamingChatLanguageModel streamingModel = modelBuilder
+            StreamingChatModel streamingModel = modelBuilder
                     .buildStreamingChatModel(model, provider.getProviderKey(), temperature, maxTokens);
             generatedSql = SqlGenerator.generateSql(streamingModel, schemaDescription, userQuery, context);
         } else {

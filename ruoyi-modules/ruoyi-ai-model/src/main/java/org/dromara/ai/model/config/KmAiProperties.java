@@ -38,6 +38,11 @@ public class KmAiProperties {
     private Reranker reranker = new Reranker();
 
     /**
+     * 向量模型配置
+     */
+    private Embedding embedding = new Embedding();
+
+    /**
      * 文件存储配置
      */
     @Data
@@ -67,6 +72,32 @@ public class KmAiProperties {
          * Tokenizer 文件路径
          */
         private String tokenizerPath;
+    }
+
+    /**
+     * 向量模型配置
+     */
+    @Data
+    public static class Embedding {
+        /**
+         * 供应商标识: local, openai, ollama, qwen 等
+         */
+        private String provider = "local";
+
+        /**
+         * 模型标识: 如 bge-small-zh-v15, text-embedding-3-small
+         */
+        private String modelKey = "bge-small-zh-v15";
+
+        /**
+         * API Key (非 local 时必填或从 provider 获取)
+         */
+        private String apiKey;
+
+        /**
+         * API Base URL (可选)
+         */
+        private String apiBase;
     }
 
 }

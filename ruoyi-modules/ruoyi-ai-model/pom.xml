@@ -16,21 +16,9 @@
     </description>
 
     <properties>
-        <!-- 统一定义 LangChain4j 版本 -->
-        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-bom</artifactId>
-                <version>${langchain4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+
 
     <dependencies>
         <!-- AI API 基础模块 -->
@@ -89,10 +77,10 @@
             <artifactId>langchain4j-google-ai-gemini</artifactId>
         </dependency>
 
-        <!-- LangChain4j 通义千问 (DashScope) 集成 -->
+        <!-- LangChain4j 通义千问 (DashScope) 集成 - community 模块 -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-dashscope</artifactId>
+            <artifactId>langchain4j-community-dashscope</artifactId>
             <exclusions>
                 <!-- 排除 slf4j-simple,避免与 Logback 冲突 -->
                 <exclusion>
@@ -102,11 +90,16 @@
             </exclusions>
         </dependency>
 
-        <!-- LangChain4j ONNX Embeddings (支持 BGE-Base-ZH 等本地模型) -->
+        <!-- LangChain4j MCP 客户端 -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings-bge-small-zh</artifactId>
-            <version>${langchain4j.version}</version>
+            <artifactId>langchain4j-mcp</artifactId>
+        </dependency>
+
+        <!-- LangChain4j ONNX Embeddings: 升级到 v15 以适配 1.13.0 接口 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-bge-small-zh-v15</artifactId>
         </dependency>
 
         <!-- LangChain4j ONNX Scoring/Reranker -->
