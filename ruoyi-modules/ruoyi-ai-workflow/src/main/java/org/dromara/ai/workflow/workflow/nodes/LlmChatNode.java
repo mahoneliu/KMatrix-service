@@ -154,8 +154,11 @@ public class LlmChatNode extends AbstractWorkflowNode {
                         KmWorkflowFile wf = new KmWorkflowFile();
                         wf.setUrl((String) map.get("url"));
                         wf.setType((String) map.get("type"));
-                        wf.setOssId(map.get("ossId") instanceof Number ? ((Number) map.get("ossId")).longValue() : null);
-                        wf.setTempFileId(map.get("tempFileId") instanceof Number ? ((Number) map.get("tempFileId")).longValue() : null);
+                        wf.setOssId(
+                                map.get("ossId") instanceof Number ? ((Number) map.get("ossId")).longValue() : null);
+                        wf.setTempFileId(
+                                map.get("tempFileId") instanceof Number ? ((Number) map.get("tempFileId")).longValue()
+                                        : null);
                         wf.setName((String) map.get("name"));
                         workflowFiles.add(wf);
                     }
@@ -179,7 +182,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
                     }
                     for (Object idObj : idList) {
                         try {
-                            Long idVal = idObj instanceof Number ? ((Number) idObj).longValue() : Long.parseLong(idObj.toString());
+                            Long idVal = idObj instanceof Number ? ((Number) idObj).longValue()
+                                    : Long.parseLong(idObj.toString());
                             KmWorkflowFile wf = new KmWorkflowFile();
                             wf.setOssId(idVal);
                             wf.setType("image"); // 降级默认为图片
@@ -201,7 +205,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 }
             }
         }
-        
+
         // 构建消息列表（包含历史对话和文件）
         List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
                 historyLimit, chatContext, workflowFiles, enableMultimodal);
@@ -316,7 +320,6 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 toolRefs.add(ref);
             }
         }
-
 
         List<ToolBinding> toolBindings = toolProviderService.resolveBindings(toolRefs);
         List<ToolSpecification> toolSpecs = toolBindings.stream().map(ToolBinding::getSpecification).toList();
@@ -489,7 +492,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
      * @return 完整的消息列表
      */
     private List<ChatMessage> buildMessages(String userInput, String systemPrompt, String userPrompt,
-            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext, List<KmWorkflowFile> files, Boolean enableMultimodal) {
+            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext,
+            List<KmWorkflowFile> files, Boolean enableMultimodal) {
         List<ChatMessage> messages = new ArrayList<>();
 
         // 1. 添加系统提示
@@ -525,7 +529,7 @@ public class LlmChatNode extends AbstractWorkflowNode {
                 for (int i = 0; i < array.size(); i++) {
                     Object item = array.get(i);
                     if (item != null) {
-                        cn.hutool.json.JSONObject obj = JSONUtil.parseObj(item);
+                        JSONObject obj = JSONUtil.parseObj(item);
                         if (obj.containsKey("type")) {
                             hasMultimodal = true;
                             break;
@@ -539,8 +543,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
                     for (int i = 0; i < array.size(); i++) {
                         Object item = array.get(i);
-                        if (item == null) continue;
-                        cn.hutool.json.JSONObject obj = JSONUtil.parseObj(item);
+                        if (item == null)
+                            continue;
+                        JSONObject obj = JSONUtil.parseObj(item);
                         String type = obj.getStr("type");
                         if ("text".equals(type)) {
                             textPart.append(obj.getStr("text"));
@@ -556,7 +561,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             if ("undefined".equals(fileIdRef)) {
                                 fileIdRef = null;
                             }
-                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "image/jpeg");
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"),
+                                    "image/jpeg");
                             if (StrUtil.isNotBlank(url)) {
                                 contents.add(ImageContent.from(url));
                             }
@@ -572,7 +578,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             if ("undefined".equals(fileIdRef)) {
                                 fileIdRef = null;
                             }
-                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "audio/mpeg");
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"),
+                                    "audio/mpeg");
                             try {
                                 contents.add(AudioContent.from(url));
                             } catch (Throwable e) {
@@ -610,8 +617,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
             // 处理工作流流转的文件对象
             if (files != null && !files.isEmpty()) {
                 for (KmWorkflowFile file : files) {
-                    String fileIdRef = file.getTempFileId() != null 
-                            ? file.getTempFileId().toString() 
+                    String fileIdRef = file.getTempFileId() != null
+                            ? file.getTempFileId().toString()
                             : (file.getOssId() != null ? file.getOssId().toString() : null);
                     if ("image".equals(file.getType())) {
                         String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, file.getUrl(), "image/jpeg");
