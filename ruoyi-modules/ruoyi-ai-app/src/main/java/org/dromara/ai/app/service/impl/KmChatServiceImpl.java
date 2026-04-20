@@ -89,6 +89,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final IKmModelService modelService;
     private final ChatServiceAbortMixin abortMixin;
     private final ChatStreamHandler chatStreamHandler;
+    private final org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider chatMessageProvider;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -520,22 +521,9 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 2. 加载历史消息(最近20条)
-        List<KmChatMessage> historyMessages = messageMapper.selectList(
-                new LambdaQueryWrapper<KmChatMessage>()
-                        .eq(KmChatMessage::getSessionId, sessionId)
-                        .orderByDesc(KmChatMessage::getCreateTime)
-                        .last("LIMIT 20"));
-
-        // 反转为时间正序
-        Collections.reverse(historyMessages);
-
-        // 转换为LangChain4j消息
-        for (KmChatMessage msg : historyMessages) {
-            if ("user".equals(msg.getRole())) {
-                messages.add(new UserMessage(msg.getContent()));
-            } else if ("assistant".equals(msg.getRole())) {
-                messages.add(new AiMessage(msg.getContent()));
-            }
+        List<ChatMessage> historyMessages = chatMessageProvider.loadHistoryMessages(sessionId, 20);
+        if (historyMessages != null) {
+            messages.addAll(historyMessages);
         }
 
         return messages;

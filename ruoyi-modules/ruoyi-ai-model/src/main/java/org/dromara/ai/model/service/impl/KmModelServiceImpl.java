@@ -243,7 +243,7 @@ public class KmModelServiceImpl implements IKmModelService {
                     ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
                 case "siliconflow" -> ModelConnectionTester.testSiliconFlow(bo);
                 case "ollama", "vllm" -> ModelConnectionTester.testOllama(bo.getApiBase(), bo.getModelKey());
-                case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
+                case "qwen", "bailian" -> ModelConnectionTester.testQwen(bo);
                 case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
                 case "azure" -> {
                     // Azure 需要解析 apiBase 获取 endpoint 和 deploymentName

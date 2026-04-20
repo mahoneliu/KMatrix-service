@@ -254,6 +254,9 @@ public class ModelBuilder {
     // ========== 通义千问 DashScope ==========
 
     private ChatModel buildQwenModel(KmModel model) {
+        if (StrUtil.isNotBlank(model.getApiBase()) && model.getApiBase().contains("/v1")) {
+            return buildOpenAiModel(model);
+        }
         return QwenChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
@@ -261,6 +264,9 @@ public class ModelBuilder {
     }
 
     private ChatModel buildQwenModel(KmModel model, Double temperature, Integer maxTokens) {
+        if (StrUtil.isNotBlank(model.getApiBase()) && model.getApiBase().contains("/v1")) {
+            return buildOpenAiModel(model, temperature, maxTokens);
+        }
         var builder = QwenChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey());
@@ -270,6 +276,9 @@ public class ModelBuilder {
     }
 
     private StreamingChatModel buildQwenStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+        if (StrUtil.isNotBlank(model.getApiBase()) && model.getApiBase().contains("/v1")) {
+            return buildOpenAiStreamingModel(model, temperature, maxTokens);
+        }
         var builder = QwenStreamingChatModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey());
@@ -384,6 +393,9 @@ public class ModelBuilder {
     }
 
     private EmbeddingModel buildQwenEmbeddingModel(KmModel model) {
+        if (StrUtil.isNotBlank(model.getApiBase()) && model.getApiBase().contains("/v1")) {
+            return buildOpenAiEmbeddingModel(model);
+        }
         return QwenEmbeddingModel.builder()
                 .apiKey(model.getApiKey())
                 .modelName(model.getModelKey())
