@@ -144,7 +144,7 @@ public class WorkflowExecutor {
 
             // 6. 发送 done 事件（调试模式：包含统计信息）
             Map<String, Object> doneData = new HashMap<>();
-            doneData.put("req.getSessionId()", req.getSessionId().toString());
+            doneData.put("sessionId", req.getSessionId());
 
             if (showExecutionInfo) {
                 long durationMs = System.currentTimeMillis() - startTime;
