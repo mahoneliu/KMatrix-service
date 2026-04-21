@@ -237,9 +237,10 @@ public class KmChatServiceImpl implements IKmChatService {
                         if (aiResponse != null) {
                             KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId,
                                     totalTokens, effectiveUserId, bo.getRequestId());
-                            // 发送消息ID给前端，以便进行评价
+                            // 发送消息ID和会话ID给前端
                             sendSseEvent(emitter, SseEventType.DONE,
-                                    Map.of("messageId", assistantMessage.getMessageId().toString()));
+                                    Map.of("messageId", assistantMessage.getMessageId().toString(),
+                                            "sessionId", sessionId));
                         }
 
                         // 异步生成标题（仅在首次对话时）
