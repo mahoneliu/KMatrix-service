@@ -90,6 +90,12 @@
             </exclusions>
         </dependency>
 
+        <!-- LangChain4j Anthropic (Claude) 集成 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-anthropic</artifactId>
+        </dependency>
+
         <!-- LangChain4j MCP 客户端 -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

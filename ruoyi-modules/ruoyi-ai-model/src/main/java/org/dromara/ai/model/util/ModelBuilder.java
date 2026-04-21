@@ -9,6 +9,8 @@ import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.googleai.GeminiHarmCategory;
@@ -80,6 +82,7 @@ public class ModelBuilder {
             case "ollama", "vllm" -> buildOllamaModel(model);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model);
             case "gemini" -> buildGeminiModel(model);
+            case "anthropic" -> buildAnthropicModel(model);
             default ->
                 throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
@@ -108,6 +111,7 @@ public class ModelBuilder {
             case "ollama", "vllm" -> buildOllamaModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiModel(model, temperature, maxTokens);
+            case "anthropic" -> buildAnthropicModel(model, temperature, maxTokens);
             default ->
                 throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
@@ -148,6 +152,7 @@ public class ModelBuilder {
             case "ollama", "vllm" -> buildOllamaStreamingModel(model, temperature, maxTokens);
             case "bailian", "zhipu", "qwen" -> buildQwenStreamingModel(model, temperature, maxTokens);
             case "gemini" -> buildGeminiStreamingModel(model, temperature, maxTokens);
+            case "anthropic" -> buildAnthropicStreamingModel(model, temperature, maxTokens);
             default ->
                 throw new ServiceException(MessageUtils.message("ai.msg.model.unsupported_provider", providerKey));
         };
@@ -324,6 +329,42 @@ public class ModelBuilder {
                 .timeout(DEFAULT_TIMEOUT);
         if (temperature != null) builder.temperature(temperature);
         if (maxTokens != null) builder.maxOutputTokens(maxTokens);
+        return builder.build();
+    }
+
+    // ========== Anthropic (Claude) ==========
+
+    private ChatModel buildAnthropicModel(KmModel model) {
+        return AnthropicChatModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .timeout(DEFAULT_TIMEOUT)
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat())
+                .build();
+    }
+
+    private ChatModel buildAnthropicModel(KmModel model, Double temperature, Integer maxTokens) {
+        var builder = AnthropicChatModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .timeout(DEFAULT_TIMEOUT)
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat());
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxTokens(maxTokens);
+        return builder.build();
+    }
+
+    private StreamingChatModel buildAnthropicStreamingModel(KmModel model, Double temperature, Integer maxTokens) {
+        var builder = AnthropicStreamingChatModel.builder()
+                .apiKey(model.getApiKey())
+                .modelName(model.getModelKey())
+                .timeout(DEFAULT_TIMEOUT)
+                .logRequests(aiProperties.isLogChat())
+                .logResponses(aiProperties.isLogChat());
+        if (temperature != null) builder.temperature(temperature);
+        if (maxTokens != null) builder.maxTokens(maxTokens);
         return builder.build();
     }
 

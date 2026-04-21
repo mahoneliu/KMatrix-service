@@ -253,7 +253,7 @@ public class KmModelServiceImpl implements IKmModelService {
                     // bo.setApiKey(apiKey);
                     yield ModelConnectionTester.testZhipu(bo);
                 }
-                case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
+                case "anthropic" -> ModelConnectionTester.testAnthropic(bo);
                 default -> {
                     // bo.setApiKey(apiKey);
                     bo.setApiBase(apiBase);

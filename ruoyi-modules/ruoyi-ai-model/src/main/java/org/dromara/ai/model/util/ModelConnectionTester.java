@@ -2,6 +2,7 @@ package org.dromara.ai.model.util;
 
 import cn.hutool.core.util.StrUtil;
 import org.dromara.common.core.utils.MessageUtils;
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.community.model.dashscope.QwenChatModel;
 import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
@@ -239,9 +240,33 @@ public class ModelConnectionTester {
     }
 
     /**
-     * 测试 Anthropic (Claude) 模型连接 (暂未引入依赖)
+     * 测试 Anthropic (Claude) 模型连接
      */
-    public static String testAnthropic(String apiKey, String apiBase, String modelKey) {
-        return MessageUtils.message("ai.msg.model.anthropic_not_supported");
+    public static String testAnthropic(KmModelBo bo) {
+        try {
+            if (StrUtil.isBlank(bo.getApiKey())) {
+                return MessageUtils.message("ai.msg.model.api_key_empty");
+            }
+            if (StrUtil.isBlank(bo.getModelKey())) {
+                return MessageUtils.message("ai.msg.model.config_empty");
+            }
+
+            var builder = AnthropicChatModel.builder()
+                    .apiKey(bo.getApiKey())
+                    .modelName(bo.getModelKey())
+                    .timeout(DEFAULT_TIMEOUT);
+
+            if (StrUtil.isNotBlank(bo.getApiBase())) {
+                builder.baseUrl(bo.getApiBase());
+            }
+
+            ChatModel model = builder.build();
+            String response = model.chat(TEST_MESSAGE);
+            log.info("Anthropic 连接测试成功: model={}, response={}", bo.getModelKey(), response);
+            return MessageUtils.message("ai.msg.model.connection_success");
+        } catch (Exception e) {
+            log.error("Anthropic 连接测试失败: model={}", bo.getModelKey(), e);
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
+        }
     }
 }
