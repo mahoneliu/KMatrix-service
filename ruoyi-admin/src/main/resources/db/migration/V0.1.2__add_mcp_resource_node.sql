@@ -6,7 +6,7 @@ INSERT INTO km_node_definition (
     input_params, output_params, "version", 
     require_ai_config, create_time, update_time
 ) VALUES (
-    1001, 'MCP_RESOURCE', 'MCP 资源读取', 'mdi-server-network', '#4ade80', 
+    1001, 'MCP_RESOURCE', 'MCP 资源读取', 'mdi-tools', '#4ade80',
     'tool', '从指定的 MCP Server 动态读取资源并注入工作流上下文中。', '0', '1', 
     '1', '1', 
     '[{"key":"uri","label":"资源 URI","type":"string","required":true,"description":"MCP 资源的唯一标识符"}]', 
@@ -18,21 +18,21 @@ INSERT INTO km_node_definition (
 -- 添加 MCP_RESOURCE 的连接规则 (白名单模式下允许的连接，rule_type='0')
 
 -- 1. 允许其他常用节点连接到 MCP_RESOURCE
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('START', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('LLM_CHAT', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('CONDITION', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('INTENT_CLASSIFIER', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('LOOP', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (163, 'START', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (164, 'LLM_CHAT', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (165, 'CONDITION', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (166, 'INTENT_CLASSIFIER', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (167, 'LOOP', 'MCP_RESOURCE', '0', 10, '1', CURRENT_TIMESTAMP);
 
 -- 2. 允许 MCP_RESOURCE 连接到其他节点
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'LLM_CHAT', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'CONDITION', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'END', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'INTENT_CLASSIFIER', '0', 10, '1', CURRENT_TIMESTAMP);
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'LOOP', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (168, 'MCP_RESOURCE', 'LLM_CHAT', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (169, 'MCP_RESOURCE', 'CONDITION', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (170, 'MCP_RESOURCE', 'END', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (171, 'MCP_RESOURCE', 'INTENT_CLASSIFIER', '0', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (172, 'MCP_RESOURCE', 'LOOP', '0', 10, '1', CURRENT_TIMESTAMP);
 
 -- 3. 添加黑名单模式的默认规则 (rule_type='1')
 -- MCP_RESOURCE 不能连接到 START
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('MCP_RESOURCE', 'START', '1', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (173, 'MCP_RESOURCE', 'START', '1', 10, '1', CURRENT_TIMESTAMP);
 -- END 不能连接到 MCP_RESOURCE
-INSERT INTO km_node_connection_rule (source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES ('END', 'MCP_RESOURCE', '1', 10, '1', CURRENT_TIMESTAMP);
+INSERT INTO km_node_connection_rule (rule_id, source_node_type, target_node_type, rule_type, priority, is_enabled, create_time) VALUES (174, 'END', 'MCP_RESOURCE', '1', 10, '1', CURRENT_TIMESTAMP);

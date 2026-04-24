@@ -1,5 +1,6 @@
 package org.dromara.ai.workflow.workflow.nodes;
-import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
+import org.dromara.ai.execution.core.IToolProvider;
+
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
@@ -9,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.workflow.nodes.tool.ToolBinding;
+import org.dromara.ai.execution.core.ToolBinding;
 
 import org.springframework.stereotype.Component;
 

@@ -2,13 +2,11 @@ package org.dromara.ai.workflow.workflow.nodes;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.ai.app.service.tool.ToolProviderService;
+import org.dromara.ai.execution.mcp.service.McpClientManager;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.common.core.utils.MessageUtils;
 import org.springframework.stereotype.Component;
-import java.util.Map;
 
 /**
  * MCP资源读取节点
@@ -22,17 +20,17 @@ import java.util.Map;
 @Component("MCP_RESOURCE")
 public class McpResourceNode extends AbstractWorkflowNode {
 
-    private final ToolProviderService toolProviderService;
+    private final McpClientManager mcpClientManager;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
-        log.info("执行MCP_RESOURCE节点");
+        log.info("Executing MCP_RESOURCE node");
         NodeOutput output = new NodeOutput();
 
         // 1. 获取配置
         Long serverId = context.getConfigAsLong("serverId");
         if (serverId == null) {
-            throw new RuntimeException("未配置 MCP Server ID");
+            throw new RuntimeException("MCP Server ID is not configured");
         }
 
         // uri 可以从 config 固定配置，也可以从 inputs 动态传入
@@ -42,14 +40,14 @@ public class McpResourceNode extends AbstractWorkflowNode {
         }
         
         if (uri == null || uri.trim().isEmpty()) {
-            throw new RuntimeException("未提供资源 URI");
+            throw new RuntimeException("Resource URI is not provided");
         }
 
-        log.info("MCP_RESOURCE节点读取资源: serverId={}, uri={}", serverId, uri);
+        log.info("MCP_RESOURCE node reading resource: serverId={}, uri={}", serverId, uri);
 
         // 2. 调用 ToolProviderService 读取资源
         try {
-            Object resourceContent = toolProviderService.readResource(serverId, uri);
+            Object resourceContent = mcpClientManager.readResource(serverId, uri);
             
             // 3. 将结果存入 NodeOutput 和 Context
             output.addOutput("content", resourceContent);
@@ -61,10 +59,10 @@ public class McpResourceNode extends AbstractWorkflowNode {
                 context.setGlobalValue("mcpResourceContent", textContent);
             }
             
-            log.info("MCP_RESOURCE节点执行成功");
+            log.info("MCP_RESOURCE node executed successfully");
         } catch (Exception e) {
-            log.error("MCP_RESOURCE节点执行失败", e);
-            throw new RuntimeException("读取 MCP 资源失败: " + e.getMessage(), e);
+            log.error("MCP_RESOURCE node execution failed", e);
+            throw new RuntimeException("Failed to read MCP resource: " + e.getMessage(), e);
         }
 
         return output;
@@ -89,6 +87,6 @@ public class McpResourceNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeName() {
-        return "MCP资源读取";
+        return "MCP Resource Reader";
     }
 }

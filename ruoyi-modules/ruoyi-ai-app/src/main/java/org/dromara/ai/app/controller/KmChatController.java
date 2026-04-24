@@ -12,10 +12,7 @@ import org.dromara.ai.api.enums.ChatUserType;
 import org.dromara.ai.app.service.IChatSessionTokenService;
 import org.dromara.ai.app.service.IKmAppTokenService;
 import org.dromara.ai.app.service.IKmChatService;
-import org.dromara.ai.app.service.IKmSkillService;
 import org.dromara.ai.app.domain.bo.KmChatFeedbackBo;
-import org.dromara.ai.app.domain.bo.KmSkillBo;
-import org.dromara.ai.app.domain.vo.KmSkillVo;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.exception.ServiceException;
 import org.dromara.common.core.utils.StringUtils;
@@ -48,7 +45,6 @@ public class KmChatController extends BaseController {
     private final IKmChatService chatService;
     private final IKmAppTokenService appTokenService;
     private final IChatSessionTokenService chatSessionTokenService;
-    private final IKmSkillService skillService;
     private final IKmFileService kmFileService;
 
     /**
@@ -125,18 +121,6 @@ public class KmChatController extends BaseController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ChatSessionTokenInfo info = validateAndParseToken(authHeader);
         return toAjax(chatService.clearHistory(sessionId, info.getUserId()));
-    }
-
-    /**
-     * 获取可用技能列表
-     */
-    @GetMapping("/skills")
-    public R<List<KmSkillVo>> getSkills(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        validateAndParseToken(authHeader); // just validate
-        KmSkillBo bo = new KmSkillBo();
-        bo.setStatus("0");
-        return R.ok(skillService.queryList(bo));
     }
 
     /**

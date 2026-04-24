@@ -11,7 +11,7 @@ import org.dromara.ai.model.mapper.KmModelProviderMapper;
 import org.dromara.ai.model.util.ModelBuilder;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
+import org.dromara.ai.execution.core.IToolProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

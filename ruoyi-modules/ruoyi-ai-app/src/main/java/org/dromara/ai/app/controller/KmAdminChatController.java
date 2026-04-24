@@ -10,9 +10,6 @@ import org.dromara.ai.app.domain.vo.KmChatSessionVo;
 import org.dromara.ai.workflow.domain.vo.KmNodeExecutionVo;
 import org.dromara.ai.api.enums.ChatUserType;
 import org.dromara.ai.app.service.IKmChatService;
-import org.dromara.ai.app.service.IKmSkillService;
-import org.dromara.ai.app.domain.bo.KmSkillBo;
-import org.dromara.ai.app.domain.vo.KmSkillVo;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.utils.StringUtils;
 import org.dromara.common.satoken.utils.LoginHelper;
@@ -39,7 +36,6 @@ import java.util.Map;
 public class KmAdminChatController extends BaseController {
 
     private final IKmChatService chatService;
-    private final IKmSkillService skillService;
 
     /**
      * 流式对话 (SSE)
@@ -91,17 +87,6 @@ public class KmAdminChatController extends BaseController {
     @DeleteMapping("/clear/{sessionId}")
     public R<Void> clearHistory(@PathVariable Long sessionId) {
         return toAjax(chatService.clearHistory(sessionId, LoginHelper.getUserId()));
-    }
-
-    /**
-     * 获取可用技能列表
-     */
-    @SaCheckPermission("ai:app:edit")
-    @GetMapping("/skills")
-    public R<List<KmSkillVo>> getSkills() {
-        KmSkillBo bo = new KmSkillBo();
-        bo.setStatus("0");
-        return R.ok(skillService.queryList(bo));
     }
 
     /**

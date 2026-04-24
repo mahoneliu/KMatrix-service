@@ -21,6 +21,13 @@
 
 
     <dependencies>
+        <!-- 执行层模块（Tool / MCP / Skill 统一执行能力） -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai-execution</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <!-- 工作流引擎模块（通过传递依赖引入所有下层模块） -->
         <dependency>
             <groupId>org.dromara</groupId>

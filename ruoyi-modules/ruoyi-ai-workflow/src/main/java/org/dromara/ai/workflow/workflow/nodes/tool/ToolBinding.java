@@ -7,9 +7,11 @@ import lombok.Data;
 /**
  * 工具绑定信息
  *
+ * @deprecated 已迁移至 {@link org.dromara.ai.execution.core.ToolBinding}
  * @author Mahone
  * @date 2026-03-20
  */
+@Deprecated
 @Data
 @Builder
 public class ToolBinding {

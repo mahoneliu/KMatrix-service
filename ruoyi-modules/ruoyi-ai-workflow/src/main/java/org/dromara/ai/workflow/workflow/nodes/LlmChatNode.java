@@ -28,9 +28,9 @@ import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.workflow.nodes.tool.ToolBinding;
-import org.dromara.ai.workflow.workflow.nodes.tool.ToolExecutionDispatcher;
-import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
+import org.dromara.ai.execution.core.ToolBinding;
+import org.dromara.ai.execution.core.ToolExecutionDispatcher;
+import org.dromara.ai.execution.core.IToolProvider;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -83,13 +83,13 @@ public class LlmChatNode extends AbstractWorkflowNode {
         try {
             return doExecute(context);
         } catch (Throwable t) {
-            log.error("LlmChatNode 执行发生异常: {}", t.getMessage(), t);
+            log.error("Exception in LlmChatNode: {}", t.getMessage(), t);
             throw t;
         }
     }
 
     private NodeOutput doExecute(NodeContext context) throws Exception {
-        log.info("执行LLM_CHAT节点");
+        log.info("Executing LLM_CHAT node");
 
         NodeOutput output = new NodeOutput();
 
@@ -453,16 +453,46 @@ public class LlmChatNode extends AbstractWorkflowNode {
                         }
                     }
 
-                    ToolExecutionResultMessage toolResult = ToolExecutionDispatcher.dispatch(toolExecutionRequest,
-                            toolBindings);
-                    messages.add(toolResult);
+                    // 使用 dispatchForResult 获取富媒体结果
+                    org.dromara.ai.execution.core.ToolResult toolResult =
+                            ToolExecutionDispatcher.dispatchForResult(toolExecutionRequest, toolBindings);
+
+                    // 构建工具回执文本
+                    String resultText = toolResult.getText() != null ? toolResult.getText() : "Success with empty result";
+
+                    // 如果工具返回了富媒体内容（图片等），提取图片URL附加到文本中
+                    if (toolResult.hasContents()) {
+                        StringBuilder richText = new StringBuilder(resultText);
+                        for (Content c : toolResult.getContents()) {
+                            if (c instanceof ImageContent ic) {
+                                // 优先使用 URL，其次处理 base64 数据（此处仅记录提示，后续可扩展为上传OSS）
+                                String imageUrl = null;
+                                if (ic.image().url() != null) {
+                                    imageUrl = ic.image().url().toString();
+                                } else if (ic.image().base64Data() != null) {
+                                    // base64 图片 → 构造 data URL 传给支持的模型
+                                    String mimeType = ic.image().mimeType() != null ? ic.image().mimeType() : "image/png";
+                                    imageUrl = "data:" + mimeType + ";base64," + ic.image().base64Data();
+                                    log.info("LLM_CHAT节点 - 工具返回了base64图片内容, mimeType={}", mimeType);
+                                }
+                                if (imageUrl != null) {
+                                    richText.append("\n[图片]: ").append(imageUrl);
+                                }
+                            }
+                        }
+                        resultText = richText.toString();
+                    }
+
+                    ToolExecutionResultMessage toolResultMsg = ToolExecutionResultMessage.from(toolExecutionRequest, resultText);
+                    messages.add(toolResultMsg);
 
                     if (Boolean.TRUE.equals(enableToolTrace) && emitter != null) {
                         try {
                             Map<String, Object> traceData = new HashMap<>();
                             traceData.put("type", "tool_call_result");
                             traceData.put("toolName", toolExecutionRequest.name());
-                            traceData.put("result", toolResult.text());
+                            traceData.put("result", resultText);
+                            traceData.put("hasRichContent", toolResult.hasContents());
                             emitter.send(SseEmitter.event().name("TOOL_TRACE").data(traceData));
                         } catch (IOException e) {
                             log.error("发送工具追踪结果SSE事件失败", e);

@@ -19,6 +19,7 @@
         <module>ruoyi-ai-model</module>
         <module>ruoyi-ai-storage</module>
         <module>ruoyi-ai-knowledge</module>
+        <module>ruoyi-ai-execution</module>
         <module>ruoyi-ai-workflow</module>
         <module>ruoyi-ai-app</module>
     </modules>
