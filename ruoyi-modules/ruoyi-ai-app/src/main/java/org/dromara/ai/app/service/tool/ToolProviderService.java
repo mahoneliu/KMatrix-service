@@ -262,19 +262,10 @@ public class ToolProviderService implements IToolProvider {
             return result;
         }
 
-        // 提取并连接/复用 McpClient
-        McpClient mcpClient = mcpClientCache.computeIfAbsent(serverId, id -> {
-            log.info("初始化 MCP Client: serverId={}, url={}", id, serverUrl);
-            HttpMcpTransport transport = HttpMcpTransport.builder()
-                    .sseUrl(serverUrl)
-                    .logRequests(true)
-                    .logResponses(true)
-                    .build();
-            return DefaultMcpClient.builder()
-                    .transport(transport)
-                    .toolExecutionTimeout(Duration.ofMillis(MCP_TIMEOUT_MS))
-                    .build();
-        });
+        McpClient mcpClient = getMcpClient(serverId, serverUrl);
+        if (mcpClient == null) {
+            return result;
+        }
 
         List<ToolSpecification> tools;
         try {
@@ -306,6 +297,89 @@ public class ToolProviderService implements IToolProvider {
         }
 
         return result;
+    }
+
+    /**
+     * 获取或初始化 MCP Client
+     */
+    public McpClient getMcpClient(Long serverId, String serverUrl) {
+        if (StrUtil.isBlank(serverUrl)) {
+            KmMcpServer server = mcpServerMapper.selectById(serverId);
+            if (server == null || !"0".equals(server.getStatus())) {
+                return null;
+            }
+            serverUrl = extractServerUrl(server.getServerConfig());
+            if (StrUtil.isBlank(serverUrl)) {
+                return null;
+            }
+        }
+        
+        String finalServerUrl = serverUrl;
+        return mcpClientCache.computeIfAbsent(serverId, id -> {
+            log.info("初始化 MCP Client: serverId={}, url={}", id, finalServerUrl);
+            HttpMcpTransport transport = HttpMcpTransport.builder()
+                    .sseUrl(finalServerUrl)
+                    .logRequests(true)
+                    .logResponses(true)
+                    .build();
+            return DefaultMcpClient.builder()
+                    .transport(transport)
+                    .toolExecutionTimeout(Duration.ofMillis(MCP_TIMEOUT_MS))
+                    .build();
+        });
+    }
+
+    /**
+     * 获取或初始化 MCP Client (仅通过 ID)
+     */
+    public McpClient getMcpClient(Long serverId) {
+        return getMcpClient(serverId, null);
+    }
+
+    /**
+     * 列出 MCP Server 提供的资源
+     */
+    public Object listResources(Long serverId) {
+        McpClient mcpClient = getMcpClient(serverId);
+        if (mcpClient == null) {
+            throw new RuntimeException("MCP Server 不可用: " + serverId);
+        }
+        try {
+            // MCP Client 在 LangChain4j 1.x 中支持 listResources()
+            java.lang.reflect.Method method = mcpClient.getClass().getMethod("listResources");
+            return method.invoke(mcpClient);
+        } catch (NoSuchMethodException e) {
+            log.warn("当前 LangChain4j 版本不支持 listResources: {}", e.getMessage());
+            return new ArrayList<>();
+        } catch (Exception e) {
+            log.error("获取 MCP 资源列表失败: serverId={}", serverId, e);
+            throw new RuntimeException("获取资源失败", e);
+        }
+    }
+
+    /**
+     * 读取 MCP Server 的特定资源内容
+     */
+    public Object readResource(Long serverId, String uri) {
+        McpClient mcpClient = getMcpClient(serverId);
+        if (mcpClient == null) {
+            throw new RuntimeException("MCP Server 不可用: " + serverId);
+        }
+        try {
+            // MCP Client 支持 readResource(request) 或类似方法
+            // 由于具体参数对象可能需要构造，我们这里假设它存在以字符串传参的方法
+            // 如果不存在，需要使用反射构造 ReadResourceRequest
+            Class<?> reqClass = Class.forName("dev.langchain4j.mcp.client.request.ReadResourceRequest");
+            Object req = reqClass.getMethod("builder").invoke(null);
+            Object reqBuilder = req.getClass().getMethod("uri", String.class).invoke(req, uri);
+            Object finalReq = reqBuilder.getClass().getMethod("build").invoke(reqBuilder);
+            
+            java.lang.reflect.Method method = mcpClient.getClass().getMethod("readResource", reqClass);
+            return method.invoke(mcpClient, finalReq);
+        } catch (Exception e) {
+            log.error("读取 MCP 资源失败: serverId={}, uri={}", serverId, uri, e);
+            throw new RuntimeException("读取资源失败", e);
+        }
     }
 
     /**

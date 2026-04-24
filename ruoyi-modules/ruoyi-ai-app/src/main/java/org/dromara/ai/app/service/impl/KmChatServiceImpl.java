@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import org.dromara.ai.app.util.ChatMessageJsonSerializer;
 import java.util.stream.Collectors;
 
 /**
@@ -576,6 +577,8 @@ public class KmChatServiceImpl implements IKmChatService {
 
     /**
      * 保存带有进度实例、Token 使用情况和请求ID的消息
+     * <p>
+     * 同时序列化完整的 ChatMessage 对象到 raw_message_json，用于后续历史对话的精确还原。
      */
     private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens,
             Long userId, String requestId) {
@@ -587,6 +590,17 @@ public class KmChatServiceImpl implements IKmChatService {
         message.setTotalTokens(totalTokens);
         message.setRequestId(requestId);
         message.setCreateTime(new Date());
+
+        // 序列化 ChatMessage 为 raw_message_json（用于精确还原历史上下文）
+        try {
+            dev.langchain4j.data.message.ChatMessage chatMessage =
+                    ChatMessageJsonSerializer.buildFromRoleAndContent(role, content);
+            if (chatMessage != null) {
+                message.setRawMessageJson(ChatMessageJsonSerializer.toJson(chatMessage));
+            }
+        } catch (Exception e) {
+            log.warn("消息序列化失败，raw_message_json 将为空: role={}, error={}", role, e.getMessage());
+        }
 
         // 手动设置BaseEntity字段
         message.setCreateBy(userId);

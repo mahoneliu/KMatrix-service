@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.dromara.ai.app.domain.bo.KmMcpServerBo;
 import org.dromara.ai.app.domain.vo.KmMcpServerVo;
 import org.dromara.ai.app.service.IKmMcpServerService;
+import org.dromara.ai.app.service.tool.ToolProviderService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.core.validate.AddGroup;
 import org.dromara.common.core.validate.EditGroup;
@@ -29,6 +30,16 @@ import java.util.List;
 public class KmMcpServerController extends BaseController {
 
     private final IKmMcpServerService mcpServerService;
+    private final ToolProviderService toolProviderService;
+
+    /**
+     * 查询 MCP Server 提供的资源列表
+     */
+    @SaCheckPermission("ai:mcpServer:list")
+    @GetMapping("/{serverId}/resources")
+    public R<Object> listResources(@PathVariable Long serverId) {
+        return R.ok(toolProviderService.listResources(serverId));
+    }
 
     /**
      * 查询 MCP Server 列表

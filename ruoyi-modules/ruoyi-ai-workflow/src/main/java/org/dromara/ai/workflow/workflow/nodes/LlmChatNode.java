@@ -50,6 +50,8 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.VideoContent;
 import org.springframework.beans.factory.ObjectProvider;
 import org.dromara.common.core.utils.MessageUtils;
 import org.dromara.ai.workflow.workflow.nodes.nodeUtils.WorkflowNodeUtils;
@@ -102,6 +104,8 @@ public class LlmChatNode extends AbstractWorkflowNode {
         // 历史对话配置
         Boolean historyEnabled = context.getConfigAsBoolean("historyEnabled", false);
         Integer historyLimit = context.getConfigAsInteger("historyLimit", DEFAULT_HISTORY_LIMIT);
+        // historyMaxTokens: 历史记录 Token 上限，0 表示不限制（仅按条数）
+        Integer historyMaxTokens = context.getConfigAsInteger("historyMaxTokens", 0);
 
         // systemPrompt支持从inputs动态获取，也支持从config静态配置
         String systemPrompt = (String) context.getInput("systemPrompt");
@@ -207,10 +211,10 @@ public class LlmChatNode extends AbstractWorkflowNode {
 
         // 构建消息列表（包含历史对话和文件）
         List<ChatMessage> messages = buildMessages(userInput, systemPrompt, userPrompt, sessionId, historyEnabled,
-                historyLimit, chatContext, workflowFiles, enableMultimodal);
+                historyLimit, historyMaxTokens, chatContext, workflowFiles, enableMultimodal);
         log.info(
-                "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, sessionId={}, 历史消息总数={}, 多模态={}",
-                chatContext, userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, sessionId,
+                "LLM_CHAT节点 - : chatContext={}, userInput={}, userPrompt={}, systemPrompt={},historyEnabled={}, historyLimit={}, historyMaxTokens={}, sessionId={}, 历史消息总数={}, 多模态={}",
+                chatContext, userInput, userPrompt, systemPrompt, historyEnabled, historyLimit, historyMaxTokens, sessionId,
                 messages.size(), enableMultimodal);
 
         SseEmitter emitter = context.getSseEmitter();
@@ -495,6 +499,9 @@ public class LlmChatNode extends AbstractWorkflowNode {
         String responseText = aiMessage.text();
         log.info("LLM_CHAT节点执行完成, response={}", responseText);
         output.addOutput("response", responseText);
+        if (aiMessage.thinking() != null) {
+            output.addOutput("reasoningContent", aiMessage.thinking());
+        }
         context.setGlobalValue("aiResponse", responseText);
 
         return output;
@@ -503,16 +510,17 @@ public class LlmChatNode extends AbstractWorkflowNode {
     /**
      * 构建消息列表（包含历史对话）
      *
-     * @param userInput      当前用户输入
-     * @param systemPrompt   系统提示词
-     * @param userPrompt     用户提示词(配置的具体问题)
-     * @param sessionId      会话ID
-     * @param historyEnabled 是否启用历史对话
-     * @param historyLimit   历史消息条数限制
+     * @param userInput       当前用户输入
+     * @param systemPrompt    系统提示词
+     * @param userPrompt      用户提示词(配置的具体问题)
+     * @param sessionId       会话ID
+     * @param historyEnabled  是否启用历史对话
+     * @param historyLimit    历史消息条数限制
+     * @param historyMaxTokens 历史消息 Token 上限（0 表示不限制）
      * @return 完整的消息列表
      */
     private List<ChatMessage> buildMessages(String userInput, String systemPrompt, String userPrompt,
-            Long sessionId, Boolean historyEnabled, Integer historyLimit, String chatContext,
+            Long sessionId, Boolean historyEnabled, Integer historyLimit, Integer historyMaxTokens, String chatContext,
             List<KmWorkflowFile> files, Boolean enableMultimodal) {
         List<ChatMessage> messages = new ArrayList<>();
 
@@ -525,11 +533,38 @@ public class LlmChatNode extends AbstractWorkflowNode {
         if (Boolean.TRUE.equals(historyEnabled) && sessionId != null) {
             IChatMessageProvider provider = chatMessageProvider.getIfAvailable();
             if (provider != null) {
-                List<ChatMessage> historyMessages = provider.loadHistoryMessages(sessionId, historyLimit);
-                messages.addAll(historyMessages);
-                log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, historyMessages.size());
+                // 先按条数加载（Token 模式时多加载一些，供后续裁剪）
+                int fetchLimit = (historyMaxTokens != null && historyMaxTokens > 0)
+                        ? Math.max(historyLimit * 2, 50)
+                        : historyLimit;
+                List<ChatMessage> rawHistory = provider.loadHistoryMessages(sessionId, fetchLimit);
+
+                // 若配置了 Token 上限，按字符数估算裁剪（1 token ≈ 4 字符）
+                if (historyMaxTokens != null && historyMaxTokens > 0 && !rawHistory.isEmpty()) {
+                    int maxChars = historyMaxTokens * 4;
+                    int totalChars = 0;
+                    // 从最新消息往前算，保留最近的消息
+                    int startIdx = rawHistory.size();
+                    for (int i = rawHistory.size() - 1; i >= 0; i--) {
+                        String text = extractText(rawHistory.get(i));
+                        totalChars += text.length();
+                        if (totalChars > maxChars) {
+                            startIdx = i + 1;
+                            break;
+                        }
+                        startIdx = i;
+                    }
+                    List<ChatMessage> croppedHistory = rawHistory.subList(startIdx, rawHistory.size());
+                    messages.addAll(croppedHistory);
+                    log.debug("历史记录 Token 裁剪（字符估算）: 原始 {} 条 → 裁剪后 {} 条 (maxTokens={})",
+                            rawHistory.size(), croppedHistory.size(), historyMaxTokens);
+                } else {
+                    messages.addAll(rawHistory);
+                }
+                log.debug("加载历史对话: sessionId={}, 条数={}", sessionId, messages.size());
             }
         }
+
 
         // 3. 添加当前用户消息
         String contextPrefix = "";
@@ -605,6 +640,54 @@ public class LlmChatNode extends AbstractWorkflowNode {
                             } catch (Throwable e) {
                                 log.warn("LC4J当前版本可能不支持AudioContent: {}", e.getMessage());
                             }
+                        } else if ("pdf".equals(type) || ("file".equals(type) && obj.getStr("name") != null && obj.getStr("name").toLowerCase().endsWith(".pdf"))) {
+                            if (textPart.length() > 0) {
+                                contents.add(TextContent.from(textPart.toString()));
+                                textPart.setLength(0);
+                            }
+                            String fileIdRef = obj.getStr("tempFileId");
+                            if (StrUtil.isBlank(fileIdRef) || "undefined".equals(fileIdRef)) {
+                                fileIdRef = obj.getStr("ossId");
+                            }
+                            if ("undefined".equals(fileIdRef)) {
+                                fileIdRef = null;
+                            }
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "application/pdf");
+                            if (StrUtil.isNotBlank(url)) {
+                                try {
+                                    if (url.startsWith("http")) {
+                                        contents.add(PdfFileContent.from(java.net.URI.create(url)));
+                                    } else {
+                                        contents.add(PdfFileContent.from(url));
+                                    }
+                                } catch (Throwable e) {
+                                    log.warn("LC4J当前版本不支持PdfFileContent或URL格式错误: {}", e.getMessage());
+                                }
+                            }
+                        } else if ("video".equals(type) || ("file".equals(type) && obj.getStr("name") != null && obj.getStr("name").toLowerCase().matches(".*\\.(mp4|avi|mov|wmv|flv|mkv)$"))) {
+                            if (textPart.length() > 0) {
+                                contents.add(TextContent.from(textPart.toString()));
+                                textPart.setLength(0);
+                            }
+                            String fileIdRef = obj.getStr("tempFileId");
+                            if (StrUtil.isBlank(fileIdRef) || "undefined".equals(fileIdRef)) {
+                                fileIdRef = obj.getStr("ossId");
+                            }
+                            if ("undefined".equals(fileIdRef)) {
+                                fileIdRef = null;
+                            }
+                            String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, obj.getStr("url"), "video/mp4");
+                            if (StrUtil.isNotBlank(url)) {
+                                try {
+                                    if (url.startsWith("http")) {
+                                        contents.add(VideoContent.from(java.net.URI.create(url)));
+                                    } else {
+                                        contents.add(VideoContent.from(url));
+                                    }
+                                } catch (Throwable e) {
+                                    log.warn("LC4J当前版本不支持VideoContent或URL格式错误: {}", e.getMessage());
+                                }
+                            }
                         } else if ("file".equals(type)) {
                             // 通用文件：将文件名作为文本提示，实际内容由 FILE_PARSE 节点处理
                             String fileName = obj.getStr("name");
@@ -652,6 +735,32 @@ public class LlmChatNode extends AbstractWorkflowNode {
                                 contents.add(AudioContent.from(url));
                             } catch (Throwable e) {
                                 log.warn("LC4J当前版本不支持音频内容: {}", e.getMessage());
+                            }
+                        }
+                    } else if ("pdf".equals(file.getType()) || ("file".equals(file.getType()) && file.getName() != null && file.getName().toLowerCase().endsWith(".pdf"))) {
+                        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, file.getUrl(), "application/pdf");
+                        if (StrUtil.isNotBlank(url)) {
+                            try {
+                                if (url.startsWith("http")) {
+                                    contents.add(PdfFileContent.from(java.net.URI.create(url)));
+                                } else {
+                                    contents.add(PdfFileContent.from(url));
+                                }
+                            } catch (Throwable e) {
+                                log.warn("LC4J当前版本不支持PdfFileContent或URL格式错误: {}", e.getMessage());
+                            }
+                        }
+                    } else if ("video".equals(file.getType()) || ("file".equals(file.getType()) && file.getName() != null && file.getName().toLowerCase().matches(".*\\.(mp4|avi|mov|wmv|flv|mkv)$"))) {
+                        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, file.getUrl(), "video/mp4");
+                        if (StrUtil.isNotBlank(url)) {
+                            try {
+                                if (url.startsWith("http")) {
+                                    contents.add(VideoContent.from(java.net.URI.create(url)));
+                                } else {
+                                    contents.add(VideoContent.from(url));
+                                }
+                            } catch (Throwable e) {
+                                log.warn("LC4J当前版本不支持VideoContent或URL格式错误: {}", e.getMessage());
                             }
                         }
                     }
@@ -739,6 +848,40 @@ public class LlmChatNode extends AbstractWorkflowNode {
             log.debug("Fallback提取工具调用失败: {}", e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * 从 ChatMessage 中提取纯文本内容，用于 Token 数量的字符估算
+     * （Token 裁剪策略：1 token ≈ 4 字符）
+     */
+    private String extractText(ChatMessage message) {
+        if (message == null) return "";
+        return switch (message.type()) {
+            case USER -> {
+                dev.langchain4j.data.message.UserMessage um = (dev.langchain4j.data.message.UserMessage) message;
+                StringBuilder sb = new StringBuilder();
+                for (dev.langchain4j.data.message.Content c : um.contents()) {
+                    if (c instanceof dev.langchain4j.data.message.TextContent tc) {
+                        sb.append(tc.text());
+                    }
+                }
+                yield sb.toString();
+            }
+            case AI -> {
+                dev.langchain4j.data.message.AiMessage am = (dev.langchain4j.data.message.AiMessage) message;
+                yield am.text() != null ? am.text() : "";
+            }
+            case SYSTEM -> {
+                dev.langchain4j.data.message.SystemMessage sm = (dev.langchain4j.data.message.SystemMessage) message;
+                yield sm.text();
+            }
+            case TOOL_EXECUTION_RESULT -> {
+                dev.langchain4j.data.message.ToolExecutionResultMessage tr =
+                        (dev.langchain4j.data.message.ToolExecutionResultMessage) message;
+                yield tr.text() != null ? tr.text() : "";
+            }
+            default -> message.toString();
+        };
     }
 
 }
