@@ -8,8 +8,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.output.TokenUsage;
-import lombok.RequiredArgsConstructor;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.knowledge.domain.KmDataSource;
 import org.dromara.ai.knowledge.domain.KmDatabaseMeta;
@@ -17,10 +16,7 @@ import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.knowledge.mapper.KmDataSourceMapper;
 import org.dromara.ai.knowledge.mapper.KmDatabaseMetaMapper;
-import org.dromara.ai.model.mapper.KmModelMapper;
-import org.dromara.ai.model.mapper.KmModelProviderMapper;
-import org.dromara.ai.model.util.ModelBuilder;
-import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
+import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.workflow.nodes.nodeUtils.SchemaBuilder;
@@ -29,6 +25,7 @@ import org.dromara.ai.workflow.workflow.nodes.nodeUtils.SqlGenerator;
 import org.dromara.ai.workflow.workflow.nodes.nodeUtils.SqlValidator;
 import org.dromara.ai.workflow.workflow.nodes.nodeUtils.SseHelper;
 import org.dromara.common.json.utils.JsonUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -42,16 +39,17 @@ import java.util.*;
  * @date 2026-01-20
  */
 @Slf4j
-@RequiredArgsConstructor
 @Component("DB_QUERY")
-public class DbQueryNode extends AbstractWorkflowNode {
+public class DbQueryNode extends AbstractAiWorkflowNode {
 
-    private final KmDataSourceMapper dataSourceMapper;
-    private final KmDatabaseMetaMapper databaseMetaMapper;
-    private final KmModelMapper modelMapper;
-    private final KmModelProviderMapper providerMapper;
-    private final ModelBuilder modelBuilder;
-    private final SqlExecutor sqlExecutor;
+    @Autowired
+    private KmDataSourceMapper dataSourceMapper;
+
+    @Autowired
+    private KmDatabaseMetaMapper databaseMetaMapper;
+
+    @Autowired
+    private SqlExecutor sqlExecutor;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -63,7 +61,6 @@ public class DbQueryNode extends AbstractWorkflowNode {
 
         // 1. 获取配置参数
         Long dataSourceId = context.getConfigAsLong("dataSourceId");
-        Long modelId = context.getConfigAsLong("modelId");
         Integer maxRows = context.getConfigAsInteger("maxRows", 100);
         String tableWhitelist = context.getConfigAsString("tableWhitelist");
         String tableBlacklist = context.getConfigAsString("tableBlacklist");
@@ -87,26 +84,19 @@ public class DbQueryNode extends AbstractWorkflowNode {
             throw new RuntimeException(MessageUtils.message("ai.msg.datasource.meta_missing"));
         }
 
-        // 4. 选择相关表
-        String tableListPrompt = SchemaBuilder.buildTableList(metas, tableWhitelist, tableBlacklist);
-
-        // 加载 LLM 模型 (提前加载)
-        KmModel model = modelMapper.selectById(modelId);
-        if (model == null) {
-            throw new RuntimeException("模型不存在: " + modelId);
-        }
-        KmModelProvider provider = providerMapper.selectById(model.getProviderId());
-        if (provider == null) {
-            throw new RuntimeException("模型供应商不存在: " + model.getProviderId());
-        }
+        // 4. 加载模型（基类统一处理）
+        Object[] modelAndProvider = loadModelAndProvider(context);
+        KmModel model = (KmModel) modelAndProvider[0];
+        KmModelProvider provider = (KmModelProvider) modelAndProvider[1];
         ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+
+        // 5. 选择相关表
+        String tableListPrompt = SchemaBuilder.buildTableList(metas, tableWhitelist, tableBlacklist);
 
         // 发送thinking事件：分析相关表
         SseHelper.sendThinking(emitter, streamOutput, "📊 正在分析数据库结构，筛选相关表...\n");
 
         List<String> relevantTables = SqlGenerator.selectRelevantTables(chatModel, tableListPrompt, userQuery);
-
-        // 过滤元数据
         List<KmDatabaseMeta> filteredMetas;
         if (relevantTables.isEmpty()) {
             log.warn("LLM未选择任何相关表");
@@ -221,15 +211,8 @@ public class DbQueryNode extends AbstractWorkflowNode {
 
         var response = chatModel.chat(messages);
 
-        // 保存 token 使用信息
-        if (response != null && response.tokenUsage() != null) {
-            TokenUsage tokenUsage = response.tokenUsage();
-            Map<String, Object> tokenUsageMap = new HashMap<>();
-            tokenUsageMap.put("inputTokenCount", tokenUsage.inputTokenCount());
-            tokenUsageMap.put("outputTokenCount", tokenUsage.outputTokenCount());
-            tokenUsageMap.put("totalTokenCount", tokenUsage.totalTokenCount());
-            context.setTokenUsage(tokenUsageMap);
-        }
+        // token 统计（基类统一处理）
+        recordTokenUsage(response, context);
 
         return response.aiMessage().text();
     }

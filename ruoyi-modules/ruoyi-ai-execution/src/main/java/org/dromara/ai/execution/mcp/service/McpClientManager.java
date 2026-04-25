@@ -43,30 +43,76 @@ public class McpClientManager {
      * 获取或初始化 MCP Client
      *
      * @param serverId  MCP Server ID
-     * @param serverUrl 可选的 SSE URL，为 null 时从数据库查询
+     * @param serverUrl 可选的 MCP Server URL，为 null 时从数据库查询
      * @return MCP Client 实例，不可用时返回 null
      */
     public McpClient getClient(Long serverId, String serverUrl) {
+        KmMcpServer server = null;
         if (StrUtil.isBlank(serverUrl)) {
-            KmMcpServer server = mcpServerMapper.selectById(serverId);
+            server = mcpServerMapper.selectById(serverId);
             if (server == null || !"0".equals(server.getStatus())) {
+                log.warn("MCP Server 不存在或已停用: serverId={}", serverId);
                 return null;
             }
             serverUrl = McpTransportFactory.extractServerUrl(server.getServerConfig());
             if (StrUtil.isBlank(serverUrl)) {
+                log.error("MCP Server 配置缺少 url/baseUrl: serverId={}", serverId);
                 return null;
             }
         }
 
         String finalServerUrl = serverUrl;
-        return mcpClientCache.computeIfAbsent(serverId, id -> {
-            log.info("初始化 MCP Client: serverId={}, url={}", id, finalServerUrl);
-            var transport = McpTransportFactory.createHttpTransport(finalServerUrl);
-            return DefaultMcpClient.builder()
-                    .transport(transport)
-                    .toolExecutionTimeout(Duration.ofMillis(MCP_TIMEOUT_MS))
-                    .build();
-        });
+        KmMcpServer finalServer = server;
+        try {
+            return mcpClientCache.computeIfAbsent(serverId, id -> {
+                log.info("初始化 MCP Client: serverId={}, url={}", id, finalServerUrl);
+                if (finalServer != null && StrUtil.isNotBlank(finalServer.getServerConfig())) {
+                    Map<String, String> headers = McpTransportFactory.extractServerHeaders(finalServer.getServerConfig());
+                    if (!headers.isEmpty()) {
+                        log.info("MCP Server 自定义 Headers: serverId={}, keys={}", id, headers.keySet());
+                        // 检查 Authorization header 是否包含占位符
+                        String auth = headers.get("Authorization");
+                        if (auth != null && (auth.contains("${") || auth.contains("<") || "Bearer ".equals(auth.trim()))) {
+                            log.warn("MCP Server Authorization header 可能包含未替换的占位符: serverId={}", id);
+                        }
+                    }
+                }
+                var transport = finalServer != null
+                        ? McpTransportFactory.createHttpTransport(finalServer)
+                        : McpTransportFactory.createHttpTransport(finalServerUrl);
+                if (transport == null) {
+                    log.error("创建 MCP Transport 失败: serverId={}", id);
+                    return null;
+                }
+                return DefaultMcpClient.builder()
+                        .transport(transport)
+                        .toolExecutionTimeout(Duration.ofMillis(MCP_TIMEOUT_MS))
+                        .build();
+            });
+        } catch (Exception e) {
+            // 初始化失败（如 401 认证失败），清理缓存避免后续请求命中不可用的 client
+            mcpClientCache.remove(serverId);
+            // 提取根因给出友好错误
+            Throwable cause = e;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            String msg = cause.getMessage();
+            if (msg != null && msg.contains("401")) {
+                log.error("MCP Server 认证失败(401): serverId={}, url={}", serverId, finalServerUrl);
+                throw new RuntimeException("MCP Server 认证失败(401)，请检查 serverConfig 中的 headers 配置，确保 API Key 正确且已替换占位符（如 ${API_KEY}）", e);
+            }
+            if (msg != null && msg.contains("403")) {
+                log.error("MCP Server 访问被拒绝(403): serverId={}", serverId);
+                throw new RuntimeException("MCP Server 访问被拒绝(403)，请检查 API Key 权限", e);
+            }
+            if (msg != null && msg.contains("404")) {
+                log.error("MCP Server 地址不存在(404): serverId={}, url={}", serverId, finalServerUrl);
+                throw new RuntimeException("MCP Server 地址不存在(404)，请检查 URL 配置", e);
+            }
+            log.error("MCP Client 初始化失败: serverId={}, url={}", serverId, finalServerUrl, e);
+            throw new RuntimeException("MCP Client 初始化失败: " + msg, e);
+        }
     }
 
     /**
@@ -128,11 +174,15 @@ public class McpClientManager {
 
     /**
      * 列出 MCP Server 提供的资源
+     * <p>
+     * 很多 MCP Server（尤其是工具型服务）不提供 resources 能力，
+     * 调用 resources/list 时可能返回 500 或其他错误，此时优雅降级返回空列表。
      */
     public Object listResources(Long serverId) {
         McpClient client = getClient(serverId);
         if (client == null) {
-            throw new RuntimeException("MCP Server 不可用: " + serverId);
+            log.warn("MCP Server 不可用: serverId={}", serverId);
+            return new ArrayList<>();
         }
         try {
             java.lang.reflect.Method method = client.getClass().getMethod("listResources");
@@ -141,8 +191,27 @@ public class McpClientManager {
             log.warn("当前 LangChain4j 版本不支持 listResources: {}", e.getMessage());
             return new ArrayList<>();
         } catch (Exception e) {
-            log.error("获取 MCP 资源列表失败: serverId={}", serverId, e);
-            throw new RuntimeException("获取资源失败", e);
+            // 提取根因判断错误类型
+            Throwable cause = e.getCause();
+            while (cause != null && cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            String msg = cause != null ? cause.getMessage() : e.getMessage();
+            // 500 通常是服务端不支持该方法（如纯工具型 MCP Server），优雅降级
+            if (msg != null && msg.contains("500")) {
+                log.info("MCP Server 不支持 resources/list（服务端返回500），降级返回空列表: serverId={}", serverId);
+                return new ArrayList<>();
+            }
+            // 401/403 认证问题仍需抛出
+            if (msg != null && msg.contains("401")) {
+                throw new RuntimeException("MCP Server 认证失败(401)，请检查 serverConfig 中的 headers 配置，确保 API Key 正确", e);
+            }
+            if (msg != null && msg.contains("403")) {
+                throw new RuntimeException("MCP Server 访问被拒绝(403)，请检查 API Key 权限", e);
+            }
+            // 其他错误也优雅降级，避免影响主流程
+            log.warn("获取 MCP 资源列表失败，降级返回空列表: serverId={}, error={}", serverId, msg);
+            return new ArrayList<>();
         }
     }
 

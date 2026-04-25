@@ -10,17 +10,14 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
-import org.dromara.ai.model.mapper.KmModelMapper;
-import org.dromara.ai.model.mapper.KmModelProviderMapper;
-import org.dromara.ai.model.util.ModelBuilder;
 import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
-import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
+import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,13 +31,10 @@ import org.dromara.ai.workflow.workflow.nodes.nodeUtils.WorkflowNodeUtils;
  */
 @Slf4j
 @Component("IMAGE_OCR")
-@RequiredArgsConstructor
-public class OcrNode extends AbstractWorkflowNode {
+public class OcrNode extends AbstractAiWorkflowNode {
 
-    private final KmModelMapper modelMapper;
-    private final KmModelProviderMapper providerMapper;
-    private final ModelBuilder modelBuilder;
-    private final WorkflowNodeUtils workflowNodeUtils;
+    @Autowired
+    private WorkflowNodeUtils workflowNodeUtils;
 
     @Override
     public NodeOutput execute(NodeContext context) throws Exception {
@@ -61,19 +55,10 @@ public class OcrNode extends AbstractWorkflowNode {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.ocr.missing_model_id"));
         }
 
-        // 加载模型
-        KmModel model = modelMapper.selectById(modelId);
-        if (model == null) {
-            throw new RuntimeException(MessageUtils.message("ai.workflow.node.common.model_not_found", modelId));
-        }
-        KmModelProvider provider = providerMapper.selectById(model.getProviderId());
-        if (provider == null) {
-            throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.provider_not_found", model.getProviderId()));
-        }
-
-        // 处理 apiBase
-        String apiBase = StrUtil.isNotBlank(model.getApiBase()) ? model.getApiBase() : provider.getDefaultEndpoint();
-        model.setApiBase(apiBase);
+        // 加载模型（基类统一处理）
+        Object[] modelAndProvider = loadModelAndProviderById(modelId);
+        KmModel model = (KmModel) modelAndProvider[0];
+        KmModelProvider provider = (KmModelProvider) modelAndProvider[1];
 
         // 提取待识别的图片文件
         List<KmWorkflowFile> targetFiles = new ArrayList<>();
@@ -178,7 +163,7 @@ public class OcrNode extends AbstractWorkflowNode {
         // 调用大模型
         ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), 0.1, 8192);
         log.info("IMAGE_OCR节点 - 开始调用多模态模型进行OCR识别");
-        dev.langchain4j.model.chat.response.ChatResponse response = chatModel.chat(messages);
+        ChatResponse response = chatModel.chat(messages);
 
         String extractedText = response.aiMessage().text();
         log.info("IMAGE_OCR节点执行成功, 识别文本长度: {}", extractedText.length());
@@ -186,12 +171,9 @@ public class OcrNode extends AbstractWorkflowNode {
         output.addOutput("text", extractedText);
         output.addOutput("ossId", fileToProcess.getOssId());
 
-        if (response.tokenUsage() != null) {
-            Map<String, Object> tokenUsageMap = Map.of(
-                    "inputTokenCount", response.tokenUsage().inputTokenCount(),
-                    "outputTokenCount", response.tokenUsage().outputTokenCount(),
-                    "totalTokenCount", response.tokenUsage().totalTokenCount());
-            context.setTokenUsage(tokenUsageMap);
+        // token 统计（基类统一处理）
+        Map<String, Object> tokenUsageMap = recordTokenUsage(response, context);
+        if (tokenUsageMap != null) {
             output.addOutput("tokenUsage", tokenUsageMap);
         }
 
