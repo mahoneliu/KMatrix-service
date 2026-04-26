@@ -13,6 +13,10 @@ import org.dromara.ai.workflow.service.IWorkflowInstanceService;
 import org.dromara.ai.workflow.workflow.core.WorkflowConfig;
 import org.dromara.ai.workflow.workflow.engine.LangGraphWorkflowEngine;
 import org.dromara.ai.workflow.workflow.core.WorkflowState;
+import org.dromara.ai.workflow.workflow.nodes.session.ISessionVariableProvider;
+import org.dromara.ai.workflow.workflow.nodes.SessionVariableAssignNode;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.dromara.ai.api.domain.vo.config.AppParametersConfig;
@@ -37,6 +41,9 @@ public class WorkflowExecutor {
     private final LangGraphWorkflowEngine langGraphEngine;
     private final IWorkflowInstanceService instanceService;
     private final ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    private ObjectProvider<ISessionVariableProvider> sessionVariableProviderHolder;
 
     /**
      * 执行工作流（统一入口，支持调试和正式模式）
@@ -106,6 +113,20 @@ public class WorkflowExecutor {
             }
         } else {
             log.warn("customParameters 为空，无法注入到 globalState");
+        }
+
+        // 从数据库加载会话变量到 globalState（使工作流节点可以引用会话变量）
+        if (!debug && req.getSessionId() != null) {
+            ISessionVariableProvider sessionVarProvider = sessionVariableProviderHolder != null
+                    ? sessionVariableProviderHolder.getIfAvailable() : null;
+            if (sessionVarProvider != null) {
+                Map<String, Object> sessionVars = sessionVarProvider.loadSessionVariables(req.getSessionId());
+                if (sessionVars != null && !sessionVars.isEmpty()) {
+                    globalState.put(SessionVariableAssignNode.GLOBAL_KEY_SESSION_VARS, sessionVars);
+                    log.info("已从数据库加载会话变量到 globalState，sessionId={}, 变量数={}",
+                            req.getSessionId(), sessionVars.size());
+                }
+            }
         }
 
         // 分类参数硬注入 (注入到 nodeOutputs 中的虚拟 ID: interface, app, session)
