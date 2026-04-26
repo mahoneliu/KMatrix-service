@@ -1,6 +1,7 @@
 package org.dromara.ai.execution.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaIgnore;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.execution.domain.bo.KmSkillBo;
 import org.dromara.ai.execution.domain.vo.KmSkillVo;
@@ -54,6 +55,7 @@ public class KmSkillController extends BaseController {
      * 获取所有启用的技能列表（公共接口，无需鉴权）
      * 供 Chat 前端直接调用，实现 app 模块与 execution 模块解耦
      */
+    @SaIgnore
     @GetMapping("/active")
     public R<List<KmSkillVo>> activeList() {
         return R.ok(skillService.queryActiveList());
