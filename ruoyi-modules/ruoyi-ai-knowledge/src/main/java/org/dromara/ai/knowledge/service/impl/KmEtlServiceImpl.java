@@ -439,12 +439,40 @@ public class KmEtlServiceImpl implements IKmEtlService {
         // 同步写入 Unified Index (km_embedding)
         List<KmEmbedding> embeddings = new ArrayList<>();
 
-        // 使用自定义模型进行向量化（与上传文档流程保持一致）
-        List<float[]> vectors = embeddingService.embedBatch(chunks, kbId);
-
+        // 过滤空文本 chunks，与 embedBatch 行为保持一致，避免索引越界
+        // 同时记录原始索引，供 metadata 使用
+        List<String> nonBlankChunks = new ArrayList<>();
+        List<Integer> originalIndices = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
-            float[] embedding = vectors.get(i);
+            if (chunkText != null && !chunkText.isBlank()) {
+                nonBlankChunks.add(chunkText);
+                originalIndices.add(i);
+            } else {
+                log.warn("Skipping empty chunk at index {} for document {}", i, documentId);
+            }
+        }
+
+        if (nonBlankChunks.isEmpty()) {
+            log.warn("All chunks are empty for document: {}", documentId);
+            return;
+        }
+
+        // 使用自定义模型进行向量化（与上传文档流程保持一致）
+        List<float[]> vectors = embeddingService.embedBatch(nonBlankChunks, kbId);
+
+        // 向量数量应与 nonBlankChunks 一致，assert 防止未来回归
+        if (vectors.size() != nonBlankChunks.size()) {
+            throw new IllegalStateException(String.format(
+                    "Vector count mismatch: got %d vectors for %d non-blank chunks (documentId=%d). " +
+                    "embedBatch should skip blanks in sync with the input list.",
+                    vectors.size(), nonBlankChunks.size(), documentId));
+        }
+
+        for (int idx = 0; idx < nonBlankChunks.size(); idx++) {
+            String chunkText = nonBlankChunks.get(idx);
+            int originalIndex = originalIndices.get(idx);
+            float[] embedding = vectors.get(idx);
 
             KmDocumentChunk chunk = new KmDocumentChunk();
             chunk.setId(IdUtil.getSnowflakeNextId());
@@ -456,7 +484,7 @@ public class KmEtlServiceImpl implements IKmEtlService {
             chunk.setParentId(null);
 
             Map<String, Object> metadata = new HashMap<>();
-            metadata.put("chunkIndex", i);
+            metadata.put("chunkIndex", originalIndex);
             metadata.put("totalChunks", chunks.size());
             chunk.setMetadata(metadata);
 
