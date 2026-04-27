@@ -5,10 +5,10 @@ import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,17 +37,21 @@ public class McpTransportFactory {
             return null;
         }
         Map<String, String> headers = extractServerHeaders(server.getServerConfig());
-        return createHttpTransport(serverUrl, headers);
+        
+        log.info("MCP Server 配置: serverId={}, transportType={}, serverConfig={}", 
+                 server.getServerId(), server.getTransportType(), server.getServerConfig());
+        
+        return createHttpTransport(serverUrl, headers, server.getTransportType());
     }
 
     /**
-     * 根据 URL 创建 StreamableHttpMcpTransport
+     * 根据 URL 创建 StreamableHttpMcpTransport (新版协议)
      *
      * @param url MCP Server 的 Streamable HTTP 端点 URL
      * @return McpTransport 实例
      */
     public static McpTransport createHttpTransport(String url) {
-        return createHttpTransport(url, null);
+        return createHttpTransport(url, null, "streamable-http");
     }
 
     /**
@@ -58,15 +62,46 @@ public class McpTransportFactory {
      * @return McpTransport 实例
      */
     public static McpTransport createHttpTransport(String url, Map<String, String> headers) {
-        log.info("创建 MCP StreamableHttpTransport: url={}, headers={}", url, headers != null ? headers.keySet() : "none");
-        var builder = StreamableHttpMcpTransport.builder()
-                .url(url)
-                .logRequests(true)
-                .logResponses(true);
-        if (headers != null && !headers.isEmpty()) {
-            builder.customHeaders(headers);
+        return createHttpTransport(url, headers, "streamable-http");
+    }
+
+    /**
+     * 根据 URL、自定义 Header 和传输协议选择创建 McpTransport
+     *
+     * @param url       MCP Server 的端点 URL
+     * @param headers   自定义请求 Header，可为 null
+     * @param transport 传输协议类型: "sse" (旧版) 或 "streamable-http"/"streamable_http" (新版)
+     * @return McpTransport 实例
+     */
+    public static McpTransport createHttpTransport(String url, Map<String, String> headers, String transport) {
+        log.info("创建 MCP Transport: url={}, transport={}", url, transport);
+
+        // 兼容下划线和连字符格式
+        String normalizedTransport = transport != null ? transport.replace("_", "-") : "streamable-http";
+
+        if ("sse".equalsIgnoreCase(normalizedTransport)) {
+            // 使用旧版 SSE 协议
+            log.info("使用 HttpMcpTransport (SSE 协议)");
+            var builder = HttpMcpTransport.builder()
+                    .sseUrl(url)
+                    .logRequests(true)
+                    .logResponses(true);
+            if (headers != null && !headers.isEmpty()) {
+                builder.customHeaders(headers);
+            }
+            return builder.build();
+        } else {
+            // 使用新版 Streamable HTTP 协议 (默认)
+            log.info("使用 StreamableHttpMcpTransport");
+            var builder = StreamableHttpMcpTransport.builder()
+                    .url(url)
+                    .logRequests(true)
+                    .logResponses(true);
+            if (headers != null && !headers.isEmpty()) {
+                builder.customHeaders(headers);
+            }
+            return builder.build();
         }
-        return builder.build();
     }
 
     /**
