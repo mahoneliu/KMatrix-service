@@ -439,10 +439,12 @@ public class KmEtlServiceImpl implements IKmEtlService {
         // 同步写入 Unified Index (km_embedding)
         List<KmEmbedding> embeddings = new ArrayList<>();
 
+        // 使用自定义模型进行向量化（与上传文档流程保持一致）
+        List<float[]> vectors = embeddingService.embedBatch(chunks, kbId);
+
         for (int i = 0; i < chunks.size(); i++) {
             String chunkText = chunks.get(i);
-
-            float[] embedding = embeddingModel.embed(chunkText).content().vector();
+            float[] embedding = vectors.get(i);
 
             KmDocumentChunk chunk = new KmDocumentChunk();
             chunk.setId(IdUtil.getSnowflakeNextId());
