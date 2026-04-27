@@ -9,8 +9,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import org.dromara.ai.api.enums.SseEventType;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import org.dromara.ai.app.util.ChatMessageJsonSerializer;
 import java.util.stream.Collectors;
 
 /**
@@ -89,6 +90,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final IKmModelService modelService;
     private final ChatServiceAbortMixin abortMixin;
     private final ChatStreamHandler chatStreamHandler;
+    private final org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider chatMessageProvider;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -229,15 +231,17 @@ public class KmChatServiceImpl implements IKmChatService {
                         }
 
                         // 保存用户消息（带 instanceId）
-                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, null, effectiveUserId, bo.getRequestId());
+                        saveMessage(sessionId, "user", bo.getMessage(), instanceId, null, effectiveUserId,
+                                bo.getRequestId());
 
                         // 保存AI响应
                         if (aiResponse != null) {
                             KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, instanceId,
                                     totalTokens, effectiveUserId, bo.getRequestId());
-                            // 发送消息ID给前端，以便进行评价
+                            // 发送消息ID和会话ID给前端
                             sendSseEvent(emitter, SseEventType.DONE,
-                                    Map.of("messageId", assistantMessage.getMessageId().toString()));
+                                    Map.of("messageId", assistantMessage.getMessageId().toString(),
+                                            "sessionId", sessionId));
                         }
 
                         // 异步生成标题（仅在首次对话时）
@@ -338,14 +342,14 @@ public class KmChatServiceImpl implements IKmChatService {
         List<ChatMessage> messages = buildChatMessages(sessionId, app.getModelSetting(), bo.getMessage());
 
         // 5. 构建模型并生成响应
-        ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
-        Response<AiMessage> response = chatModel.generate(messages);
+        ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
+        dev.langchain4j.model.chat.response.ChatResponse chatResponse = chatModel.chat(messages);
 
         // 6. 获取AI响应
-        String aiResponse = response.content().text();
+        String aiResponse = chatResponse.aiMessage().text();
 
         // 7. 记录token使用情况
-        TokenUsage tokenUsage = response.tokenUsage();
+        dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.tokenUsage();
         if (tokenUsage != null) {
             log.info("Token使用: input={}, output={}, total={}",
                     tokenUsage.inputTokenCount(),
@@ -358,7 +362,8 @@ public class KmChatServiceImpl implements IKmChatService {
 
         // 8. 保存AI响应
         Integer totalTokenCount = tokenUsage != null ? tokenUsage.totalTokenCount() : null;
-        KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, null, totalTokenCount, effectiveUserId);
+        KmChatMessage assistantMessage = saveMessage(sessionId, "assistant", aiResponse, null, totalTokenCount,
+                effectiveUserId);
 
         return MapstructUtils.convert(assistantMessage, KmChatMessageVo.class);
     }
@@ -518,22 +523,9 @@ public class KmChatServiceImpl implements IKmChatService {
         }
 
         // 2. 加载历史消息(最近20条)
-        List<KmChatMessage> historyMessages = messageMapper.selectList(
-                new LambdaQueryWrapper<KmChatMessage>()
-                        .eq(KmChatMessage::getSessionId, sessionId)
-                        .orderByDesc(KmChatMessage::getCreateTime)
-                        .last("LIMIT 20"));
-
-        // 反转为时间正序
-        Collections.reverse(historyMessages);
-
-        // 转换为LangChain4j消息
-        for (KmChatMessage msg : historyMessages) {
-            if ("user".equals(msg.getRole())) {
-                messages.add(new UserMessage(msg.getContent()));
-            } else if ("assistant".equals(msg.getRole())) {
-                messages.add(new AiMessage(msg.getContent()));
-            }
+        List<ChatMessage> historyMessages = chatMessageProvider.loadHistoryMessages(sessionId, 20);
+        if (historyMessages != null) {
+            messages.addAll(historyMessages);
         }
 
         return messages;
@@ -585,6 +577,8 @@ public class KmChatServiceImpl implements IKmChatService {
 
     /**
      * 保存带有进度实例、Token 使用情况和请求ID的消息
+     * <p>
+     * 同时序列化完整的 ChatMessage 对象到 raw_message_json，用于后续历史对话的精确还原。
      */
     private KmChatMessage saveMessage(Long sessionId, String role, String content, Long instanceId, Integer totalTokens,
             Long userId, String requestId) {
@@ -596,6 +590,17 @@ public class KmChatServiceImpl implements IKmChatService {
         message.setTotalTokens(totalTokens);
         message.setRequestId(requestId);
         message.setCreateTime(new Date());
+
+        // 序列化 ChatMessage 为 raw_message_json（用于精确还原历史上下文）
+        try {
+            dev.langchain4j.data.message.ChatMessage chatMessage =
+                    ChatMessageJsonSerializer.buildFromRoleAndContent(role, content);
+            if (chatMessage != null) {
+                message.setRawMessageJson(ChatMessageJsonSerializer.toJson(chatMessage));
+            }
+        } catch (Exception e) {
+            log.warn("消息序列化失败，raw_message_json 将为空: role={}, error={}", role, e.getMessage());
+        }
 
         // 手动设置BaseEntity字段
         message.setCreateBy(userId);
@@ -646,9 +651,9 @@ public class KmChatServiceImpl implements IKmChatService {
             messages.add(new UserMessage(titlePrompt));
 
             // 使用同步模型快速生成标题
-            ChatLanguageModel chatModel = modelBuilder.buildChatModel(model, providerKey);
-            Response<AiMessage> response = chatModel.generate(messages);
-            String title = response.content().text().trim();
+            ChatModel chatModel = modelBuilder.buildChatModel(model, providerKey);
+            dev.langchain4j.model.chat.response.ChatResponse titleResponse = chatModel.chat(messages);
+            String title = titleResponse.aiMessage().text().trim();
 
             // 清理标题(去除引号等)
             title = title.replaceAll("^\"|\"$", "")
@@ -830,17 +835,17 @@ public class KmChatServiceImpl implements IKmChatService {
             Long debugSessionId = -1L; // 负数表示调试会话，不会创建session记录
 
             WorkflowExecutionReq req = WorkflowExecutionReq.builder()
-                                .appId(debugApp.getAppId())
-                                .dslData(debugApp.getDslData())
-                                .enableExecutionDetail(debugApp.getEnableExecutionDetail())
-                                .showExecutionInfo(bo.getShowExecutionInfo())
-                                .message(bo.getMessage())
-                                .sessionId(debugSessionId)
-                                .userId(userId)
-                                .tempFileIds(bo.getTempFileIds())
-                                .apiParameters(bo.getCustomParams())
-                                .parametersConfig(debugApp.getParameters())
-                                .build();
+                    .appId(debugApp.getAppId())
+                    .dslData(debugApp.getDslData())
+                    .enableExecutionDetail(debugApp.getEnableExecutionDetail())
+                    .showExecutionInfo(bo.getShowExecutionInfo())
+                    .message(bo.getMessage())
+                    .sessionId(debugSessionId)
+                    .userId(userId)
+                    .tempFileIds(bo.getTempFileIds())
+                    .apiParameters(bo.getCustomParams())
+                    .parametersConfig(debugApp.getParameters())
+                    .build();
             workflowExecutor.executeWorkflowDebug(req, emitter);
 
             // 工作流完成（executeWorkflowDebug内部已发送done事件，与streamChat行为一致）

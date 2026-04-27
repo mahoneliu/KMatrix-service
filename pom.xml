@@ -57,6 +57,11 @@
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
         <flatten-maven-plugin.version>1.3.0</flatten-maven-plugin.version>
+
+        <!-- AI 模型版本控制 -->
+        <langchain4j.version>1.13.0</langchain4j.version>
+        <langchain4j.community.version>1.13.0-beta23</langchain4j.community.version>
+
         <!-- 打包默认跳过测试 -->
         <skipTests>true</skipTests>
     </properties>
@@ -106,6 +111,24 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- LangChain4j 主依赖管理 -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- LangChain4j Community 依赖管理 -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-community-bom</artifactId>
+                <version>${langchain4j.community.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -389,6 +412,11 @@
             <dependency>
                 <groupId>org.dromara</groupId>
                 <artifactId>ruoyi-ai-knowledge</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.dromara</groupId>
+                <artifactId>ruoyi-ai-execution</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

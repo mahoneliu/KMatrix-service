@@ -16,22 +16,18 @@
     </description>
 
     <properties>
-        <langchain4j.version>0.36.2</langchain4j.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-bom</artifactId>
-                <version>${langchain4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+
 
     <dependencies>
+        <!-- 执行层模块（Tool / MCP / Skill 统一执行能力） -->
+        <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai-execution</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <!-- 工作流引擎模块（通过传递依赖引入所有下层模块） -->
         <dependency>
             <groupId>org.dromara</groupId>

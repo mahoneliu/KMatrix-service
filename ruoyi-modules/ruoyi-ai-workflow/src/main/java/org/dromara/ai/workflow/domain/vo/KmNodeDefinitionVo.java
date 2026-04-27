@@ -77,6 +77,11 @@ public class KmNodeDefinitionVo implements Serializable {
     private String requireAiConfig;
 
     /**
+     * 是否需要对话配置面板（用户提示词/多模态/历史对话）(0否/1是)
+     */
+    private String requireDialogConfig;
+
+    /**
      * 输入参数定义
      */
     private List<NodeParamDefinitionVo> inputParams;

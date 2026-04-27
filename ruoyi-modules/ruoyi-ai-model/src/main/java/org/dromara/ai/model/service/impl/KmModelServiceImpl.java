@@ -7,9 +7,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -243,7 +243,7 @@ public class KmModelServiceImpl implements IKmModelService {
                     ModelConnectionTester.testOpenAiCompatible(bo, provider.getProviderName());
                 case "siliconflow" -> ModelConnectionTester.testSiliconFlow(bo);
                 case "ollama", "vllm" -> ModelConnectionTester.testOllama(bo.getApiBase(), bo.getModelKey());
-                case "qwen", "bailian" -> ModelConnectionTester.testQwen(apiKey, modelKey);
+                case "qwen", "bailian" -> ModelConnectionTester.testQwen(bo);
                 case "gemini" -> ModelConnectionTester.testGemini(apiKey, modelKey);
                 case "azure" -> {
                     // Azure 需要解析 apiBase 获取 endpoint 和 deploymentName
@@ -253,7 +253,7 @@ public class KmModelServiceImpl implements IKmModelService {
                     // bo.setApiKey(apiKey);
                     yield ModelConnectionTester.testZhipu(bo);
                 }
-                case "anthropic" -> ModelConnectionTester.testAnthropic(apiKey, apiBase, modelKey);
+                case "anthropic" -> ModelConnectionTester.testAnthropic(bo);
                 default -> {
                     // bo.setApiKey(apiKey);
                     bo.setApiBase(apiBase);
@@ -292,17 +292,17 @@ public class KmModelServiceImpl implements IKmModelService {
                         : provider.getDefaultEndpoint();
                 model.setApiBase(apiBase);
 
-                StreamingChatLanguageModel streamingModel = modelBuilder.buildStreamingChatModel(
+                StreamingChatModel streamingModel = modelBuilder.buildStreamingChatModel(
                         model, provider.getProviderKey(), bo.getTemperature(), bo.getMaxTokens());
 
                 // 构造消息 (简单单轮对话)
                 UserMessage userMessage = new UserMessage(bo.getMessage());
 
                 // 流式生成
-                streamingModel.generate(Collections.singletonList(userMessage),
-                        new StreamingResponseHandler<AiMessage>() {
+                streamingModel.chat(Collections.singletonList(userMessage),
+                        new StreamingChatResponseHandler() {
                             @Override
-                            public void onNext(String token) {
+                            public void onPartialResponse(String token) {
                                 try {
                                     // 发送片段
                                     emitter.send(SseEmitter.event().name("token").data(token));
@@ -312,7 +312,7 @@ public class KmModelServiceImpl implements IKmModelService {
                             }
 
                             @Override
-                            public void onComplete(Response<AiMessage> response) {
+                            public void onCompleteResponse(ChatResponse response) {
                                 emitter.complete();
                             }
 

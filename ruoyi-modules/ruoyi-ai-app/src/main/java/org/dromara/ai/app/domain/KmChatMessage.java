@@ -92,4 +92,11 @@ public class KmChatMessage extends BaseEntity {
      */
     @TableField("abort_reason")
     private String abortReason;
+
+    /**
+     * LangChain4j ChatMessage 完整序列化JSON
+     * 用于精确还原多模态内容和工具调用历史，比 content 字段包含更完整的上下文信息
+     */
+    @TableField("raw_message_json")
+    private String rawMessageJson;
 }

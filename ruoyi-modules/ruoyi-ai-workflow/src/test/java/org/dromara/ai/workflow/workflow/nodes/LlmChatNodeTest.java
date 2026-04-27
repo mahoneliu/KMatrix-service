@@ -1,8 +1,9 @@
 package org.dromara.ai.workflow.workflow.nodes;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.model.mapper.KmModelMapper;
@@ -10,7 +11,7 @@ import org.dromara.ai.model.mapper.KmModelProviderMapper;
 import org.dromara.ai.model.util.ModelBuilder;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
-import org.dromara.ai.workflow.workflow.nodes.tool.IToolProvider;
+import org.dromara.ai.execution.core.IToolProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -72,38 +73,40 @@ class LlmChatNodeTest {
     @Test
     void testExecute_SimpleText() throws Exception {
         // Arrange
-        ChatLanguageModel chatModel = mock(ChatLanguageModel.class);
+        ChatModel chatModel = mock(ChatModel.class);
         when(modelBuilder.buildChatModel(any(), any(), any(), any())).thenReturn(chatModel);
-        
-        Response<AiMessage> aiResponse = Response.from(AiMessage.from("AI Hello"));
-        when(chatModel.generate(anyList())).thenReturn(aiResponse);
+
+        ChatResponse aiResponse = ChatResponse.builder().aiMessage(dev.langchain4j.data.message.AiMessage.from("AI Hello")).build();
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(aiResponse);
 
         // Act
         NodeOutput output = llmChatNode.execute(context);
 
         // Assert
         assertNotNull(output);
-        assertEquals("AI Hello", output.getOutput("response"));
+        assertEquals("AI Hello", output.getOutput("dev.langchain4j.model.chat.response.ChatResponse"));
     }
 
     @Test
     void testExecute_MultimodalJson() throws Exception {
         // Arrange
         context.setConfig("enableMultimodal", true);
-        // JSON input: [{"type":"text", "text":"Analyze this:"}, {"type":"image", "url":"http://test.com/img.jpg"}]
-        context.setInput("userInput", "[{\"type\":\"text\", \"text\":\"Analyze this:\"}, {\"type\":\"image\", \"url\":\"http://test.com/img.jpg\"}]");
+        // JSON input: [{"type":"text", "text":"Analyze this:"}, {"type":"image",
+        // "url":"http://test.com/img.jpg"}]
+        context.setInput("userInput",
+                "[{\"type\":\"text\", \"text\":\"Analyze this:\"}, {\"type\":\"image\", \"url\":\"http://test.com/img.jpg\"}]");
 
-        ChatLanguageModel chatModel = mock(ChatLanguageModel.class);
+        ChatModel chatModel = mock(ChatModel.class);
         when(modelBuilder.buildChatModel(any(), any(), any(), any())).thenReturn(chatModel);
-        
-        Response<AiMessage> aiResponse = Response.from(AiMessage.from("Image analyzed"));
-        when(chatModel.generate(anyList())).thenReturn(aiResponse);
+
+        ChatResponse aiResponse = ChatResponse.builder().aiMessage(dev.langchain4j.data.message.AiMessage.from("Image analyzed")).build();
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(aiResponse);
 
         // Act
         NodeOutput output = llmChatNode.execute(context);
 
         // Assert
         assertNotNull(output);
-        assertEquals("Image analyzed", output.getOutput("response"));
+        assertEquals("Image analyzed", output.getOutput("dev.langchain4j.model.chat.response.ChatResponse"));
     }
 }

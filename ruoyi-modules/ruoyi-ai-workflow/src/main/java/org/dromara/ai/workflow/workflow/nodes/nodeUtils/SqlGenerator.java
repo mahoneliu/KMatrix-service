@@ -5,10 +5,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,13 +45,13 @@ public final class SqlGenerator {
     /**
      * 生成 SQL (流式)
      *
-     * @param streamingModel StreamingChatLanguageModel
+     * @param streamingModel StreamingChatModel
      * @param schema         数据库 Schema 描述
      * @param userQuery      用户查询
      * @param context        节点上下文 (用于发送SSE事件和保存token信息)
      * @return 生成的 SQL
      */
-    public static String generateSql(StreamingChatLanguageModel streamingModel,
+    public static String generateSql(StreamingChatModel streamingModel,
             String schema, String userQuery,
             NodeContext context) {
         String systemPrompt = """
@@ -75,13 +75,13 @@ public final class SqlGenerator {
                 ? context.getSseEmitter()
                 : null;
         CountDownLatch latch = new CountDownLatch(1);
-        AtomicReference<Response<AiMessage>> responseRef = new AtomicReference<>();
+        AtomicReference<dev.langchain4j.model.chat.response.ChatResponse> responseRef = new AtomicReference<>();
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-        streamingModel.generate(messages,
-                new StreamingResponseHandler<AiMessage>() {
+        streamingModel.chat(messages,
+                new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
                     @Override
-                    public void onNext(String token) {
+                    public void onPartialResponse(String token) {
                         fullResponse.append(token);
                         if (emitter != null) {
                             try {
@@ -96,8 +96,8 @@ public final class SqlGenerator {
                     }
 
                     @Override
-                    public void onComplete(
-                            Response<AiMessage> response) {
+                    public void onCompleteResponse(
+                            dev.langchain4j.model.chat.response.ChatResponse response) {
                         responseRef.set(response);
                         latch.countDown();
                     }
@@ -153,13 +153,13 @@ public final class SqlGenerator {
     /**
      * 生成 SQL
      *
-     * @param chatModel ChatLanguageModel
+     * @param chatModel ChatModel
      * @param schema    数据库 Schema 描述
      * @param userQuery 用户查询
      * @param context   节点上下文 (用于保存token信息，可为null)
      * @return 生成的 SQL
      */
-    public static String generateSql(ChatLanguageModel chatModel, String schema, String userQuery,
+    public static String generateSql(ChatModel chatModel, String schema, String userQuery,
             NodeContext context) {
         String systemPrompt = """
                 你是一个专业的数据库助手。根据用户的问题和提供的数据库表结构，生成正确的SQL查询语句。
@@ -177,8 +177,8 @@ public final class SqlGenerator {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userQuery));
 
-        var response = chatModel.generate(messages);
-        if (response == null || response.content() == null || response.content().text() == null) {
+        var response = chatModel.chat(messages);
+        if (response == null || response.aiMessage() == null || response.aiMessage().text() == null) {
             throw new RuntimeException("LLM未返回有效响应（可能使用了思考模式但未生成文本）");
         }
 
@@ -192,7 +192,7 @@ public final class SqlGenerator {
             context.setTokenUsage(tokenUsageMap);
         }
 
-        String responseText = response.content().text();
+        String responseText = response.aiMessage().text();
 
         // 提取 SQL
         Matcher matcher = SQL_PATTERN.matcher(responseText);
@@ -211,12 +211,12 @@ public final class SqlGenerator {
     /**
      * 选择相关表
      *
-     * @param chatModel ChatLanguageModel
+     * @param chatModel ChatModel
      * @param tableList 数据库表列表
      * @param userQuery 用户查询
      * @return 相关表名列表
      */
-    public static List<String> selectRelevantTables(ChatLanguageModel chatModel, String tableList, String userQuery) {
+    public static List<String> selectRelevantTables(ChatModel chatModel, String tableList, String userQuery) {
         String systemPrompt = """
                 你是一个数据库专家。请根据用户的问题和提供的数据库表清单，找出回答用户问题需要用到的表。
 
@@ -233,11 +233,11 @@ public final class SqlGenerator {
         messages.add(new SystemMessage(systemPrompt));
         messages.add(new UserMessage(userQuery));
 
-        var aiMessage = chatModel.generate(messages);
-        if (aiMessage == null || aiMessage.content() == null || aiMessage.content().text() == null) {
+        var aiMessage = chatModel.chat(messages);
+        if (aiMessage == null || aiMessage.aiMessage() == null || aiMessage.aiMessage().text() == null) {
             return Collections.emptyList();
         }
-        String response = aiMessage.content().text();
+        String response = aiMessage.aiMessage().text();
         if (StrUtil.isBlank(response)) {
             return Collections.emptyList();
         }

@@ -82,4 +82,9 @@ public class KmChatMessageVo implements Serializable {
      * 中断原因: user_abort=用户主动中断, exception=异常中断, network_error=网络错误
      */
     private String abortReason;
+
+    /**
+     * LangChain4j ChatMessage 完整序列化JSON（内部使用，用于历史记录还原）
+     */
+    private String rawMessageJson;
 }

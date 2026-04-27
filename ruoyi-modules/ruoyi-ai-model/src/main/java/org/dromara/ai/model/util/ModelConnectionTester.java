@@ -2,8 +2,10 @@ package org.dromara.ai.model.util;
 
 import cn.hutool.core.util.StrUtil;
 import org.dromara.common.core.utils.MessageUtils;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.dashscope.QwenChatModel;
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.community.model.dashscope.QwenChatModel;
+import dev.langchain4j.community.model.dashscope.QwenEmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
@@ -14,7 +16,6 @@ import dev.langchain4j.model.googleai.GeminiHarmCategory;
 import dev.langchain4j.model.googleai.GeminiHarmBlockThreshold;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.bo.KmModelBo;
-
 import java.time.Duration;
 import java.util.Collections;
 
@@ -43,7 +44,8 @@ public class ModelConnectionTester {
             }
 
             String type = bo.getModelType();
-            if (StrUtil.isBlank(type)) type = "1"; // 默认聊天模型
+            if (StrUtil.isBlank(type))
+                type = "1"; // 默认聊天模型
 
             return switch (type) {
                 case "2" -> testOpenAiEmbedding(bo, providerName);
@@ -66,8 +68,8 @@ public class ModelConnectionTester {
             builder.baseUrl(bo.getApiBase());
         }
 
-        ChatLanguageModel model = builder.build();
-        String response = model.generate(TEST_MESSAGE);
+        ChatModel model = builder.build();
+        String response = model.chat(TEST_MESSAGE);
         log.info("{} Chat连接测试成功: model={}, response={}", providerName, bo.getModelKey(), response);
         return MessageUtils.message("ai.msg.model.connection_success");
     }
@@ -125,13 +127,13 @@ public class ModelConnectionTester {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = OllamaChatModel.builder()
+            ChatModel model = OllamaChatModel.builder()
                     .baseUrl(apiBase)
                     .modelName(modelKey)
                     .timeout(DEFAULT_TIMEOUT)
                     .build();
 
-            String response = model.generate(TEST_MESSAGE);
+            String response = model.chat(TEST_MESSAGE);
 
             log.info("Ollama 连接测试成功: model={}, response={}", modelKey, response);
             return MessageUtils.message("ai.msg.model.connection_success");
@@ -144,26 +146,46 @@ public class ModelConnectionTester {
     /**
      * 测试通义千问 (DashScope) 模型连接
      */
-    public static String testQwen(String apiKey, String modelKey) {
+    public static String testQwen(KmModelBo bo) {
         try {
-            if (StrUtil.isBlank(apiKey)) {
+            if (StrUtil.isBlank(bo.getApiKey())) {
                 return MessageUtils.message("ai.msg.model.api_key_empty");
             }
-            if (StrUtil.isBlank(modelKey)) {
+            if (StrUtil.isBlank(bo.getModelKey())) {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = QwenChatModel.builder()
-                    .apiKey(apiKey)
-                    .modelName(modelKey)
-                    .build();
+            // 如果使用自定义端点 (通常是为了兼容 OpenAI)，则转为兼容模式测试
+            if (StrUtil.isNotBlank(bo.getApiBase()) && bo.getApiBase().contains("/v1")) {
+                return testOpenAiCompatible(bo, "通义千问/百炼");
+            }
 
-            String response = model.generate(TEST_MESSAGE);
+            String type = bo.getModelType();
+            if (StrUtil.isBlank(type)) {
+                type = "1"; // 默认聊天模型
+            }
 
-            log.info("通义千问连接测试成功: model={}, response={}", modelKey, response);
-            return MessageUtils.message("ai.msg.model.connection_success");
+            if ("2".equals(type)) {
+                EmbeddingModel model = QwenEmbeddingModel.builder()
+                        .apiKey(bo.getApiKey())
+                        .modelName(bo.getModelKey())
+                        .build();
+                model.embed(TEST_MESSAGE);
+                log.info("通义千问 Embedding 连接测试成功: model={}", bo.getModelKey());
+                return MessageUtils.message("ai.msg.model.connection_success");
+            } else {
+                ChatModel model = QwenChatModel.builder()
+                        .apiKey(bo.getApiKey())
+                        .modelName(bo.getModelKey())
+                        .build();
+
+                String response = model.chat(TEST_MESSAGE);
+
+                log.info("通义千问 Chat 连接测试成功: model={}, response={}", bo.getModelKey(), response);
+                return MessageUtils.message("ai.msg.model.connection_success");
+            }
         } catch (Exception e) {
-            log.error("通义千问连接测试失败: model={}", modelKey, e);
+            log.error("通义千问连接测试失败: model={}", bo.getModelKey(), e);
             return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
         }
     }
@@ -180,7 +202,7 @@ public class ModelConnectionTester {
                 return MessageUtils.message("ai.msg.model.config_empty");
             }
 
-            ChatLanguageModel model = GoogleAiGeminiChatModel.builder()
+            ChatModel model = GoogleAiGeminiChatModel.builder()
                     .apiKey(apiKey)
                     .modelName(modelKey)
                     .safetySettings(Collections.singletonMap(
@@ -188,7 +210,7 @@ public class ModelConnectionTester {
                     .timeout(DEFAULT_TIMEOUT)
                     .build();
 
-            String response = model.generate(TEST_MESSAGE);
+            String response = model.chat(TEST_MESSAGE);
 
             log.info("Gemini 连接测试成功: model={}, response={}", modelKey, response);
             return MessageUtils.message("ai.msg.model.connection_success");
@@ -218,9 +240,33 @@ public class ModelConnectionTester {
     }
 
     /**
-     * 测试 Anthropic (Claude) 模型连接 (暂未引入依赖)
+     * 测试 Anthropic (Claude) 模型连接
      */
-    public static String testAnthropic(String apiKey, String apiBase, String modelKey) {
-        return MessageUtils.message("ai.msg.model.anthropic_not_supported");
+    public static String testAnthropic(KmModelBo bo) {
+        try {
+            if (StrUtil.isBlank(bo.getApiKey())) {
+                return MessageUtils.message("ai.msg.model.api_key_empty");
+            }
+            if (StrUtil.isBlank(bo.getModelKey())) {
+                return MessageUtils.message("ai.msg.model.config_empty");
+            }
+
+            var builder = AnthropicChatModel.builder()
+                    .apiKey(bo.getApiKey())
+                    .modelName(bo.getModelKey())
+                    .timeout(DEFAULT_TIMEOUT);
+
+            if (StrUtil.isNotBlank(bo.getApiBase())) {
+                builder.baseUrl(bo.getApiBase());
+            }
+
+            ChatModel model = builder.build();
+            String response = model.chat(TEST_MESSAGE);
+            log.info("Anthropic 连接测试成功: model={}, response={}", bo.getModelKey(), response);
+            return MessageUtils.message("ai.msg.model.connection_success");
+        } catch (Exception e) {
+            log.error("Anthropic 连接测试失败: model={}", bo.getModelKey(), e);
+            return MessageUtils.message("ai.msg.model.connection_failed", e.getMessage());
+        }
     }
 }

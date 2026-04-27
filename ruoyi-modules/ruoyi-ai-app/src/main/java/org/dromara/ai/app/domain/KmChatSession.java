@@ -3,11 +3,14 @@ package org.dromara.ai.app.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.dromara.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 聊天会话对象 km_chat_session
@@ -17,7 +20,7 @@ import java.io.Serial;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("km_chat_session")
+@TableName(value = "km_chat_session", autoResultMap = true)
 public class KmChatSession extends BaseEntity {
 
     @Serial
@@ -107,4 +110,11 @@ public class KmChatSession extends BaseEntity {
      */
     @TableField("resumed_at")
     private java.time.LocalDateTime resumedAt;
+
+    /**
+     * 会话变量（JSONB），用于在同一会话的多轮对话间持久化状态
+     * key: 变量名, value: 变量值
+     */
+    @TableField(value = "session_variables", typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> sessionVariables = new HashMap<>();
 }
