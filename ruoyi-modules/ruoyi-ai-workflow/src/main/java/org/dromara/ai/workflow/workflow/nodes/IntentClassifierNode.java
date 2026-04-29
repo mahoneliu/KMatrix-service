@@ -40,12 +40,25 @@ public class IntentClassifierNode extends AbstractAiWorkflowNode {
     }
 
     /**
-     * 系统提示词：根据配置的意图列表动态构建
+     * 系统提示词：支持用户自定义增强，结合意图列表动态构建
+     * 优先从 inputs 获取用户自定义系统提示词，其次从 config 获取，最后使用默认提示词
      */
     @Override
     protected String buildSystemPrompt(NodeContext context) {
         List<String> intentNames = extractIntentNames(context.getConfig("intents"));
-        return buildIntentPrompt(intentNames);
+        
+        String customSystemPrompt = (String) context.getInput("systemPrompt");
+        if (customSystemPrompt == null) {
+            customSystemPrompt = context.getConfigAsString("systemPrompt");
+        }
+        
+        String basePrompt = buildIntentPrompt(intentNames);
+        
+        if (customSystemPrompt != null && !customSystemPrompt.trim().isEmpty()) {
+            return customSystemPrompt + "\n\n" + basePrompt;
+        }
+        
+        return basePrompt;
     }
 
     /**
