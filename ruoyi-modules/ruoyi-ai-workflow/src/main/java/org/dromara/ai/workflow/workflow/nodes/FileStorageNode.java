@@ -11,6 +11,9 @@ import org.dromara.ai.knowledge.util.StatusMetaUtils;
 import org.dromara.ai.storage.domain.KmTempFile;
 import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
 import org.dromara.ai.storage.mapper.KmTempFileMapper;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -25,7 +28,7 @@ import org.dromara.common.core.utils.MessageUtils;
  * 接收基础的图片、音频等信息引用（如 ossId）并流转到后续节点
  */
 @Slf4j
-@Component("FILE_STORAGE")
+@Component(NodeTypeConstants.FILE_STORAGE)
 @RequiredArgsConstructor
 public class FileStorageNode extends AbstractWorkflowNode {
     
@@ -40,7 +43,7 @@ public class FileStorageNode extends AbstractWorkflowNode {
         log.info("执行文档存储节点 (FILE_STORAGE)");
         
         // 1. 获取输入参数，兼容 LinkedHashMap（JSON反序列化结果）和直接对象
-        Object raw = context.getInput("file");
+        Object raw = context.getInput(NodeIOConstants.INPUT_FILE);
         if (raw == null) {
             throw new IllegalArgumentException(MessageUtils.message("ai.workflow.node.file_storage.missing_input"));
         }
@@ -99,23 +102,23 @@ public class FileStorageNode extends AbstractWorkflowNode {
         log.info("文档收录成功: documentId={}, fileName={}, filePath={}", document.getId(), document.getOriginalFilename(), filePath);
 
         NodeOutput output = new NodeOutput();
-        output.addOutput(WorkflowState.KEY_DOCUMENT_ID, document.getId());
+        output.addOutput(NodeIOConstants.OUTPUT_DOCUMENT_ID, document.getId());
         return output;
     }
 
     private Long resolveDatasetId(NodeContext context) {
         // 1. 上游参数传入
-        Object val = context.getInput("datasetId");
+        Object val = context.getInput(NodeIOConstants.INPUT_DATASET_ID);
         log.info("resolveDatasetId - input[datasetId]={}", val);
         if (val != null) return toLong(val);
         
         // 2. 节点配置
-        val = context.getConfig("datasetId");
+        val = context.getConfig(NodeConfigConstants.CFG_FILE_DATASET_ID);
         log.info("resolveDatasetId - config[datasetId]={}, nodeConfig={}", val, context.getNodeConfig());
         if (val != null) return toLong(val);
         
         // 3. 系统兜底配置
-        String defaultId = configService.selectConfigByKey("ai.workflow.default_dataset_id");
+        String defaultId = configService.selectConfigByKey(NodeConfigConstants.SYS_CFG_DEFAULT_DATASET_ID);
         log.info("resolveDatasetId - sysConfig[ai.workflow.default_dataset_id]={}", defaultId);
         if (StrUtil.isNotBlank(defaultId)) {
             return Long.parseLong(defaultId);
@@ -131,7 +134,7 @@ public class FileStorageNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "FILE_STORAGE";
+        return NodeTypeConstants.FILE_STORAGE;
     }
 
     @Override

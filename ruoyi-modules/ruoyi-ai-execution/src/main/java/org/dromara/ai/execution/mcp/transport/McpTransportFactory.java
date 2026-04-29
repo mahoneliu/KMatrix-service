@@ -80,7 +80,7 @@ public class McpTransportFactory {
         String normalizedTransport = transport != null ? transport.replace("_", "-") : "streamable-http";
 
         if ("sse".equalsIgnoreCase(normalizedTransport)) {
-            // 使用旧版 SSE 协议
+            // 使用旧版 SSE 协议,暂时保留Depressed的HttpMcpTransport，后续升级langchain4j要移除，StreamableHttp已是行业标准
             log.info("使用 HttpMcpTransport (SSE 协议)");
             var builder = HttpMcpTransport.builder()
                     .sseUrl(url)
@@ -90,7 +90,7 @@ public class McpTransportFactory {
                 builder.customHeaders(headers);
             }
             return builder.build();
-        } else {
+        } else if ("streamable-http".equalsIgnoreCase(normalizedTransport)) {
             // 使用新版 Streamable HTTP 协议 (默认)
             log.info("使用 StreamableHttpMcpTransport");
             var builder = StreamableHttpMcpTransport.builder()
@@ -101,6 +101,10 @@ public class McpTransportFactory {
                 builder.customHeaders(headers);
             }
             return builder.build();
+        }else {
+            // 如果要对接本地MCP，可以考虑扩展stdio协议
+            log.error("不支持的传输协议: {}", transport);
+            return null;
         }
     }
 

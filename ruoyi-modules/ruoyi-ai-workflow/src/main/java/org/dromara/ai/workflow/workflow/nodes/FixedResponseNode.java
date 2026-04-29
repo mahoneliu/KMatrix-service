@@ -3,6 +3,8 @@ package org.dromara.ai.workflow.workflow.nodes;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -17,7 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * @date 2026-01-02
  */
 @Slf4j
-@Component("FIXED_RESPONSE")
+@Component(NodeTypeConstants.FIXED_RESPONSE)
 public class FixedResponseNode extends AbstractWorkflowNode {
 
     @Override
@@ -27,9 +29,9 @@ public class FixedResponseNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 从配置获取固定回复内容
-        String response = (String) context.getConfig("content");
+        String response = (String) context.getConfig(NodeIOConstants.INPUT_CONTENT);
         if (response == null) {
-            response = (String) context.getInput("content");
+            response = (String) context.getInput(NodeIOConstants.INPUT_CONTENT);
         }
 
         if (response == null) {
@@ -48,7 +50,7 @@ public class FixedResponseNode extends AbstractWorkflowNode {
         }
 
         // 保存输出
-        output.addOutput("response", response);
+        output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, response);
 
         log.info("FIXED_RESPONSE节点执行完成, response={}", response);
         return output;
@@ -56,7 +58,7 @@ public class FixedResponseNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "FIXED_RESPONSE";
+        return NodeTypeConstants.FIXED_RESPONSE;
     }
 
     @Override

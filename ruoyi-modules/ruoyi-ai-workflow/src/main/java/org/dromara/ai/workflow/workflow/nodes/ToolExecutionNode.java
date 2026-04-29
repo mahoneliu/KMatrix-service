@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -30,7 +33,7 @@ import java.util.Map;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("TOOL")
+@Component(NodeTypeConstants.TOOL)
 public class ToolExecutionNode extends AbstractWorkflowNode {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -46,7 +49,7 @@ public class ToolExecutionNode extends AbstractWorkflowNode {
 
         // 1. 获取选中的工具配置
         // 前端配置格式可能是 { "type": "mcp", "id": 1 } 或 { "type": "builtin", "id": 2 }
-        Object toolObj = context.getConfig("tool");
+        Object toolObj = context.getConfig(NodeConfigConstants.CFG_TOOL_TOOL);
         if (!(toolObj instanceof Map)) {
             throw new RuntimeException("工具节点未正确配置具体工具");
         }
@@ -66,7 +69,7 @@ public class ToolExecutionNode extends AbstractWorkflowNode {
 
         // 3a. 内置工具时，尝试注入 initParams defaultValue
         String toolType = (String) toolRef.get("type");
-        if ("builtin".equalsIgnoreCase(toolType)) {
+        if (NodeConfigConstants.CFG_TOOL_TYPE_BUILTIN.equalsIgnoreCase(toolType)) {
             Object idObj = toolRef.get("id");
             if (idObj != null) {
                 Long toolId = idObj instanceof Number ? ((Number) idObj).longValue() : Long.parseLong(idObj.toString());
@@ -110,11 +113,11 @@ public class ToolExecutionNode extends AbstractWorkflowNode {
         }
         
         // 仅在未冲突时提供默认输出 (防止覆盖脚本显式返回的同名 key)
-        if (!output.getOutputs().containsKey("result")) {
-            output.addOutput("result", parsedResult);
+        if (!output.getOutputs().containsKey(NodeIOConstants.OUTPUT_RESULT)) {
+            output.addOutput(NodeIOConstants.OUTPUT_RESULT, parsedResult);
         }
-        if (!output.getOutputs().containsKey("text")) {
-            output.addOutput("text", resultStr);
+        if (!output.getOutputs().containsKey(NodeIOConstants.OUTPUT_TEXT)) {
+            output.addOutput(NodeIOConstants.OUTPUT_TEXT, resultStr);
         }
 
         return output;
@@ -122,7 +125,7 @@ public class ToolExecutionNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "TOOL";
+        return NodeTypeConstants.TOOL;
     }
 
     @Override

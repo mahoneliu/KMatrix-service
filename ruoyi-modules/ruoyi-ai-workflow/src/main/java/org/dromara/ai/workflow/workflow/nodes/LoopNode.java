@@ -3,6 +3,9 @@ package org.dromara.ai.workflow.workflow.nodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeRouteConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.nodes.condition.ConditionEvaluator;
 import org.dromara.ai.workflow.workflow.nodes.condition.ConditionGroup;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
@@ -22,13 +25,13 @@ import java.util.Map;
  * @date 2026-03-22
  */
 @Slf4j
-@Component("LOOP")
+@Component(NodeTypeConstants.LOOP)
 @RequiredArgsConstructor
 public class LoopNode extends AbstractWorkflowNode {
 
     public static final String KEY_ITERATION_COUNT = "iterationCount";
-    public static final String ROUTE_CONTINUE = "continue";
-    public static final String ROUTE_EXIT = "exit";
+    public static final String ROUTE_CONTINUE = NodeRouteConstants.LOOP_ROUTE_CONTINUE;
+    public static final String ROUTE_EXIT = NodeRouteConstants.LOOP_ROUTE_EXIT;
     public static final int DEFAULT_MAX_ITERATIONS = 50;
 
     private final ConditionEvaluator conditionEvaluator;
@@ -51,8 +54,8 @@ public class LoopNode extends AbstractWorkflowNode {
 
         // 最大迭代次数保护
         int maxIterations = DEFAULT_MAX_ITERATIONS;
-        if (config != null && config.containsKey("maxIterations") && config.get("maxIterations") != null) {
-            maxIterations = Integer.parseInt(String.valueOf(config.get("maxIterations")));
+        if (config != null && config.containsKey(NodeConfigConstants.CFG_LOOP_MAX_ITERATIONS) && config.get(NodeConfigConstants.CFG_LOOP_MAX_ITERATIONS) != null) {
+            maxIterations = Integer.parseInt(String.valueOf(config.get(NodeConfigConstants.CFG_LOOP_MAX_ITERATIONS)));
         }
 
         iterationCount++;
@@ -65,7 +68,7 @@ public class LoopNode extends AbstractWorkflowNode {
         // 解析条件
         ConditionGroup conditionGroup = null;
         if (config != null) {
-            Object conditionObj = config.get("condition");
+            Object conditionObj = config.get(NodeConfigConstants.CFG_LOOP_CONDITION);
             if (conditionObj != null) {
                 try {
                     conditionGroup = objectMapper.convertValue(conditionObj, ConditionGroup.class);
@@ -96,7 +99,7 @@ public class LoopNode extends AbstractWorkflowNode {
         }
 
         output.addOutput(KEY_ITERATION_COUNT, iterationCount);
-        output.addOutput("routeKey", routeKey);
+        output.addOutput(NodeRouteConstants.OUTPUT_ROUTE_KEY, routeKey);
 
         log.info("LOOP 节点执行完成, iterationCount={}, continueLoop={}, routeKey={}", iterationCount, continueLoop,
                 routeKey);
@@ -116,7 +119,7 @@ public class LoopNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "LOOP";
+        return NodeTypeConstants.LOOP;
     }
 
     @Override

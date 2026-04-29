@@ -3,6 +3,9 @@ package org.dromara.ai.workflow.workflow.nodes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.execution.mcp.service.McpClientManager;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -17,7 +20,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("MCP_RESOURCE")
+@Component(NodeTypeConstants.MCP_RESOURCE)
 public class McpResourceNode extends AbstractWorkflowNode {
 
     private final McpClientManager mcpClientManager;
@@ -28,15 +31,15 @@ public class McpResourceNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 1. 获取配置
-        Long serverId = context.getConfigAsLong("serverId");
+        Long serverId = context.getConfigAsLong(NodeConfigConstants.CFG_MCP_SERVER_ID);
         if (serverId == null) {
             throw new RuntimeException("MCP Server ID is not configured");
         }
 
         // uri 可以从 config 固定配置，也可以从 inputs 动态传入
-        String uri = (String) context.getInput("uri");
+        String uri = (String) context.getInput(NodeIOConstants.INPUT_URI);
         if (uri == null) {
-            uri = context.getConfigAsString("uri");
+            uri = context.getConfigAsString(NodeConfigConstants.CFG_MCP_URI);
         }
         
         if (uri == null || uri.trim().isEmpty()) {
@@ -50,13 +53,13 @@ public class McpResourceNode extends AbstractWorkflowNode {
             Object resourceContent = mcpClientManager.readResource(serverId, uri);
             
             // 3. 将结果存入 NodeOutput 和 Context
-            output.addOutput("content", resourceContent);
+            output.addOutput(NodeIOConstants.OUTPUT_CONTENT, resourceContent);
             
             // 对于单纯的文本资源，提取并存入 context 供下游方便使用
             String textContent = extractTextContent(resourceContent);
             if (textContent != null) {
-                output.addOutput("textContent", textContent);
-                context.setGlobalValue("mcpResourceContent", textContent);
+                output.addOutput(NodeIOConstants.OUTPUT_TEXT_CONTENT, textContent);
+                context.setGlobalValue(NodeIOConstants.GLOBAL_MCP_RESOURCE_CONTENT, textContent);
             }
             
             log.info("MCP_RESOURCE node executed successfully");
@@ -82,7 +85,7 @@ public class McpResourceNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "MCP_RESOURCE";
+        return NodeTypeConstants.MCP_RESOURCE;
     }
 
     @Override

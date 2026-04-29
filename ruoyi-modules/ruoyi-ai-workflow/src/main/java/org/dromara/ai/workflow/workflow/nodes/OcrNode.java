@@ -14,6 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
+import org.dromara.ai.workflow.constant.MediaTypeConstants;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -30,7 +34,7 @@ import org.dromara.ai.workflow.workflow.nodes.nodeUtils.WorkflowNodeUtils;
  * 将图片提取为文本文本
  */
 @Slf4j
-@Component("IMAGE_OCR")
+@Component(NodeTypeConstants.IMAGE_OCR)
 public class OcrNode extends AbstractAiWorkflowNode {
 
     @Autowired
@@ -50,7 +54,7 @@ public class OcrNode extends AbstractAiWorkflowNode {
         log.info("执行IMAGE_OCR节点");
         NodeOutput output = new NodeOutput();
 
-        Long modelId = context.getConfigAsLong("modelId");
+        Long modelId = context.getConfigAsLong(NodeConfigConstants.CFG_AI_MODEL_ID);
         if (modelId == null) {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.ocr.missing_model_id"));
         }
@@ -64,7 +68,7 @@ public class OcrNode extends AbstractAiWorkflowNode {
         List<KmWorkflowFile> targetFiles = new ArrayList<>();
 
         // 1. files
-        Object inputFiles = context.getInput("files");
+        Object inputFiles = context.getInput(NodeIOConstants.INPUT_FILES);
         if (inputFiles instanceof List) {
             for (Object item : (List<?>) inputFiles) {
                 if (item instanceof KmWorkflowFile) {
@@ -89,9 +93,9 @@ public class OcrNode extends AbstractAiWorkflowNode {
 
         // 2. ossIds
         if (targetFiles.isEmpty()) {
-            Object inputOssIds = context.getInput("ossIds");
+            Object inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_IDS);
             if (inputOssIds == null) {
-                inputOssIds = context.getInput("ossId");
+                inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_ID);
             }
             if (inputOssIds != null) {
                 List<Object> idList = new ArrayList<>();
@@ -106,7 +110,7 @@ public class OcrNode extends AbstractAiWorkflowNode {
                                 : Long.parseLong(idObj.toString());
                         KmWorkflowFile wf = new KmWorkflowFile();
                         wf.setOssId(idVal);
-                        wf.setType("image");
+                        wf.setType(MediaTypeConstants.TYPE_IMAGE);
                         targetFiles.add(wf);
                     } catch (Exception e) {
                         log.warn("OcrNode 解析 ossId 失败: {}", idObj);
@@ -117,12 +121,12 @@ public class OcrNode extends AbstractAiWorkflowNode {
 
         // 3. 最后兜底兼容全局的初始上传文件
         if (targetFiles.isEmpty()) {
-            Object globalFiles = context.getGlobalValue("files");
+            Object globalFiles = context.getGlobalValue(NodeIOConstants.GLOBAL_FILES);
             if (globalFiles instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
                 for (KmWorkflowFile f : list) {
-                    if ("image".equals(f.getType())) {
+                    if (MediaTypeConstants.TYPE_IMAGE.equals(f.getType())) {
                         targetFiles.add(f);
                         break;
                     }
@@ -141,7 +145,7 @@ public class OcrNode extends AbstractAiWorkflowNode {
                 ? fileToProcess.getTempFileId().toString()
                 : (fileToProcess.getOssId() != null ? fileToProcess.getOssId().toString() : null);
 
-        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, fileToProcess.getUrl(), "image/jpeg");
+        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, fileToProcess.getUrl(), MediaTypeConstants.MIME_IMAGE_JPEG);
         log.info("最终发给大模型的图片URL前缀: {}", url != null && url.length() > 50 ? url.substring(0, 50) + "..." : url);
         if (StrUtil.isBlank(url)) {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.ocr.invalid_url"));
@@ -168,13 +172,13 @@ public class OcrNode extends AbstractAiWorkflowNode {
         String extractedText = response.aiMessage().text();
         log.info("IMAGE_OCR节点执行成功, 识别文本长度: {}", extractedText.length());
 
-        output.addOutput("text", extractedText);
-        output.addOutput("ossId", fileToProcess.getOssId());
+        output.addOutput(NodeIOConstants.OUTPUT_TEXT, extractedText);
+        output.addOutput(NodeIOConstants.OUTPUT_OSS_ID, fileToProcess.getOssId());
 
         // token 统计（基类统一处理）
         Map<String, Object> tokenUsageMap = recordTokenUsage(response, context);
         if (tokenUsageMap != null) {
-            output.addOutput("tokenUsage", tokenUsageMap);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsageMap);
         }
 
         return output;
@@ -182,7 +186,7 @@ public class OcrNode extends AbstractAiWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "IMAGE_OCR";
+        return NodeTypeConstants.IMAGE_OCR;
     }
 
     @Override

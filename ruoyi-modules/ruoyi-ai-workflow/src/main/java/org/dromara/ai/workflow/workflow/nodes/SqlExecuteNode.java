@@ -6,6 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.knowledge.domain.KmDataSource;
 import org.dromara.ai.knowledge.mapper.KmDataSourceMapper;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -25,7 +28,7 @@ import java.util.*;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("SQL_EXECUTE")
+@Component(NodeTypeConstants.SQL_EXECUTE)
 public class SqlExecuteNode extends AbstractWorkflowNode {
 
     private final KmDataSourceMapper dataSourceMapper;
@@ -38,11 +41,11 @@ public class SqlExecuteNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 1. 获取配置参数
-        Long dataSourceId = context.getConfigAsLong("dataSourceId");
-        Integer maxRows = context.getConfigAsInteger("maxRows", 100);
+        Long dataSourceId = context.getConfigAsLong(NodeConfigConstants.CFG_SQL_DATA_SOURCE_ID);
+        Integer maxRows = context.getConfigAsInteger(NodeConfigConstants.CFG_SQL_MAX_ROWS, 100);
 
         // 2. 获取输入参数
-        String sql = (String) context.getInput("sql");
+        String sql = (String) context.getInput(NodeIOConstants.INPUT_SQL);
         if (StrUtil.isBlank(sql)) {
             throw new RuntimeException("sql不能为空");
         }
@@ -58,9 +61,9 @@ public class SqlExecuteNode extends AbstractWorkflowNode {
 
         // 5. 执行 SQL（使用工具类）
         List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, sql, maxRows);
-        output.addOutput("queryResult", queryResult);
-        output.addOutput("strResult", JsonUtils.toJsonString(queryResult));
-        output.addOutput("rowCount", queryResult.size());
+        output.addOutput(NodeIOConstants.OUTPUT_QUERY_RESULT, queryResult);
+        output.addOutput(NodeIOConstants.OUTPUT_STR_RESULT, JsonUtils.toJsonString(queryResult));
+        output.addOutput(NodeIOConstants.OUTPUT_ROW_COUNT, queryResult.size());
         log.info("查询结果行数: {}", queryResult.size());
 
         log.info("SQL_EXECUTE节点执行完成");
@@ -69,7 +72,7 @@ public class SqlExecuteNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "SQL_EXECUTE";
+        return NodeTypeConstants.SQL_EXECUTE;
     }
 
     @Override

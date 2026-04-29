@@ -16,6 +16,9 @@ import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.knowledge.mapper.KmDataSourceMapper;
 import org.dromara.ai.knowledge.mapper.KmDatabaseMetaMapper;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -39,7 +42,7 @@ import java.util.*;
  * @date 2026-01-20
  */
 @Slf4j
-@Component("DB_QUERY")
+@Component(NodeTypeConstants.DB_QUERY)
 public class DbQueryNode extends AbstractAiWorkflowNode {
 
     @Autowired
@@ -57,16 +60,16 @@ public class DbQueryNode extends AbstractAiWorkflowNode {
 
         NodeOutput output = new NodeOutput();
         SseEmitter emitter = context.getSseEmitter();
-        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        Boolean streamOutput = context.getConfigAsBoolean(NodeConfigConstants.CFG_AI_STREAM_OUTPUT, false);
 
         // 1. 获取配置参数
-        Long dataSourceId = context.getConfigAsLong("dataSourceId");
-        Integer maxRows = context.getConfigAsInteger("maxRows", 100);
-        String tableWhitelist = context.getConfigAsString("tableWhitelist");
-        String tableBlacklist = context.getConfigAsString("tableBlacklist");
+        Long dataSourceId = context.getConfigAsLong(NodeConfigConstants.CFG_SQL_DATA_SOURCE_ID);
+        Integer maxRows = context.getConfigAsInteger(NodeConfigConstants.CFG_SQL_MAX_ROWS, 100);
+        String tableWhitelist = context.getConfigAsString(NodeConfigConstants.CFG_SQL_TABLE_WHITELIST);
+        String tableBlacklist = context.getConfigAsString(NodeConfigConstants.CFG_SQL_TABLE_BLACKLIST);
 
         // 2. 获取输入参数
-        String userQuery = (String) context.getInput("userQuery");
+        String userQuery = (String) context.getInput(NodeIOConstants.INPUT_USER_QUERY);
         if (StrUtil.isBlank(userQuery)) {
             throw new RuntimeException("userQuery不能为空");
         }
@@ -100,10 +103,10 @@ public class DbQueryNode extends AbstractAiWorkflowNode {
         List<KmDatabaseMeta> filteredMetas;
         if (relevantTables.isEmpty()) {
             log.warn("LLM未选择任何相关表");
-            output.addOutput("response", "没有相关的表");
-            output.addOutput("generatedSql", "");
-            output.addOutput("queryResult", "");
-            output.addOutput("strResult", "");
+            output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, "没有相关的表");
+            output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, "");
+            output.addOutput(NodeIOConstants.OUTPUT_QUERY_RESULT, "");
+            output.addOutput(NodeIOConstants.OUTPUT_STR_RESULT, "");
             log.info("DB_QUERY节点执行完成");
             return output;
         } else {
@@ -132,20 +135,20 @@ public class DbQueryNode extends AbstractAiWorkflowNode {
         String generatedSql = SqlGenerator.generateSql(chatModel, schemaDescription, userQuery, context);
         if (StrUtil.isBlank(generatedSql) || generatedSql.toUpperCase().contains("SELECT") == false) {
             log.warn("LLM未生成有效的SQL");
-            output.addOutput("response", "没有生成SQL");
-            output.addOutput("generatedSql", "");
-            output.addOutput("queryResult", "");
-            output.addOutput("strResult", "");
+            output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, "没有生成SQL");
+            output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, "");
+            output.addOutput(NodeIOConstants.OUTPUT_QUERY_RESULT, "");
+            output.addOutput(NodeIOConstants.OUTPUT_STR_RESULT, "");
             log.info("DB_QUERY节点执行完成");
             return output;
         }
         log.info("生成的SQL: {}", generatedSql);
-        output.addOutput("generatedSql", generatedSql);
+        output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, generatedSql);
 
         // 添加 SQL 生成阶段的 token 统计到输出
         Map<String, Object> sqlGenTokenUsage = context.getTokenUsage();
         if (sqlGenTokenUsage != null) {
-            output.addOutput("sqlGenTokenUsage", sqlGenTokenUsage);
+            output.addOutput(NodeIOConstants.OUTPUT_SQL_GEN_TOKEN_USAGE, sqlGenTokenUsage);
         }
 
         SseHelper.sendThinking(emitter, streamOutput, "✅ SQL已生成: `" + generatedSql + "`");
@@ -156,20 +159,20 @@ public class DbQueryNode extends AbstractAiWorkflowNode {
         // 8. 执行 SQL（使用工具类）
         SseHelper.sendThinking(emitter, streamOutput, "⚡ 正在执行SQL查询...\n");
         List<Map<String, Object>> queryResult = sqlExecutor.executeQuery(dataSource, generatedSql, maxRows);
-        output.addOutput("queryResult", queryResult);
-        output.addOutput("strResult", JsonUtils.toJsonString(queryResult));
+        output.addOutput(NodeIOConstants.OUTPUT_QUERY_RESULT, queryResult);
+        output.addOutput(NodeIOConstants.OUTPUT_STR_RESULT, JsonUtils.toJsonString(queryResult));
         log.info("查询结果行数: {}", queryResult.size());
         SseHelper.sendThinking(emitter, streamOutput, "✅ 查询完成，返回 " + queryResult.size() + " 条记录\n");
 
         // 9. 生成自然语言回答
         SseHelper.sendThinking(emitter, streamOutput, "💬 正在生成回答...\n");
         String response = generateAnswer(chatModel, userQuery, generatedSql, queryResult, context);
-        output.addOutput("response", response);
+        output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, response);
 
         // 添加答案生成阶段的 token 统计到输出
         Map<String, Object> answerGenTokenUsage = context.getTokenUsage();
         if (answerGenTokenUsage != null) {
-            output.addOutput("answerGenTokenUsage", answerGenTokenUsage);
+            output.addOutput(NodeIOConstants.OUTPUT_ANSWER_GEN_TOKEN_USAGE, answerGenTokenUsage);
         }
 
         log.info("DB_QUERY节点执行完成");
@@ -219,7 +222,7 @@ public class DbQueryNode extends AbstractAiWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "DB_QUERY";
+        return NodeTypeConstants.DB_QUERY;
     }
 
     @Override
