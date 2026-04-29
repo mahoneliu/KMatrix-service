@@ -4,18 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.dromara</groupId>
+    <parent>
+        <groupId>org.dromara</groupId>
+        <artifactId>ruoyi-vue-plus</artifactId>
+        <version>${revision}</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
     <artifactId>ruoyi-common-bom</artifactId>
-    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <description>
         ruoyi-common-bom common依赖项
     </description>
-
-    <properties>
-        <revision>0.5-beta</revision>
-    </properties>
 
     <dependencyManagement>
         <dependencies>

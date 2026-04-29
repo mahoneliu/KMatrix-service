@@ -26,6 +26,7 @@ handle_config "/etc/redis/redis.conf" "$DATA_DIR/config/redis.conf"
 handle_config "/etc/nginx/nginx.conf" "$DATA_DIR/config/nginx.conf"
 handle_config "/etc/supervisor/conf.d/supervisord.conf" "$DATA_DIR/config/supervisord.conf"
 handle_config "/app/config/application-docker.yml" "$DATA_DIR/config/application-docker.yml"
+handle_config "/app/config/application-product.yml" "$DATA_DIR/config/application-product.yml"
 
 # Symlink Data Directories
 # Redis

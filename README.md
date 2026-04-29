@@ -77,6 +77,10 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 - **Boilerplate**: Soybean Admin
 - **Package Management**: pnpm (Monorepo)
 
+## 📸 System Screenshot Example
+
+![Screenshot](./docs/images/sample.gif)
+
 ## 📂 Project Structure
 
 KMatrix follows a frontend-backend separation architecture. The code is organized as follows:
@@ -174,9 +178,15 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
   ![WeChat](./docs/images/wechat.jpg)
 - **Email**: <service@mail.kykms.cn>
 
-## 📸 System Screenshot Example
+## 💪 Contributing
 
-![Screenshot](./docs/images/sample.gif)
+We welcome contributions from the community! PR process:
+
+- Fork the project to your account
+- Create a branch (git checkout -b feature/new-feature-name)
+- Commit your changes (git commit -m 'Add some feature')
+- Push to the branch (git push origin feature/new-feature-name)
+- Submit a Pull Request
 
 ## 🤝 Special Thanks
 
