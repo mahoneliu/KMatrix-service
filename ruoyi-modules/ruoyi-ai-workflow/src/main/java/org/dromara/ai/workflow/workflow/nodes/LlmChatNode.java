@@ -237,7 +237,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                     public void onPartialResponse(String token) {
                         if (emitter != null) {
                             try {
-                                emitter.send(SseEmitter.event().data(token));
+                                emitter.send(SseEmitter.event().name(SseEventType.THINKING.getEventName()).data(token));
                             } catch (IOException e) {
                                 log.error("发送SSE消息失败", e);
                             }

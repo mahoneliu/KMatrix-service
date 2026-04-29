@@ -82,8 +82,8 @@ public class McpTransportFactory {
         if ("sse".equalsIgnoreCase(normalizedTransport)) {
             // 使用旧版 SSE 协议,暂时保留Depressed的HttpMcpTransport，后续升级langchain4j要移除，StreamableHttp已是行业标准
             log.info("使用 HttpMcpTransport (SSE 协议)");
-            var builder = HttpMcpTransport.builder()
-                    .sseUrl(url)
+            var builder = StreamableHttpMcpTransport.builder()
+                    .url(url)
                     .logRequests(true)
                     .logResponses(true);
             if (headers != null && !headers.isEmpty()) {
