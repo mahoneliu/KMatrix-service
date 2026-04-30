@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.registry.mapper.McpRegistrySourceMapper">
+
+    <select id="selectEnabledSources" resultType="org.dromara.ai.registry.domain.KmMcpRegistrySource">
+        SELECT *
+        FROM km_mcp_registry_source
+        WHERE is_enabled = '1'
+          AND del_flag = '0'
+        ORDER BY create_time ASC
+    </select>
+
+</mapper>
