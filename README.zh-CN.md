@@ -180,6 +180,14 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
   ![微信](./docs/images/wechat.jpg)
 - **邮箱**: <service@mail.kykms.cn>
 
+## 💪 参与贡献
+赠人玫瑰手有余香，欢迎社区贡献！不限水平不限领域。PR方式：
+- Fork 项目到您的账户
+- 创建分支 (git checkout -b feature/新功能名称)
+- 提交代码 (git commit -m '添加某某功能')
+- 推送分支 (git push origin feature/新功能名称)
+- 发起 Pull Request
+
 ## 🤝 特别鸣谢
 
 本项目站在巨人的肩膀上，特别感谢以下优秀开源项目：

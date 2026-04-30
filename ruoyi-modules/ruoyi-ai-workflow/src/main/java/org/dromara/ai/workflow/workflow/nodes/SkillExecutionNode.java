@@ -5,6 +5,9 @@ import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -26,7 +29,7 @@ import java.util.Map;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("SKILL")
+@Component(NodeTypeConstants.SKILL)
 public class SkillExecutionNode extends AbstractWorkflowNode {
 
     private final IToolProvider toolProviderService;
@@ -37,7 +40,7 @@ public class SkillExecutionNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
 
         // 1. 获取选中的技能配置
-        Long skillId = context.getConfigAsLong("skillId");
+        Long skillId = context.getConfigAsLong(NodeConfigConstants.CFG_SKILL_ID);
         if (skillId == null) {
             throw new RuntimeException("技能节点未正确配置技能ID (skillId)");
         }
@@ -83,8 +86,8 @@ public class SkillExecutionNode extends AbstractWorkflowNode {
         }
 
         // 5. 将结果放入输出
-        output.addOutput("result", combinedResult.isEmpty() ? combinedText.toString().trim() : combinedResult);
-        output.addOutput("text", combinedText.toString().trim());
+        output.addOutput(NodeIOConstants.OUTPUT_RESULT, combinedResult.isEmpty() ? combinedText.toString().trim() : combinedResult);
+        output.addOutput(NodeIOConstants.OUTPUT_TEXT, combinedText.toString().trim());
 
         // 如果只有单一工具的结果，且是扁平的JSONObject，直接展开作为出参
         if (bindings.size() == 1 && !combinedResult.isEmpty()) {
@@ -96,7 +99,7 @@ public class SkillExecutionNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "SKILL";
+        return NodeTypeConstants.SKILL;
     }
 
     @Override

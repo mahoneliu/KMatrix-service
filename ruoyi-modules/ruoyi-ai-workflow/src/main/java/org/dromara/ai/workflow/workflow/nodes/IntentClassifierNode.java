@@ -2,6 +2,10 @@ package org.dromara.ai.workflow.workflow.nodes;
 
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeRouteConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -21,7 +25,7 @@ import java.util.Map;
  * @date 2026-01-02
  */
 @Slf4j
-@Component("INTENT_CLASSIFIER")
+@Component(NodeTypeConstants.INTENT_CLASSIFIER)
 public class IntentClassifierNode extends AbstractAiWorkflowNode {
 
     @Override
@@ -36,16 +40,29 @@ public class IntentClassifierNode extends AbstractAiWorkflowNode {
      */
     @Override
     protected String getUserInput(NodeContext context) {
-        return (String) context.getInput("instruction");
+        return (String) context.getInput(NodeIOConstants.INPUT_INSTRUCTION);
     }
 
     /**
-     * 系统提示词：根据配置的意图列表动态构建
+     * 系统提示词：支持用户自定义增强，结合意图列表动态构建
+     * 优先从 inputs 获取用户自定义系统提示词，其次从 config 获取，最后使用默认提示词
      */
     @Override
     protected String buildSystemPrompt(NodeContext context) {
-        List<String> intentNames = extractIntentNames(context.getConfig("intents"));
-        return buildIntentPrompt(intentNames);
+        List<String> intentNames = extractIntentNames(context.getConfig(NodeConfigConstants.CFG_IC_INTENTS));
+        
+        String customSystemPrompt = (String) context.getInput(NodeIOConstants.INPUT_SYSTEM_PROMPT);
+        if (customSystemPrompt == null) {
+            customSystemPrompt = context.getConfigAsString(NodeConfigConstants.CFG_DIALOG_SYSTEM_PROMPT);
+        }
+        
+        String basePrompt = buildIntentPrompt(intentNames);
+        
+        if (customSystemPrompt != null && !customSystemPrompt.trim().isEmpty()) {
+            return customSystemPrompt + "\n\n" + basePrompt;
+        }
+        
+        return basePrompt;
     }
 
     /**
@@ -56,23 +73,23 @@ public class IntentClassifierNode extends AbstractAiWorkflowNode {
         String responseText = response.aiMessage().text();
         String intent = responseText.trim().toLowerCase();
 
-        List<String> intentNames = extractIntentNames(context.getConfig("intents"));
-        String routeKey = "else";
+        List<String> intentNames = extractIntentNames(context.getConfig(NodeConfigConstants.CFG_IC_INTENTS));
+        String routeKey = NodeRouteConstants.INTENT_ROUTE_ELSE;
         int intentIndex = -1;
         for (int i = 0; i < intentNames.size(); i++) {
             if (intentNames.get(i).toLowerCase().equals(intent)) {
                 intentIndex = i;
-                routeKey = "intent-" + i;
+                routeKey = NodeRouteConstants.INTENT_BRANCH_PREFIX + i;
                 break;
             }
         }
 
         if (intentIndex == -1) {
-            intent = "else";
+            intent = NodeRouteConstants.INTENT_ROUTE_ELSE;
         }
 
-        output.addOutput("intent", intent);
-        output.addOutput("routeKey", routeKey);
+        output.addOutput(NodeIOConstants.OUTPUT_INTENT, intent);
+        output.addOutput(NodeRouteConstants.OUTPUT_ROUTE_KEY, routeKey);
         log.info("INTENT_CLASSIFIER节点执行完成, intent={}, routeKey={}", intent, routeKey);
     }
 
@@ -105,7 +122,7 @@ public class IntentClassifierNode extends AbstractAiWorkflowNode {
     }
 
     @Override
-    public String getNodeType() { return "INTENT_CLASSIFIER"; }
+    public String getNodeType() { return NodeTypeConstants.INTENT_CLASSIFIER; }
 
     @Override
     public String getNodeName() { return "意图识别"; }

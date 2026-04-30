@@ -1,0 +1,39 @@
+# Product 环境专用配置示例，请根据实际情况修改
+# 这里的配置会覆盖 application.yml 中的同名配置
+
+spring:
+  servlet:
+    multipart:
+      location: /ruoyi/server/temp
+  datasource:
+    dynamic:
+      datasource:
+        master:
+          driverClassName: org.postgresql.Driver
+          url: "jdbc:postgresql://[IP_ADDRESS]/kmatrix?currentSchema=public&reWriteBatchedInserts=true&sslmode=disable"
+          username: kmatrix
+          password: [PASSWORD]
+  data:
+    redis:
+      database: 10
+
+logging:
+  level:
+    dev.langchain4j: INFO
+    org.dromara.ai: INFO
+
+# AI 配置
+ai:
+  file-store:
+    local-path: /ky/kmatrix/uploads
+  unified-embedding-model: true
+  reranker:
+    model-path: /ky/kmatrix/reranker/bge-reranker-v2-m3/onnx/model_int8.onnx
+    tokenizer-path: /ky/kmatrix/reranker/bge-reranker-v2-m3/tokenizer.json
+
+redisson:
+  threads: 2
+  nettyThreads: 32
+  singleServerConfig:
+    connectionMinimumIdleSize: 32
+    connectionPoolSize: 64

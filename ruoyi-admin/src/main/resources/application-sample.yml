@@ -1,3 +1,4 @@
+# 本文件用于特定运行环境的配置示例，不要直接使用
 --- # 监控中心配置
 spring.boot.admin.client:
   # 增加客户端开关
@@ -54,9 +55,9 @@ spring:
           type: ${spring.datasource.type}
           # PostgreSQL 连接配置 - 请根据实际环境修改
           driverClassName: org.postgresql.Driver
-          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true&sslmode=disable"
-          username: postgres
-          password: password
+          url: "jdbc:postgresql://[IP_ADDRESS]/kmatrix?currentSchema=public&reWriteBatchedInserts=true&sslmode=disable"
+          username: kmatrix
+          password: [PASSWORD]
       hikari:
         # 最大连接池数量
         maxPoolSize: 20

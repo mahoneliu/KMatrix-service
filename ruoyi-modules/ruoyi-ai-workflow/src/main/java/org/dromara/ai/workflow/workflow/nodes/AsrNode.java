@@ -14,6 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
+import org.dromara.ai.workflow.constant.MediaTypeConstants;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -31,7 +35,7 @@ import java.util.Map;
  * 将传入的音频附件转换成文本形式
  */
 @Slf4j
-@Component("AUDIO_ASR")
+@Component(NodeTypeConstants.AUDIO_ASR)
 public class AsrNode extends AbstractAiWorkflowNode {
 
     @Autowired
@@ -42,7 +46,7 @@ public class AsrNode extends AbstractAiWorkflowNode {
         log.info("执行AUDIO_ASR节点");
         NodeOutput output = new NodeOutput();
 
-        Long modelId = context.getConfigAsLong("modelId");
+        Long modelId = context.getConfigAsLong(NodeConfigConstants.CFG_AI_MODEL_ID);
         if (modelId == null) {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.asr.missing_model_id"));
         }
@@ -56,7 +60,7 @@ public class AsrNode extends AbstractAiWorkflowNode {
         List<KmWorkflowFile> targetFiles = new ArrayList<>();
 
         // 1. files
-        Object inputFiles = context.getInput("files");
+        Object inputFiles = context.getInput(NodeIOConstants.INPUT_FILES);
         if (inputFiles instanceof List) {
             for (Object item : (List<?>) inputFiles) {
                 if (item instanceof KmWorkflowFile) {
@@ -81,9 +85,9 @@ public class AsrNode extends AbstractAiWorkflowNode {
 
         // 2. ossIds
         if (targetFiles.isEmpty()) {
-            Object inputOssIds = context.getInput("ossIds");
+            Object inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_IDS);
             if (inputOssIds == null) {
-                inputOssIds = context.getInput("ossId");
+                inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_ID);
             }
             if (inputOssIds != null) {
                 List<Object> idList = new ArrayList<>();
@@ -98,7 +102,7 @@ public class AsrNode extends AbstractAiWorkflowNode {
                                 : Long.parseLong(idObj.toString());
                         KmWorkflowFile wf = new KmWorkflowFile();
                         wf.setOssId(idVal);
-                        wf.setType("audio");
+                        wf.setType(MediaTypeConstants.TYPE_AUDIO);
                         targetFiles.add(wf);
                     } catch (Exception e) {
                         log.warn("AsrNode 解析 ossId 失败: {}", idObj);
@@ -109,12 +113,12 @@ public class AsrNode extends AbstractAiWorkflowNode {
 
         // 3. 最后兜底兼容全局的初始上传文件
         if (targetFiles.isEmpty()) {
-            Object globalFiles = context.getGlobalValue("files");
+            Object globalFiles = context.getGlobalValue(NodeIOConstants.GLOBAL_FILES);
             if (globalFiles instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
                 for (KmWorkflowFile f : list) {
-                    if ("audio".equals(f.getType())) {
+                    if (MediaTypeConstants.TYPE_AUDIO.equals(f.getType())) {
                         targetFiles.add(f);
                         break;
                     }
@@ -130,7 +134,7 @@ public class AsrNode extends AbstractAiWorkflowNode {
         String fileIdRef = fileToProcess.getTempFileId() != null
                 ? fileToProcess.getTempFileId().toString()
                 : (fileToProcess.getOssId() != null ? fileToProcess.getOssId().toString() : null);
-        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, fileToProcess.getUrl(), "audio/mpeg");
+        String url = workflowNodeUtils.resolveOssUrlOrBase64(fileIdRef, fileToProcess.getUrl(), MediaTypeConstants.MIME_AUDIO_MPEG);
         if (StrUtil.isBlank(url)) {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.asr.invalid_url"));
         }
@@ -156,13 +160,13 @@ public class AsrNode extends AbstractAiWorkflowNode {
         String transcribedText = response.aiMessage().text();
         log.info("AUDIO_ASR节点执行成功, 识别文本长度: {}", transcribedText.length());
 
-        output.addOutput("transcription", transcribedText);
-        output.addOutput("ossId", fileToProcess.getOssId());
+        output.addOutput(NodeIOConstants.OUTPUT_TRANSCRIPTION, transcribedText);
+        output.addOutput(NodeIOConstants.OUTPUT_OSS_ID, fileToProcess.getOssId());
 
         // token 统计（基类统一处理）
         Map<String, Object> tokenUsageMap = recordTokenUsage(response, context);
         if (tokenUsageMap != null) {
-            output.addOutput("tokenUsage", tokenUsageMap);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsageMap);
         }
 
         return output;
@@ -170,7 +174,7 @@ public class AsrNode extends AbstractAiWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "AUDIO_ASR";
+        return NodeTypeConstants.AUDIO_ASR;
     }
 
     @Override

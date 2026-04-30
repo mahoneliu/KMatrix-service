@@ -14,6 +14,9 @@ import org.dromara.ai.knowledge.mapper.KmDocumentMapper;
 import org.dromara.ai.knowledge.service.etl.DatasetProcessType;
 import org.dromara.ai.knowledge.service.etl.EtlHandler;
 import org.dromara.ai.storage.service.IKmFileService;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -48,7 +51,7 @@ import java.util.stream.Collectors;
  * @date 2026-04-02
  */
 @Slf4j
-@Component("FILE_PARSE")
+@Component(NodeTypeConstants.FILE_PARSE)
 @RequiredArgsConstructor
 public class FileParseNode extends AbstractWorkflowNode {
 
@@ -62,8 +65,8 @@ public class FileParseNode extends AbstractWorkflowNode {
         log.info("执行 FILE_PARSE 节点");
 
         // 1. 获取输入参数 (优先获取 file，其次是 documentId)
-        KmWorkflowFile workflowFile = (KmWorkflowFile) context.getInput("file");
-        Long finalDocumentId = toLong(context.getInput("documentId"));
+        KmWorkflowFile workflowFile = (KmWorkflowFile) context.getInput(NodeIOConstants.INPUT_FILE);
+        Long finalDocumentId = toLong(context.getInput(NodeIOConstants.INPUT_DOCUMENT_ID));
 
         KmDocument document = null;
 
@@ -80,7 +83,7 @@ public class FileParseNode extends AbstractWorkflowNode {
         }
 
         // 2. 确定配置的解析类型 (优先级: 节点静态配置 > 数据集动态配置 > 兜底)
-        String processType = context.getConfigAsString("processType");
+        String processType = context.getConfigAsString(NodeConfigConstants.CFG_FILE_PROCESS_TYPE);
         if (processType == null && document != null && document.getDatasetId() != null) {
             KmDataset dataset = datasetMapper.selectById(document.getDatasetId());
             if (dataset != null) {
@@ -153,9 +156,9 @@ public class FileParseNode extends AbstractWorkflowNode {
         log.info("文件解析完成, 文本长度: {}", text.length());
 
         NodeOutput output = new NodeOutput();
-        output.addOutput("text", text);
+        output.addOutput(NodeIOConstants.OUTPUT_TEXT, text);
         if (finalDocumentId != null) {
-            output.addOutput("documentId", finalDocumentId);
+            output.addOutput(NodeIOConstants.OUTPUT_DOCUMENT_ID, finalDocumentId);
         }
         return output;
     }
@@ -171,7 +174,7 @@ public class FileParseNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "FILE_PARSE";
+        return NodeTypeConstants.FILE_PARSE;
     }
 
     @Override

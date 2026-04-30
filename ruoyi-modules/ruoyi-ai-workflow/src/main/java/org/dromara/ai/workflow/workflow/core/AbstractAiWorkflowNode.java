@@ -28,6 +28,9 @@ import org.dromara.ai.model.util.ModelBuilder;
 import org.dromara.ai.storage.domain.dto.KmWorkflowFile;
 import org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider;
 import org.dromara.ai.workflow.workflow.nodes.nodeUtils.WorkflowNodeUtils;
+import org.dromara.ai.workflow.constant.MediaTypeConstants;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -64,7 +67,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *         Object[] mp = loadModelAndProvider(context);
  *
  *         // 3. 构建消息（自动处理 userPrompt / 历史 / 多模态）
- *         String userInput = (String) context.getInput("userInput");
+ *         String userInput = (String) context.getInput(NodeIOConstants.INPUT_USER_INPUT);
  *         List<ChatMessage> messages = buildChatMessages(context, userInput, systemPrompt, dialogConfig);
  *
  *         // 4. 调用模型（自动处理流式/阻塞 + token 统计）
@@ -72,7 +75,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  *         // 5. 处理结果
  *         NodeOutput output = new NodeOutput();
- *         output.addOutput("response", response.aiMessage().text());
+ *         output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, response.aiMessage().text());
  *         return output;
  *     }
  * }
@@ -142,7 +145,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
         Map<String, Object> tokenUsage = context.getTokenUsage();
         if (tokenUsage != null) {
-            output.addOutput("tokenUsage", tokenUsage);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsage);
         }
         processAiResponse(response, context, output);
 
@@ -153,7 +156,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      * 返回当前节点的用户输入文本
      * <p>
      * 使用 {@link #executeWithDialogConfig} 的子节点必须实现此方法。
-     * 例如：{@code return (String) context.getInput("userInput");}
+     * 例如：{@code return (String) context.getInput(NodeIOConstants.INPUT_USER_INPUT);}
      */
     protected String getUserInput(NodeContext context) {
         throw new UnsupportedOperationException(
@@ -167,9 +170,9 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      * 默认从 config 中读取 systemPrompt 字段，null 表示不添加系统提示。
      */
     protected String buildSystemPrompt(NodeContext context) {
-        String systemPrompt = (String) context.getInput("systemPrompt");
+        String systemPrompt = (String) context.getInput(NodeIOConstants.INPUT_SYSTEM_PROMPT);
         if (systemPrompt == null) {
-            systemPrompt = context.getConfigAsString("systemPrompt");
+            systemPrompt = context.getConfigAsString(NodeConfigConstants.CFG_DIALOG_SYSTEM_PROMPT);
         }
         return systemPrompt;
     }
@@ -230,10 +233,10 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      */
     protected AiConfig readAiConfig(NodeContext context) {
         AiConfig cfg = new AiConfig();
-        cfg.setModelId(context.getConfigAsLong("modelId"));
-        cfg.setTemperature(context.getConfigAsDouble("temperature", null));
-        cfg.setMaxTokens(context.getConfigAsInteger("maxTokens", null));
-        cfg.setStreamOutput(Boolean.TRUE.equals(context.getConfigAsBoolean("streamOutput", false)));
+        cfg.setModelId(context.getConfigAsLong(NodeConfigConstants.CFG_AI_MODEL_ID));
+        cfg.setTemperature(context.getConfigAsDouble(NodeConfigConstants.CFG_AI_TEMPERATURE, null));
+        cfg.setMaxTokens(context.getConfigAsInteger(NodeConfigConstants.CFG_AI_MAX_TOKENS, null));
+        cfg.setStreamOutput(Boolean.TRUE.equals(context.getConfigAsBoolean(NodeConfigConstants.CFG_AI_STREAM_OUTPUT, false)));
         return cfg;
     }
 
@@ -244,15 +247,15 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      */
     protected DialogConfig readDialogConfig(NodeContext context) {
         DialogConfig cfg = new DialogConfig();
-        String userPrompt = (String) context.getInput("userPrompt");
+        String userPrompt = (String) context.getInput(NodeIOConstants.INPUT_USER_PROMPT);
         if (userPrompt == null) {
-            userPrompt = context.getConfigAsString("userPrompt");
+            userPrompt = context.getConfigAsString(NodeConfigConstants.CFG_DIALOG_USER_PROMPT);
         }
         cfg.setUserPrompt(userPrompt);
-        cfg.setEnableMultimodal(Boolean.TRUE.equals(context.getConfigAsBoolean("enableMultimodal", false)));
-        cfg.setHistoryEnabled(Boolean.TRUE.equals(context.getConfigAsBoolean("historyEnabled", false)));
-        cfg.setHistoryLimit(context.getConfigAsInteger("historyLimit", 10));
-        cfg.setHistoryMaxTokens(context.getConfigAsInteger("historyMaxTokens", 0));
+        cfg.setEnableMultimodal(Boolean.TRUE.equals(context.getConfigAsBoolean(NodeConfigConstants.CFG_DIALOG_ENABLE_MULTIMODAL, false)));
+        cfg.setHistoryEnabled(Boolean.TRUE.equals(context.getConfigAsBoolean(NodeConfigConstants.CFG_DIALOG_HISTORY_ENABLED, false)));
+        cfg.setHistoryLimit(context.getConfigAsInteger(NodeConfigConstants.CFG_DIALOG_HISTORY_LIMIT, 10));
+        cfg.setHistoryMaxTokens(context.getConfigAsInteger(NodeConfigConstants.CFG_DIALOG_HISTORY_MAX_TOKENS, 0));
         return cfg;
     }
 
@@ -288,7 +291,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      * @return [model, provider] 数组
      */
     protected Object[] loadModelAndProvider(NodeContext context) {
-        Long modelId = context.getConfigAsLong("modelId");
+        Long modelId = context.getConfigAsLong(NodeConfigConstants.CFG_AI_MODEL_ID);
         return loadModelAndProviderById(modelId);
     }
 
@@ -324,7 +327,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
             KmModel model, KmModelProvider provider,
             Double temperature, Integer maxTokens) throws Exception {
 
-        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        Boolean streamOutput = context.getConfigAsBoolean(NodeConfigConstants.CFG_AI_STREAM_OUTPUT, false);
         SseEmitter emitter = context.getSseEmitter();
 
         ChatResponse response;
@@ -440,7 +443,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
     protected List<KmWorkflowFile> collectMultimodalFiles(NodeContext context) {
         List<KmWorkflowFile> workflowFiles = new ArrayList<>();
 
-        Object inputFiles = context.getInput("files");
+        Object inputFiles = context.getInput(NodeIOConstants.INPUT_FILES);
         if (inputFiles instanceof List) {
             for (Object item : (List<?>) inputFiles) {
                 if (item instanceof KmWorkflowFile) {
@@ -462,8 +465,8 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
         }
 
         if (workflowFiles.isEmpty()) {
-            Object inputOssIds = context.getInput("ossIds");
-            if (inputOssIds == null) inputOssIds = context.getInput("ossId");
+            Object inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_IDS);
+            if (inputOssIds == null) inputOssIds = context.getInput(NodeIOConstants.INPUT_OSS_ID);
             if (inputOssIds != null) {
                 List<Object> idList = new ArrayList<>();
                 if (inputOssIds instanceof List) {
@@ -477,7 +480,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
                                 : Long.parseLong(idObj.toString());
                         KmWorkflowFile wf = new KmWorkflowFile();
                         wf.setOssId(idVal);
-                        wf.setType("image");
+                        wf.setType(MediaTypeConstants.TYPE_IMAGE);
                         workflowFiles.add(wf);
                     } catch (Exception e) {
                         log.warn("collectMultimodalFiles 解析 ossId 失败: {}", idObj);
@@ -487,7 +490,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
         }
 
         if (workflowFiles.isEmpty()) {
-            Object globalFiles = context.getGlobalValue("files");
+            Object globalFiles = context.getGlobalValue(NodeIOConstants.GLOBAL_FILES);
             if (globalFiles instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<KmWorkflowFile> list = (List<KmWorkflowFile>) globalFiles;
@@ -519,7 +522,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
         int historyMaxTokens = dialogConfig.getHistoryMaxTokens();
         boolean enableMultimodal = dialogConfig.isEnableMultimodal();
 
-        String chatContext = (String) context.getInput("chatContext");
+        String chatContext = (String) context.getInput(NodeIOConstants.INPUT_CHAT_CONTEXT);
         Long sessionId = context.getSessionId();
         List<KmWorkflowFile> files = enableMultimodal ? collectMultimodalFiles(context) : new ArrayList<>();
 
@@ -590,8 +593,8 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
                         JSONObject obj = JSONUtil.parseObj(item);
                         String type = obj.getStr("type");
 
-                        if ("text".equals(type)) {
-                            textPart.append(obj.getStr("text"));
+                        if (MediaTypeConstants.TYPE_TEXT.equals(type)) {
+                            textPart.append(obj.getStr(MediaTypeConstants.TYPE_TEXT));
                         } else {
                             if (textPart.length() > 0) {
                                 contents.add(TextContent.from(textPart.toString()));
@@ -646,17 +649,17 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
      */
     private void addMultimodalContent(List<Content> contents, String type,
             String fileIdRef, String fallbackUrl, String fileName) {
-        if ("image".equals(type)) {
-            String url = resolveUrl(fileIdRef, fallbackUrl, "image/jpeg");
+        if (MediaTypeConstants.TYPE_IMAGE.equals(type)) {
+            String url = resolveUrl(fileIdRef, fallbackUrl, MediaTypeConstants.MIME_IMAGE_JPEG);
             if (StrUtil.isNotBlank(url)) contents.add(ImageContent.from(url));
-        } else if ("audio".equals(type)) {
-            String url = resolveUrl(fileIdRef, fallbackUrl, "audio/mpeg");
+        } else if (MediaTypeConstants.TYPE_AUDIO.equals(type)) {
+            String url = resolveUrl(fileIdRef, fallbackUrl, MediaTypeConstants.MIME_AUDIO_MPEG);
             if (StrUtil.isNotBlank(url)) {
                 try { contents.add(AudioContent.from(url)); }
                 catch (Throwable e) { log.warn("LC4J不支持AudioContent: {}", e.getMessage()); }
             }
-        } else if ("pdf".equals(type) || ("file".equals(type) && fileName != null && fileName.toLowerCase().endsWith(".pdf"))) {
-            String url = resolveUrl(fileIdRef, fallbackUrl, "application/pdf");
+        } else if (MediaTypeConstants.TYPE_PDF.equals(type) || (MediaTypeConstants.TYPE_FILE.equals(type) && fileName != null && fileName.toLowerCase().endsWith(".pdf"))) {
+            String url = resolveUrl(fileIdRef, fallbackUrl, MediaTypeConstants.MIME_APPLICATION_PDF);
             if (StrUtil.isNotBlank(url)) {
                 try {
                     contents.add(url.startsWith("http")
@@ -664,8 +667,8 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
                             : PdfFileContent.from(url));
                 } catch (Throwable e) { log.warn("LC4J不支持PdfFileContent: {}", e.getMessage()); }
             }
-        } else if ("video".equals(type) || ("file".equals(type) && fileName != null && fileName.toLowerCase().matches(".*\\.(mp4|avi|mov|wmv|flv|mkv)$"))) {
-            String url = resolveUrl(fileIdRef, fallbackUrl, "video/mp4");
+        } else if (MediaTypeConstants.TYPE_VIDEO.equals(type) || (MediaTypeConstants.TYPE_FILE.equals(type) && fileName != null && fileName.toLowerCase().matches(MediaTypeConstants.VIDEO_EXTENSION_REGEX))) {
+            String url = resolveUrl(fileIdRef, fallbackUrl, MediaTypeConstants.MIME_VIDEO_MP4);
             if (StrUtil.isNotBlank(url)) {
                 try {
                     contents.add(url.startsWith("http")
@@ -673,7 +676,7 @@ public abstract class AbstractAiWorkflowNode extends AbstractWorkflowNode {
                             : VideoContent.from(url));
                 } catch (Throwable e) { log.warn("LC4J不支持VideoContent: {}", e.getMessage()); }
             }
-        } else if ("file".equals(type) && StrUtil.isNotBlank(fileName)) {
+        } else if (MediaTypeConstants.TYPE_FILE.equals(type) && StrUtil.isNotBlank(fileName)) {
             // 通用文件：仅记录文件名，实际内容由 FILE_PARSE 节点处理
             log.debug("通用文件类型，仅记录文件名: {}", fileName);
         }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.api.enums.ComparisonOperator;
 import org.dromara.ai.api.enums.LogicalOperator;
+import org.dromara.ai.workflow.constant.NodeRouteConstants;
 import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +36,7 @@ public class ConditionEvaluator {
      */
     public String evaluateBranches(List<ConditionBranch> branches, WorkflowState state) {
         if (branches == null || branches.isEmpty()) {
-            return "default";
+            return NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
         }
 
         for (int i = 0; i < branches.size(); i++) {
@@ -51,7 +52,7 @@ public class ConditionEvaluator {
         }
 
         log.info("所有条件分支都不满足，返回默认分支");
-        return "default";
+        return NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
     }
 
     /**

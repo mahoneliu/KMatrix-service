@@ -1,6 +1,7 @@
 package org.dromara.ai.workflow.workflow.nodes;
 
 import org.dromara.ai.execution.mcp.service.McpClientManager;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ class McpResourceNodeTest {
         assertNotNull(output);
         assertEquals("Mock Resource Content", output.getOutput("content"));
         assertEquals("Mock Resource Content", output.getOutput("textContent"));
-        assertEquals("Mock Resource Content", context.getGlobalValue("mcpResourceContent"));
+        assertEquals("Mock Resource Content", context.getGlobalValue(NodeIOConstants.GLOBAL_MCP_RESOURCE_CONTENT));
     }
 
     @Test

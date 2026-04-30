@@ -1,5 +1,7 @@
 package org.dromara.ai.app.service.impl;
 
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider;
 import org.dromara.common.core.utils.MessageUtils;
 
 import cn.hutool.core.util.StrUtil;
@@ -90,7 +92,7 @@ public class KmChatServiceImpl implements IKmChatService {
     private final IKmModelService modelService;
     private final ChatServiceAbortMixin abortMixin;
     private final ChatStreamHandler chatStreamHandler;
-    private final org.dromara.ai.workflow.workflow.nodes.chat.IChatMessageProvider chatMessageProvider;
+    private final IChatMessageProvider chatMessageProvider;
 
     private static final Long SSE_TIMEOUT = 5 * 60 * 1000L; // 5分钟
 
@@ -221,7 +223,7 @@ public class KmChatServiceImpl implements IKmChatService {
                         log.info("构建的 WorkflowExecutionReq customParameters: {}", req.getApiParameters());
                         Map<String, Object> result = workflowExecutor.executeWorkflow(req, emitter);
 
-                        String aiResponse = (String) result.get("finalResponse");
+                        String aiResponse = (String) result.get(NodeIOConstants.INPUT_FINAL_RESPONSE);
                         Long instanceId = (Long) result.get("instanceId");
                         Integer totalTokens = (Integer) result.get("totalTokens");
 
@@ -343,13 +345,13 @@ public class KmChatServiceImpl implements IKmChatService {
 
         // 5. 构建模型并生成响应
         ChatModel chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey());
-        dev.langchain4j.model.chat.response.ChatResponse chatResponse = chatModel.chat(messages);
+        ChatResponse chatResponse = chatModel.chat(messages);
 
         // 6. 获取AI响应
         String aiResponse = chatResponse.aiMessage().text();
 
         // 7. 记录token使用情况
-        dev.langchain4j.model.output.TokenUsage tokenUsage = chatResponse.tokenUsage();
+        TokenUsage tokenUsage = chatResponse.tokenUsage();
         if (tokenUsage != null) {
             log.info("Token使用: input={}, output={}, total={}",
                     tokenUsage.inputTokenCount(),
@@ -593,7 +595,7 @@ public class KmChatServiceImpl implements IKmChatService {
 
         // 序列化 ChatMessage 为 raw_message_json（用于精确还原历史上下文）
         try {
-            dev.langchain4j.data.message.ChatMessage chatMessage =
+            ChatMessage chatMessage =
                     ChatMessageJsonSerializer.buildFromRoleAndContent(role, content);
             if (chatMessage != null) {
                 message.setRawMessageJson(ChatMessageJsonSerializer.toJson(chatMessage));
@@ -652,7 +654,7 @@ public class KmChatServiceImpl implements IKmChatService {
 
             // 使用同步模型快速生成标题
             ChatModel chatModel = modelBuilder.buildChatModel(model, providerKey);
-            dev.langchain4j.model.chat.response.ChatResponse titleResponse = chatModel.chat(messages);
+            ChatResponse titleResponse = chatModel.chat(messages);
             String title = titleResponse.aiMessage().text().trim();
 
             // 清理标题(去除引号等)

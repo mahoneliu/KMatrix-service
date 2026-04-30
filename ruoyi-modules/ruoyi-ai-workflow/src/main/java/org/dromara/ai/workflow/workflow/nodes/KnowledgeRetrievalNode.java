@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.knowledge.domain.bo.KmRetrievalBo;
 import org.dromara.ai.knowledge.domain.vo.KmRetrievalResultVo;
 import org.dromara.ai.knowledge.service.IKmRetrievalService;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -28,7 +31,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("KNOWLEDGE_RETRIEVAL")
+@Component(NodeTypeConstants.KNOWLEDGE_RETRIEVAL)
 public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
 
     private final IKmRetrievalService retrievalService;
@@ -39,26 +42,26 @@ public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
 
         NodeOutput output = new NodeOutput();
         SseEmitter emitter = context.getSseEmitter();
-        // Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        // Boolean streamOutput = context.getConfigAsBoolean(NodeConfigConstants.CFG_AI_STREAM_OUTPUT, false);
         Boolean streamOutput = true;
 
         // 1. 获取查询文本
-        String query = (String) context.getInput("query");
+        String query = (String) context.getInput(NodeIOConstants.INPUT_QUERY);
         if (StrUtil.isBlank(query)) {
             throw new RuntimeException("查询文本不能为空 (query)");
         }
 
         // 2. 获取配置参数
-        List<Long> kbIds = getConfigAsList(context, "kbIds");
-        List<Long> datasetIds = getConfigAsList(context, "datasetIds");
-        Integer topK = context.getConfigAsInteger("topK", 5);
-        Double threshold = context.getConfigAsDouble("threshold", 0.5);
-        String mode = context.getConfigAsString("mode");
+        List<Long> kbIds = getConfigAsList(context, NodeConfigConstants.CFG_KR_KB_IDS);
+        List<Long> datasetIds = getConfigAsList(context, NodeConfigConstants.CFG_KR_DATASET_IDS);
+        Integer topK = context.getConfigAsInteger(NodeConfigConstants.CFG_KR_TOP_K, 5);
+        Double threshold = context.getConfigAsDouble(NodeConfigConstants.CFG_KR_THRESHOLD, 0.5);
+        String mode = context.getConfigAsString(NodeConfigConstants.CFG_KR_MODE);
         if (StrUtil.isBlank(mode)) {
-            mode = "VECTOR";
+            mode = NodeConfigConstants.CFG_KR_DEFAULT_MODE;
         }
-        Boolean enableRerank = context.getConfigAsBoolean("enableRerank", false);
-        String emptyResponse = context.getConfigAsString("emptyResponse");
+        Boolean enableRerank = context.getConfigAsBoolean(NodeConfigConstants.CFG_KR_ENABLE_RERANK, false);
+        String emptyResponse = context.getConfigAsString(NodeConfigConstants.CFG_KR_EMPTY_RESPONSE);
 
         // 3. 发送检索开始事件
         SseHelper.sendThinking(emitter, streamOutput, "🔍 正在检索知识库...\n");
@@ -99,14 +102,14 @@ public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
         }
 
         // 7. 设置输出
-        output.addOutput("retrievedDocs", results);
-        output.addOutput("context", contextText);
-        output.addOutput("docCount", results.size());
-        output.addOutput("hasResults", hasResults);
+        output.addOutput(NodeIOConstants.OUTPUT_RETRIEVED_DOCS, results);
+        output.addOutput(NodeIOConstants.OUTPUT_CONTEXT, contextText);
+        output.addOutput(NodeIOConstants.OUTPUT_DOC_COUNT, results.size());
+        output.addOutput(NodeIOConstants.OUTPUT_HAS_RESULTS, hasResults);
 
         // 8. 设置全局变量供后续节点使用
-        context.setGlobalValue("retrievedContext", contextText);
-        context.setGlobalValue("retrievedDocs", results);
+        context.setGlobalValue(NodeIOConstants.GLOBAL_RETRIEVED_CONTEXT, contextText);
+        context.setGlobalValue(NodeIOConstants.GLOBAL_RETRIEVED_DOCS, results);
 
         log.info("KNOWLEDGE_RETRIEVAL节点执行完成");
         return output;
@@ -174,7 +177,7 @@ public class KnowledgeRetrievalNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "KNOWLEDGE_RETRIEVAL";
+        return NodeTypeConstants.KNOWLEDGE_RETRIEVAL;
     }
 
     @Override

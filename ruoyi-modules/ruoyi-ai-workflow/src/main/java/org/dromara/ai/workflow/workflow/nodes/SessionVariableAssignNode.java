@@ -2,6 +2,9 @@ package org.dromara.ai.workflow.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -44,7 +47,7 @@ import java.util.Map;
  * @date 2026-05-01
  */
 @Slf4j
-@Component("SESSION_VARIABLE_ASSIGN")
+@Component(NodeTypeConstants.SESSION_VARIABLE_ASSIGN)
 public class SessionVariableAssignNode extends AbstractWorkflowNode {
 
     /** 操作模式：覆写（用另一个变量或表达式的值替换） */
@@ -68,12 +71,12 @@ public class SessionVariableAssignNode extends AbstractWorkflowNode {
         Long sessionId = context.getSessionId();
 
         // 1. 读取赋值配置列表
-        Object assignmentsObj = context.getConfig("assignments");
+        Object assignmentsObj = context.getConfig(NodeConfigConstants.CFG_SV_ASSIGNMENTS);
         List<Map<String, Object>> assignments = parseAssignments(assignmentsObj);
 
         if (assignments.isEmpty()) {
             log.warn("SESSION_VARIABLE_ASSIGN 节点：未配置任何赋值项，跳过执行");
-            output.addOutput("sessionVariables", new HashMap<>());
+            output.addOutput(NodeIOConstants.OUTPUT_SESSION_VARIABLES, new HashMap<>());
             return output;
         }
 
@@ -131,7 +134,7 @@ public class SessionVariableAssignNode extends AbstractWorkflowNode {
         }
 
         // 6. 输出更新后的会话变量
-        output.addOutput("sessionVariables", sessionVars);
+        output.addOutput(NodeIOConstants.OUTPUT_SESSION_VARIABLES, sessionVars);
         log.info("SESSION_VARIABLE_ASSIGN 节点执行完成，共处理 {} 个变量", assignments.size());
         return output;
     }
@@ -226,7 +229,7 @@ public class SessionVariableAssignNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "SESSION_VARIABLE_ASSIGN";
+        return NodeTypeConstants.SESSION_VARIABLE_ASSIGN;
     }
 
     @Override

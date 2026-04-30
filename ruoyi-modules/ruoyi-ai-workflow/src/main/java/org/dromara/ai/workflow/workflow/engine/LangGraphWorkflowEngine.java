@@ -15,6 +15,8 @@ import org.dromara.ai.workflow.workflow.core.NodeOutput;
 import org.dromara.ai.workflow.workflow.core.WorkflowNode;
 import org.dromara.ai.workflow.workflow.factory.NodeFactory;
 import org.dromara.ai.workflow.workflow.core.WorkflowState;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
+import org.dromara.ai.workflow.constant.NodeRouteConstants;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -168,7 +170,9 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                     .orElse(null);
 
             boolean isConditionNode = fromNode != null &&
-                    ("CONDITION".equals(fromNode.getType()) || "INTENT_CLASSIFIER".equals(fromNode.getType()) || "LOOP".equals(fromNode.getType()));
+                    (NodeTypeConstants.CONDITION.equals(fromNode.getType())
+                            || NodeTypeConstants.INTENT_CLASSIFIER.equals(fromNode.getType())
+                            || NodeTypeConstants.LOOP.equals(fromNode.getType()));
 
             if (isConditionNode) {
                 // 条件节点的所有出边都作为条件边处理
@@ -204,8 +208,8 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             }
 
             // 添加默认路由：如果没有 default 边，则路由到 END
-            if (!routeMap.containsKey("default")) {
-                routeMap.put("default", END);
+            if (!routeMap.containsKey(NodeRouteConstants.CONDITION_DEFAULT_ROUTE)) {
+                routeMap.put(NodeRouteConstants.CONDITION_DEFAULT_ROUTE, END);
                 log.debug("条件节点 {} 没有 default 边，默认路由到 END", fromNode);
             }
 
@@ -218,7 +222,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                             // 从节点输出中获取路由键（handleId）
                             Map<String, Object> nodeOutput = state.getNodeOutput(fromNode);
                             if (nodeOutput != null) {
-                                Object routeKeyObj = nodeOutput.get("routeKey");
+                                Object routeKeyObj = nodeOutput.get(NodeRouteConstants.OUTPUT_ROUTE_KEY);
                                 if (routeKeyObj != null) {
                                     String routeKey = routeKeyObj.toString();
                                     log.info("条件节点 {} 路由键: {}, 目标: {}", fromNode, routeKey, routeMap.get(routeKey));
@@ -234,7 +238,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
                             // 默认路由
                             log.warn("条件节点 {} 未找到路由键，使用默认路由", fromNode);
-                            return CompletableFuture.completedFuture("default");
+                            return CompletableFuture.completedFuture(NodeRouteConstants.CONDITION_DEFAULT_ROUTE);
                         }
                     },
                     routeMap);
@@ -251,7 +255,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                 routeMap.put(edge.getTo(), edge.getTo());
             }
             // 添加默认路由：当所有条件都不满足时结束工作流
-            routeMap.put("default", END);
+            routeMap.put(NodeRouteConstants.CONDITION_DEFAULT_ROUTE, END);
 
             // 添加条件边，使用复合评估逻辑
             graph.addConditionalEdges(
@@ -270,7 +274,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
                                 }
                             }
                             // 所有条件都不满足，返回默认路由（END）
-                            return CompletableFuture.completedFuture("default");
+                            return CompletableFuture.completedFuture(NodeRouteConstants.CONDITION_DEFAULT_ROUTE);
                         }
                     },
                     routeMap);
@@ -282,7 +286,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         // 找出所有终端节点（没有出边的节点）并连接到 END
         // 注意: 工作流配置已经在保存时通过 validate() 方法校验过,确保有且仅有一个 END 节点
         WorkflowConfig.NodeConfig endNode = config.getNodes().stream()
-                .filter(node -> "END".equals(node.getType()))
+                .filter(node -> NodeTypeConstants.END.equals(node.getType()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("工作流必须包含 END 节点"));
 
@@ -411,7 +415,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             NodeOutput output = node.execute(context);
 
             // 为了视觉效果，如果是 END 节点，强制延迟 500ms，确保前端能观察到高亮和连线动画
-            if ("END".equals(nodeConfig.getType())) {
+            if (NodeTypeConstants.END.equals(nodeConfig.getType())) {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException ignored) {
@@ -442,11 +446,17 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
 
             if (isShowExecutionInfo) {
                 // 发送节点执行详情事件
+                // 优先使用 context.getNodeInputs()：节点在执行过程中可能会补充写入输入（如变量聚合器），
+                // 若 context 中的 inputs 比初始解析的 inputs 更丰富，则使用 context 中的值
+                Map<String, Object> finalInputs = context.getNodeInputs();
+                if (finalInputs == null || finalInputs.isEmpty()) {
+                    finalInputs = inputs;
+                }
                 Map<String, Object> executionDetail = new HashMap<>();
                 executionDetail.put("nodeName", nodeName);
                 executionDetail.put("nodeType", nodeConfig.getType());
                 executionDetail.put("nodeId", currentNodeId);
-                executionDetail.put("inputs", inputs);
+                executionDetail.put("inputs", finalInputs);
                 executionDetail.put("outputs", output.getOutputs());
                 executionDetail.put("durationMs", duration);
 
@@ -534,7 +544,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
         try {
             String[] parts = condition.trim().split("\\s+");
             if (parts.length < 3) {
-                return "default";
+                return NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
             }
 
             String variable = parts[0];
@@ -553,7 +563,7 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             }
 
             if (value == null) {
-                return "default";
+                return NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
             }
 
             String actualValue = value.toString();
@@ -577,10 +587,10 @@ public class LangGraphWorkflowEngine implements WorkflowEngine {
             }
 
             // 返回路由键：条件满足时返回期望值（用于匹配路由表），否则返回 "default"
-            return conditionMet ? expectedValue : "default";
+            return conditionMet ? expectedValue : NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
         } catch (Exception e) {
             log.error("条件计算失败: {}", condition, e);
-            return "default";
+            return NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
         }
     }
 

@@ -1,5 +1,5 @@
-# Docker 环境专用配置
-# 这里的配置会覆盖 application-dev.yml 中的同名配置
+# Docker 环境专用配置示例，请根据实际情况修改
+# 这里的配置会覆盖 application.yml 中的同名配置
 
 spring:
   datasource:
@@ -10,6 +10,11 @@ spring:
           url: jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true
           username: root
           password: kmatrix#321
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
 
 # AI 模块配置
 ai:
@@ -22,28 +27,8 @@ ai:
     # 容器内的模型路径
     model-path: /opt/models/model.onnx
     tokenizer-path: /opt/models/tokenizer.json
-  # 知识库分块配置
-  km:
-    chunking:
-      # 子块大小（字符数），默认 200。可被数据集级别配置覆盖
-      child-chunk-size: 200
-      # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
-      child-chunk-overlap: 20
-
-# Redis 配置 (虽然 dev 也是 localhost，但在 docker profile 里显式配置更安全)
-spring.data:
-  redis:
-    host: localhost
-    port: 6379
-    password: 123456
 
 logging:
   level:
     dev.langchain4j: INFO
     org.dromara.ai: INFO
-
-snail-job:
-  enabled: false
-
-spring.boot.admin.client:
-  enabled: false

@@ -11,6 +11,9 @@ import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.knowledge.mapper.KmDataSourceMapper;
 import org.dromara.ai.knowledge.mapper.KmDatabaseMetaMapper;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -33,7 +36,7 @@ import java.util.stream.Collectors;
  * @date 2026-01-24
  */
 @Slf4j
-@Component("SQL_GENERATE")
+@Component(NodeTypeConstants.SQL_GENERATE)
 public class SqlGenerateNode extends AbstractAiWorkflowNode {
 
     @Autowired
@@ -50,16 +53,16 @@ public class SqlGenerateNode extends AbstractAiWorkflowNode {
         SseEmitter emitter = context.getSseEmitter();
 
         // 1. 获取配置参数
-        Long dataSourceId = context.getConfigAsLong("dataSourceId");
-        String tableWhitelist = context.getConfigAsString("tableWhitelist");
-        String tableBlacklist = context.getConfigAsString("tableBlacklist");
+        Long dataSourceId = context.getConfigAsLong(NodeConfigConstants.CFG_SQL_DATA_SOURCE_ID);
+        String tableWhitelist = context.getConfigAsString(NodeConfigConstants.CFG_SQL_TABLE_WHITELIST);
+        String tableBlacklist = context.getConfigAsString(NodeConfigConstants.CFG_SQL_TABLE_BLACKLIST);
 
-        Double temperature = context.getConfigAsDouble("temperature", null);
-        Integer maxTokens = context.getConfigAsInteger("maxTokens", null);
-        Boolean streamOutput = context.getConfigAsBoolean("streamOutput", false);
+        Double temperature = context.getConfigAsDouble(NodeConfigConstants.CFG_AI_TEMPERATURE, null);
+        Integer maxTokens = context.getConfigAsInteger(NodeConfigConstants.CFG_AI_MAX_TOKENS, null);
+        Boolean streamOutput = context.getConfigAsBoolean(NodeConfigConstants.CFG_AI_STREAM_OUTPUT, false);
 
         // 2. 获取输入参数
-        String userQuery = (String) context.getInput("userQuery");
+        String userQuery = (String) context.getInput(NodeIOConstants.INPUT_USER_QUERY);
         if (StrUtil.isBlank(userQuery)) {
             throw new RuntimeException("userQuery不能为空");
         }
@@ -92,10 +95,10 @@ public class SqlGenerateNode extends AbstractAiWorkflowNode {
 
         if (relevantTables.isEmpty()) {
             log.warn("LLM未选择任何相关表");
-            output.addOutput("response", "没有相关的表");
-            output.addOutput("generatedSql", "");
-            output.addOutput("queryResult", "");
-            output.addOutput("strResult", "");
+            output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, "没有相关的表");
+            output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, "");
+            output.addOutput(NodeIOConstants.OUTPUT_QUERY_RESULT, "");
+            output.addOutput(NodeIOConstants.OUTPUT_STR_RESULT, "");
             return output;
         }
 
@@ -128,18 +131,18 @@ public class SqlGenerateNode extends AbstractAiWorkflowNode {
 
         if (StrUtil.isBlank(generatedSql) || !generatedSql.toUpperCase().contains("SELECT")) {
             log.warn("LLM未生成有效的SQL");
-            output.addOutput("generatedSql", "");
+            output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, "");
             return output;
         }
         log.info("生成的SQL: {}", generatedSql);
 
         SqlValidator.validate(generatedSql);
-        output.addOutput("generatedSql", generatedSql);
+        output.addOutput(NodeIOConstants.OUTPUT_GENERATED_SQL, generatedSql);
 
         // token 统计（基类已写入 context）
         Map<String, Object> tokenUsage = context.getTokenUsage();
         if (tokenUsage != null) {
-            output.addOutput("tokenUsage", tokenUsage);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsage);
         }
 
         log.info("SQL_GENERATE节点执行完成");
@@ -148,7 +151,7 @@ public class SqlGenerateNode extends AbstractAiWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "SQL_GENERATE";
+        return NodeTypeConstants.SQL_GENERATE;
     }
 
     @Override

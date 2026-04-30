@@ -2,7 +2,10 @@ package org.dromara.ai.workflow.workflow.nodes;
 
 import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
+import org.dromara.ai.workflow.workflow.core.WorkflowState;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
 import org.springframework.stereotype.Component;
@@ -39,7 +42,7 @@ import java.util.Map;
  * @date 2026-05-01
  */
 @Slf4j
-@Component("VARIABLE_AGGREGATOR")
+@Component(NodeTypeConstants.VARIABLE_AGGREGATOR)
 public class VariableAggregatorNode extends AbstractWorkflowNode {
 
     @Override
@@ -49,7 +52,7 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
         NodeOutput output = new NodeOutput();
         Map<String, Object> config = context.getNodeConfig();
 
-        boolean enableGrouping = getBoolean(config, "enableGrouping", false);
+        boolean enableGrouping = getBoolean(config, NodeConfigConstants.CFG_VA_ENABLE_GROUPING, false);
 
         if (enableGrouping) {
             // 分组模式：每个分组独立聚合
@@ -67,11 +70,15 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
      * 单组模式执行
      */
     private void executeSingleMode(NodeContext context, Map<String, Object> config, NodeOutput output) {
-        String outputKey = getStr(config, "outputKey", "output");
-        List<Map<String, Object>> variables = parseVariableList(config.get("variables"));
+        String outputKey = getStr(config, NodeConfigConstants.CFG_VA_OUTPUT_KEY, NodeConfigConstants.CFG_VA_DEFAULT_OUTPUT_KEY);
+        List<Map<String, Object>> variables = parseVariableList(config.get(NodeConfigConstants.CFG_VA_VARIABLES));
 
         Object aggregatedValue = aggregateVariables(variables, context, outputKey);
         output.addOutput(outputKey, aggregatedValue);
+
+        // 将实际读取到的变量值写入 nodeInputs，使执行详情中的"输入"有内容可展示
+        recordResolvedInputs(variables, context);
+
         log.info("VARIABLE_AGGREGATOR 单组模式输出: {}={}", outputKey, aggregatedValue);
     }
 
@@ -79,7 +86,7 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
      * 分组模式执行
      */
     private void executeGroupMode(NodeContext context, Map<String, Object> config, NodeOutput output) {
-        List<Map<String, Object>> groups = parseVariableList(config.get("groups"));
+        List<Map<String, Object>> groups = parseVariableList(config.get(NodeConfigConstants.CFG_VA_GROUPS));
 
         if (groups.isEmpty()) {
             log.warn("VARIABLE_AGGREGATOR 分组模式未配置任何分组");
@@ -93,10 +100,34 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
                 continue;
             }
 
-            List<Map<String, Object>> variables = parseVariableList(group.get("variables"));
+            List<Map<String, Object>> variables = parseVariableList(group.get(NodeConfigConstants.CFG_VA_VARIABLES));
             Object aggregatedValue = aggregateVariables(variables, context, groupName);
             output.addOutput(groupName, aggregatedValue);
+
+            // 将实际读取到的变量值写入 nodeInputs，使执行详情中的"输入"有内容可展示
+            recordResolvedInputs(variables, context);
+
             log.info("VARIABLE_AGGREGATOR 分组 [{}] 输出: {}", groupName, aggregatedValue);
+        }
+    }
+
+    /**
+     * 将变量引用列表中实际解析到的值记录到 nodeInputs，
+     * 使执行详情中的"输入"字段能够展示有效数据。
+     */
+    private void recordResolvedInputs(List<Map<String, Object>> variables, NodeContext context) {
+        for (Map<String, Object> varRef : variables) {
+            String sourceKey = getStr(varRef, "sourceKey", null);
+            if (StrUtil.isBlank(sourceKey)) {
+                sourceKey = getStr(varRef, "sourceNodeId", null);
+            }
+            String sourceParam = getStr(varRef, "sourceParam", null);
+            if (StrUtil.isBlank(sourceKey) || StrUtil.isBlank(sourceParam)) {
+                continue;
+            }
+            Object value = resolveVariableValue(context, sourceKey, sourceParam);
+            // 用 "sourceKey.sourceParam" 作为 key，避免不同来源的同名参数覆盖
+            context.setInput(sourceKey + "." + sourceParam, value);
         }
     }
 
@@ -114,18 +145,24 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
         List<String> nonNullSources = new ArrayList<>();
 
         for (Map<String, Object> varRef : variables) {
-            String sourceNodeId = getStr(varRef, "sourceNodeId", null);
+            // 前端传递的字段名为 sourceKey
+            String sourceKey = getStr(varRef, "sourceKey", null);
+            // 兼容可能存在的旧数据或不同的字段名
+            if (StrUtil.isBlank(sourceKey)) {
+                sourceKey = getStr(varRef, "sourceNodeId", null);
+            }
+            
             String sourceParam = getStr(varRef, "sourceParam", null);
 
-            if (StrUtil.isBlank(sourceNodeId) || StrUtil.isBlank(sourceParam)) {
-                log.warn("VARIABLE_AGGREGATOR 变量引用缺少 sourceNodeId 或 sourceParam，跳过");
+            if (StrUtil.isBlank(sourceKey) || StrUtil.isBlank(sourceParam)) {
+                log.warn("VARIABLE_AGGREGATOR 变量引用缺少 sourceKey 或 sourceParam，跳过: {}", varRef);
                 continue;
             }
 
-            Object value = resolveVariableValue(context, sourceNodeId, sourceParam);
+            Object value = resolveVariableValue(context, sourceKey, sourceParam);
             if (value != null) {
                 nonNullValues.add(value);
-                nonNullSources.add(sourceNodeId + "." + sourceParam);
+                nonNullSources.add(sourceKey + "." + sourceParam);
             }
         }
 
@@ -147,9 +184,12 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
      * 支持 global 全局变量和节点输出变量
      */
     private Object resolveVariableValue(NodeContext context, String sourceNodeId, String sourceParam) {
-        // 全局变量
-        if ("global".equals(sourceNodeId) || "app".equals(sourceNodeId)
-                || "interface".equals(sourceNodeId) || "session".equals(sourceNodeId)) {
+        // 全局变量（sourceNodeId 为保留关键字时，从 globalState 取值）
+        if (WorkflowState.KEY_GLOBAL_STATE.equals(sourceNodeId)
+                || "global".equals(sourceNodeId)
+                || WorkflowState.KEY_APP.equals(sourceNodeId)
+                || WorkflowState.KEY_INTERFACE.equals(sourceNodeId)
+                || WorkflowState.KEY_SESSION.equals(sourceNodeId)) {
             return context.getGlobalValue(sourceParam);
         }
 
@@ -196,7 +236,7 @@ public class VariableAggregatorNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "VARIABLE_AGGREGATOR";
+        return NodeTypeConstants.VARIABLE_AGGREGATOR;
     }
 
     @Override

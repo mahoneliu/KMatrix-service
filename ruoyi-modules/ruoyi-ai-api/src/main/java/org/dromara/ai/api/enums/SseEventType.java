@@ -1,11 +1,14 @@
 package org.dromara.ai.api.enums;
 
+import lombok.Getter;
+
 /**
  * SSE事件类型枚举
  *
  * @author Mahone
  * @date 2026-01-02
  */
+@Getter
 public enum SseEventType {
 
     /**
@@ -59,14 +62,9 @@ public enum SseEventType {
     CITATION("citation", "引用信息"),
 
     /**
-     * 工具调用（LLM 请求调用工具）
+     * 工具调用跟踪（LLM 请求调用工具跟踪 ）
      */
-    TOOL_CALL("tool_call", "工具调用"),
-
-    /**
-     * 工具执行完成（工具返回结果）
-     */
-    TOOL_RESULT("tool_result", "工具执行结果"),
+    TOOL_TRACE("TOOL_TRACE", "工具调用跟踪"),
 
     /**
      * 会话信息更新
@@ -81,11 +79,4 @@ public enum SseEventType {
         this.description = description;
     }
 
-    public String getEventName() {
-        return eventName;
-    }
-
-    public String getDescription() {
-        return description;
-    }
 }

@@ -1,0 +1,426 @@
+# 本文件用于组合所有配置，仅做备忘，不要使用
+# 服务配置
+server:
+  port: 8090
+  servlet:
+    encoding:
+      charset: UTF-8
+    context-path: /
+  undertow:
+    max-http-post-size: -1
+    buffer-size: 512
+    direct-buffers: true
+    threads:
+      io: 8
+      worker: 256
+
+# 验证码配置
+captcha:
+  enable: true
+  type: MATH
+  category: CIRCLE
+  numberLength: 1
+  charLength: 4
+
+# 日志配置
+logging:
+  level:
+    org.dromara: @logging.level@
+    org.springframework: warn
+    org.mybatis.spring.mapper: error
+    org.apache.fury: warn
+    dev.langchain4j: DEBUG
+    org.dromara.ai: DEBUG
+  config: classpath:logback-plus.xml
+
+# 用户配置
+user:
+  password:
+    maxRetryCount: 5
+    lockTime: 10
+
+# Spring配置
+spring:
+  application:
+    name: KMatrix
+  threads:
+    virtual:
+      enabled: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1.0.0
+    placeholder-replacement: false
+    repair-on-migrate: true
+  task:
+    execution:
+      thread-name-prefix: async-
+      mode: force
+  messages:
+    basename: i18n/messages
+  profiles:
+    active: @profiles.active@
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  mvc:
+    static-path-pattern: /static/**
+    format:
+      date-time: yyyy-MM-dd HH:mm:ss
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      indent_output: false
+      fail_on_empty_beans: false
+    deserialization:
+      fail_on_unknown_properties: false
+  boot:
+    admin:
+      client:
+        enabled: false
+        url: http://localhost:9090/admin
+        instance:
+          service-host-type: IP
+          metadata:
+            username: ${spring.boot.admin.client.username}
+            userpassword: ${spring.boot.admin.client.password}
+        username: @monitor.username@
+        password: @monitor.password@
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    dynamic:
+      p6spy: false
+      primary: master
+      strict: true
+      datasource:
+        master:
+          type: ${spring.datasource.type}
+          driverClassName: org.postgresql.Driver
+          url: "jdbc:postgresql://localhost:5432/kmatrix?currentSchema=public&reWriteBatchedInserts=true&sslmode=disable"
+          username: postgres
+          password: password
+      hikari:
+        maxPoolSize: 20
+        minIdle: 10
+        connectionTimeout: 30000
+        validationTimeout: 5000
+        idleTimeout: 600000
+        maxLifetime: 1800000
+        keepaliveTime: 30000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 6
+      password: 123456
+      timeout: 10s
+      ssl:
+        enabled: false
+
+# Sa-Token配置
+sa-token:
+  token-name: Authorization
+  is-concurrent: true
+  is-share: false
+  jwt-secret-key: abcdefghijklmnopqrstuvwxyz
+
+# MyBatisPlus配置
+mybatis-plus:
+  enableLogicDelete: true
+  mapperPackage: org.dromara.**.mapper
+  mapperLocations: classpath*:mapper/**/*Mapper.xml
+  typeAliasesPackage: org.dromara.**.domain
+  global-config:
+    dbConfig:
+      idType: ASSIGN_ID
+
+# 数据加密
+mybatis-encryptor:
+  enable: false
+  algorithm: BASE64
+  encode: BASE64
+  password:
+  publicKey:
+  privateKey:
+
+# api接口加密
+api-decrypt:
+  enabled: true
+  headerFlag: encrypt-key
+  publicKey: MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJnNwrj4hi/y3CCJu868ghCG5dUj8wZK++RNlTLcXoMmdZWEQ/u02RgD5LyLAXGjLOjbMtC+/J9qofpSGTKSx/MCAwEAAQ==
+  privateKey: MIIBVAIBADANBgkqhkiG9w0BAQEFAASCAT4wggE6AgEAAkEAqhHyZfSsYourNxaY7Nt+PrgrxkiA50efORdI5U5lsW79MmFnusUA355oaSXcLhu5xxB38SMSyP2KvuKNPuH3owIDAQABAkAfoiLyL+Z4lf4Myxk6xUDgLaWGximj20CUf+5BKKnlrK+Ed8gAkM0HqoTt2UZwA5E2MzS4EI2gjfQhz5X28uqxAiEA3wNFxfrCZlSZHb0gn2zDpWowcSxQAgiCstxGUoOqlW8CIQDDOerGKH5OmCJ4Z21v+F25WaHYPxCFMvwxpcw99EcvDQIgIdhDTIqD2jfYjPTY8Jj3EDGPbH2HHuffvflECt3Ek60CIQCFRlCkHpi7hthhYhovyloRYsM+IS9h/0BzlEAuO0ktMQIgSPT3aFAgJYwKpqRYKlLDVcflZFCKY7u3UP8iWi1Qw0Y=
+
+# 防止XSS攻击
+xss:
+  enabled: true
+  excludeUrls:
+    - /system/notice
+
+# 分布式锁 lock4j 全局配置
+lock4j:
+  acquire-timeout: 3000
+  expire: 30000
+
+# Actuator 监控端点的配置项
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: ALWAYS
+    logfile:
+      external-file: ./logs/sys-console.log
+
+# 默认/推荐使用sse推送
+sse:
+  enabled: true
+  path: /resource/sse
+
+# websocket
+websocket:
+  enabled: false
+  path: /resource/websocket
+  allowedOrigins: '*'
+
+# 自定义参数验证配置
+custom-param:
+  whitelist-mode: true
+  sensitive-check-enabled: true
+  depth-check-enabled: true
+  size-check-enabled: true
+  whitelist:
+    - appToken
+    - appId
+    - primaryColor
+    - theme
+    - mode
+    - ext_
+    - ext_color
+    - ext_fontSize
+    - ext_layout
+    - ext_custom
+    - timeout
+    - retryCount
+    - maxResults
+    - sortOrder
+    - filters
+    - search
+    - query
+    - keyword
+    - tags
+    - metadata
+  sensitive-patterns:
+    - ".*password.*"
+    - ".*pwd.*"
+    - ".*token.*"
+    - ".*secret.*"
+    - ".*key.*"
+    - ".*private.*"
+    - ".*credential.*"
+    - ".*api_key.*"
+    - ".*access_key.*"
+    - ".*secret_key.*"
+  name-length:
+    min: 2
+    max: 50
+  value-max-size: 10240
+  max-depth: 3
+
+# Security 配置
+security:
+  excludes:
+    - /*.html
+    - /**/*.html
+    - /**/*.css
+    - /**/*.js
+    - /favicon.ico
+    - /error
+    - /*/api-docs
+    - /*/api-docs/**
+    - /warm-flow-ui/config
+    - /ai/chat/stream
+    - /ai/chat/**
+    - /ai/workflow/**
+    - /ai/storage/file/**
+    - /chat/**
+  sseExcludes:
+    - /ai/chat/stream
+    - /ai/admin/chat/stream
+    - /ai/workflow/execute
+
+# SpringDoc 接口文档配置
+springdoc:
+  api-docs:
+    enabled: true
+  info:
+    title: '标题：KMatrix管理系统_接口文档'
+    description: '描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...'
+    version: '版本号: ${project.version}'
+    contact:
+      name: Mahone
+      email: mahone@gmail.com
+      url: https://gitee.com/kyxxjs/kmatrix
+  group-configs:
+    - group: 1.演示模块
+      packages-to-scan: org.dromara.demo
+    - group: 2.通用模块
+      packages-to-scan: org.dromara.web
+    - group: 3.系统模块
+      packages-to-scan: org.dromara.system
+    - group: 4.代码生成模块
+      packages-to-scan: org.dromara.generator
+
+# AI 配置模块
+ai:
+  unified-embedding-model: false
+  file-store:
+    type: 2
+    local-path: ./uploads
+  reranker:
+    enabled: true
+    model-path: F:\reranker\model.onnx
+    tokenizer-path: F:\reranker\tokenizer.json
+  log-chat: true
+  km:
+    chunking:
+      child-chunk-size: 200
+      child-chunk-overlap: 20
+
+# snail-job 配置
+snail-job:
+  enabled: false
+  group: "ruoyi_group"
+  token: "SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT"
+  server:
+    host: 127.0.0.1
+    port: 17888
+  namespace: ${spring.profiles.active}
+  port: 2${server.port}
+  host:
+
+# redisson 配置
+redisson:
+  keyPrefix:
+  threads: 4
+  nettyThreads: 8
+  singleServerConfig:
+    clientName: KMatrix
+    connectionMinimumIdleSize: 8
+    connectionPoolSize: 32
+    idleConnectionTimeout: 10000
+    timeout: 3000
+    subscriptionConnectionPoolSize: 50
+
+# mail 邮件发送
+mail:
+  enabled: false
+  host: smtp.163.com
+  port: 465
+  auth: true
+  from: xxx@163.com
+  user: xxx@163.com
+  pass: xxxxxxxxxx
+  starttlsEnable: true
+  sslEnable: true
+  timeout: 0
+  connectionTimeout: 0
+
+# sms 短信
+sms:
+  config-type: yaml
+  restricted: true
+  minute-max: 1
+  account-max: 30
+  blends:
+    config1:
+      supplier: alibaba
+      access-key-id: 您的accessKey
+      access-key-secret: 您的accessKeySecret
+      signature: 您的短信签名
+      sdk-app-id: 您的sdkAppId
+    config2:
+      supplier: tencent
+      access-key-id: 您的accessKey
+      access-key-secret: 您的accessKeySecret
+      signature: 您的短信签名
+      sdk-app-id: 您的sdkAppId
+
+# 三方授权
+justauth:
+  address: http://localhost:80
+  type:
+    maxkey:
+      server-url: http://sso.maxkey.top
+      client-id: 876892492581044224
+      client-secret: x1Y5MTMwNzIwMjMxNTM4NDc3Mzche8
+      redirect-uri: ${justauth.address}/social-callback?source=maxkey
+    topiam:
+      server-url: http://127.0.0.1:1898/api/v1/authorize/y0q************spq***********8ol
+      client-id: 449c4*********937************759
+      client-secret: ac7***********1e0************28d
+      redirect-uri: ${justauth.address}/social-callback?source=topiam
+      scopes: [openid, email, phone, profile]
+    qq:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=qq
+      union-id: false
+    weibo:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=weibo
+    gitee:
+      client-id: 91436b7940090d09c72c7daf85b959cfd5f215d67eea73acbf61b6b590751a98
+      client-secret: 02c6fcfd70342980cd8dd2f2c06c1a350645d76c754d7a264c4e125f9ba915ac
+      redirect-uri: ${justauth.address}/social-callback?source=gitee
+    dingtalk:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=dingtalk
+    baidu:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=baidu
+    csdn:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=csdn
+    coding:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=coding
+      coding-group-name: xx
+    oschina:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=oschina
+    alipay_wallet:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=alipay_wallet
+      alipay-public-key: MIIB**************DAQAB
+    wechat_open:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=wechat_open
+    wechat_mp:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=wechat_mp
+    wechat_enterprise:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=wechat_enterprise
+      agent-id: 1000002
+    gitlab:
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=gitlab
+    gitea:
+      server-url: https://demo.gitea.com
+      client-id: 10**********6
+      client-secret: 1f7d08**********5b7**********29e
+      redirect-uri: ${justauth.address}/social-callback?source=gitea

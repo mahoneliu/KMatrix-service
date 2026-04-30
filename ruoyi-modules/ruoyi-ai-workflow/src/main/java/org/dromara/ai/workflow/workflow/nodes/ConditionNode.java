@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeRouteConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.nodes.condition.ConditionBranch;
 import org.dromara.ai.workflow.workflow.nodes.condition.ConditionEvaluator;
 import org.dromara.ai.workflow.workflow.nodes.condition.ConditionGroup;
@@ -26,7 +29,7 @@ import java.util.Map;
  * @date 2026-01-02
  */
 @Slf4j
-@Component("CONDITION")
+@Component(NodeTypeConstants.CONDITION)
 @RequiredArgsConstructor
 public class ConditionNode extends AbstractWorkflowNode {
 
@@ -53,7 +56,7 @@ public class ConditionNode extends AbstractWorkflowNode {
         String matchedBranch = conditionEvaluator.evaluateBranches(branches, state);
 
         // 获取匹配分支的 handleId
-        String handleId = "default";
+        String handleId = NodeRouteConstants.CONDITION_DEFAULT_ROUTE;
         int branchIndex = -1;
         for (int i = 0; i < branches.size(); i++) {
             if (branches.get(i).getName().equals(matchedBranch)) {
@@ -61,7 +64,7 @@ public class ConditionNode extends AbstractWorkflowNode {
                 // 使用分支的 handleId，如果没有则生成默认值
                 handleId = branches.get(i).getHandleId();
                 if (handleId == null || handleId.isEmpty()) {
-                    handleId = "condition-" + i;
+                    handleId = NodeRouteConstants.CONDITION_BRANCH_PREFIX + i;
                 }
                 break;
             }
@@ -71,7 +74,7 @@ public class ConditionNode extends AbstractWorkflowNode {
         // 路由函数将根据 handleId 找到对应的边
         output.addOutput(KEY_MATCHED_BRANCH, matchedBranch);
         output.addOutput(KEY_BRANCH_INDEX, branchIndex);
-        output.addOutput("routeKey", handleId); // 输出 handleId 作为路由键
+        output.addOutput(NodeRouteConstants.OUTPUT_ROUTE_KEY, handleId); // 输出 handleId 作为路由键
 
         log.info("CONDITION 节点执行完成, matchedBranch={}, branchIndex={}, routeKey={}",
                 matchedBranch, branchIndex, handleId);
@@ -87,7 +90,7 @@ public class ConditionNode extends AbstractWorkflowNode {
             return new ArrayList<>();
         }
 
-        Object branchesObj = config.get("branches");
+        Object branchesObj = config.get(NodeConfigConstants.CFG_CONDITION_BRANCHES);
         if (branchesObj == null) {
             // 兼容旧版配置
             return parseOldConfig(config);
@@ -111,7 +114,7 @@ public class ConditionNode extends AbstractWorkflowNode {
     private List<ConditionBranch> parseOldConfig(Map<String, Object> config) {
         List<ConditionBranch> branches = new ArrayList<>();
 
-        Object conditionsObj = config.get("conditions");
+        Object conditionsObj = config.get(NodeConfigConstants.CFG_CONDITION_CONDITIONS);
         if (conditionsObj instanceof List<?> conditionsList) {
             for (int i = 0; i < conditionsList.size(); i++) {
                 Object item = conditionsList.get(i);
@@ -120,7 +123,7 @@ public class ConditionNode extends AbstractWorkflowNode {
                     if (expression != null && !expression.isEmpty()) {
                         ConditionBranch branch = new ConditionBranch();
                         branch.setName("branch_" + i);
-                        branch.setHandleId("condition-" + i);
+                        branch.setHandleId(NodeRouteConstants.CONDITION_BRANCH_PREFIX + i);
 
                         // 将表达式转换为简单的条件组
                         ConditionGroup group = new ConditionGroup();
@@ -158,7 +161,7 @@ public class ConditionNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "CONDITION";
+        return NodeTypeConstants.CONDITION;
     }
 
     @Override

@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.dromara.ai.workflow.constant.MediaTypeConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -26,7 +29,7 @@ import cn.hutool.core.util.StrUtil;
  */
 @Slf4j
 @RequiredArgsConstructor
-@Component("START")
+@Component(NodeTypeConstants.START)
 public class StartNode extends AbstractWorkflowNode {
 
     private final IKmFileService kmFileService;
@@ -69,7 +72,7 @@ public class StartNode extends AbstractWorkflowNode {
         // 1. 保存用户输入到全局状态
         List<String> historyContext = new ArrayList<>();
         historyContext.add(userInput);
-        context.setGlobalValue(WorkflowState.KEY_HISTORY_CONTEXT, historyContext);
+        context.setGlobalValue(NodeIOConstants.GLOBAL_HISTORY_CONTEXT, historyContext);
 
         // ================== 解析多模态参数提取 ==================
         List<KmWorkflowFile> extractedFilesFromInput = new ArrayList<>();
@@ -145,27 +148,27 @@ public class StartNode extends AbstractWorkflowNode {
 
         // 把文件合并集合推入全局状态并导出为 files 和 file
         if (!workflowFiles.isEmpty()) {
-            context.setGlobalValue("files", workflowFiles);
-            output.addOutput("files", workflowFiles);
+            context.setGlobalValue(NodeIOConstants.GLOBAL_FILES, workflowFiles);
+            output.addOutput(NodeIOConstants.OUTPUT_FILES, workflowFiles);
             // 如果只有一个文件，额外输出单文件对象
             if (workflowFiles.size() == 1) {
-                output.addOutput("file", workflowFiles.get(0));
+                output.addOutput(NodeIOConstants.OUTPUT_FILE, workflowFiles.get(0));
             }
         }
 
         // 3.保存用户名到全局状态
         String username = LoginHelper.getUsername();
-        context.setGlobalValue(WorkflowState.KEY_USER_NAME, username);
+        context.setGlobalValue(NodeIOConstants.GLOBAL_USER_NAME, username);
 
         // 4.保存到输出
-        output.addOutput(WorkflowState.KEY_USER_INPUT, userInput);
+        output.addOutput(NodeIOConstants.OUTPUT_USER_INPUT, userInput);
         if (documentId != null) {
-            output.addOutput(WorkflowState.KEY_DOCUMENT_ID, documentId);
+            output.addOutput(NodeIOConstants.OUTPUT_DOCUMENT_ID, documentId);
         }
 
         // 5.保存用户ID到输出
         Long userId = LoginHelper.getUserId();
-        output.addOutput(WorkflowState.KEY_USER_ID, userId);
+        output.addOutput(NodeIOConstants.OUTPUT_USER_ID, userId);
 
         log.info("START节点执行完成, userInput={}", userInput);
         return output;
@@ -173,20 +176,20 @@ public class StartNode extends AbstractWorkflowNode {
 
     private String determineMediaType(String ext) {
         if (StrUtil.isBlank(ext))
-            return "file";
+            return MediaTypeConstants.TYPE_FILE;
         ext = ext.toLowerCase();
-        if (List.of("jpg", "jpeg", "png", "gif", "webp", "bmp").contains(ext))
-            return "image";
-        if (List.of("mp3", "wav", "flac", "aac", "ogg", "m4a").contains(ext))
-            return "audio";
-        if (List.of("mp4", "mov", "avi", "mkv", "webm").contains(ext))
-            return "video";
-        return "file";
+        if (MediaTypeConstants.IMAGE_EXTENSIONS.contains(ext))
+            return MediaTypeConstants.TYPE_IMAGE;
+        if (MediaTypeConstants.AUDIO_EXTENSIONS.contains(ext))
+            return MediaTypeConstants.TYPE_AUDIO;
+        if (MediaTypeConstants.VIDEO_EXTENSIONS.contains(ext))
+            return MediaTypeConstants.TYPE_VIDEO;
+        return MediaTypeConstants.TYPE_FILE;
     }
 
     @Override
     public String getNodeType() {
-        return "START";
+        return NodeTypeConstants.START;
     }
 
     @Override

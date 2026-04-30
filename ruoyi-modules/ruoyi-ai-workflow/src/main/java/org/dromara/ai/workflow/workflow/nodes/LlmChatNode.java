@@ -10,6 +10,10 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import java.io.IOException;
+
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialThinking;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.execution.core.IToolProvider;
 
@@ -20,6 +24,10 @@ import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
 import org.dromara.ai.api.enums.SseEventType;
 import org.dromara.ai.knowledge.domain.vo.KmRetrievalResultVo;
+import org.dromara.ai.workflow.constant.MediaTypeConstants;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -50,7 +58,7 @@ import org.dromara.common.core.utils.MessageUtils;
  * @date 2026-01-02
  */
 @Slf4j
-@Component("LLM_CHAT")
+@Component(NodeTypeConstants.LLM_CHAT)
 public class LlmChatNode extends AbstractAiWorkflowNode {
 
     @Autowired
@@ -81,9 +89,9 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         DialogConfig dialogConfig = readDialogConfig(context);
 
         // systemPrompt 支持从 inputs 动态获取，也支持从 config 静态配置
-        String systemPrompt = (String) context.getInput("systemPrompt");
+        String systemPrompt = (String) context.getInput(NodeIOConstants.INPUT_SYSTEM_PROMPT);
         if (systemPrompt == null) {
-            systemPrompt = context.getConfigAsString("systemPrompt");
+            systemPrompt = context.getConfigAsString(NodeConfigConstants.CFG_DIALOG_SYSTEM_PROMPT);
         }
 
         // 加载模型（基类统一处理）
@@ -91,7 +99,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         KmModel model = (KmModel) modelAndProvider[0];
         KmModelProvider provider = (KmModelProvider) modelAndProvider[1];
 
-        String userInput = (String) context.getInput("userInput");
+        String userInput = (String) context.getInput(NodeIOConstants.INPUT_USER_INPUT);
         if (userInput == null) {
             throw new RuntimeException(MessageUtils.message("ai.workflow.node.llm.missing_user_input"));
         }
@@ -103,7 +111,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         SseEmitter emitter = context.getSseEmitter();
 
         // 尝试从输入参数 retrievedDocs 获取引用信息
-        Object retrievedDocsObj = context.getInput("retrievedDocs");
+        Object retrievedDocsObj = context.getInput(NodeIOConstants.INPUT_RETRIEVED_DOCS);
         if (retrievedDocsObj instanceof List && emitter != null) {
             try {
                 List<?> list = (List<?>) retrievedDocsObj;
@@ -160,7 +168,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         List<Map<String, Object>> toolRefs = new ArrayList<>();
 
         // 1. 兼容旧的 tools 配置
-        Object toolsObj = context.getConfig("tools");
+        Object toolsObj = context.getConfig(NodeConfigConstants.CFG_LLM_TOOLS);
         if (toolsObj instanceof List) {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> legacyTools = (List<Map<String, Object>>) toolsObj;
@@ -168,36 +176,36 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         }
 
         // 2. 处理 builtinToolIds
-        Object builtinIdsObj = context.getConfig("builtinToolIds");
+        Object builtinIdsObj = context.getConfig(NodeConfigConstants.CFG_LLM_BUILTIN_TOOL_IDS);
         if (builtinIdsObj instanceof List) {
             List<?> builtinIds = (List<?>) builtinIdsObj;
             for (Object id : builtinIds) {
                 Map<String, Object> ref = new HashMap<>();
-                ref.put("type", "builtin");
+                ref.put("type", NodeConfigConstants.CFG_TOOL_TYPE_BUILTIN);
                 ref.put("id", id);
                 toolRefs.add(ref);
             }
         }
 
         // 3. 处理 mcpServerIds
-        Object mcpIdsObj = context.getConfig("mcpServerIds");
+        Object mcpIdsObj = context.getConfig(NodeConfigConstants.CFG_LLM_MCP_SERVER_IDS);
         if (mcpIdsObj instanceof List) {
             List<?> mcpIds = (List<?>) mcpIdsObj;
             for (Object id : mcpIds) {
                 Map<String, Object> ref = new HashMap<>();
-                ref.put("type", "mcp");
+                ref.put("type", NodeConfigConstants.CFG_TOOL_TYPE_MCP);
                 ref.put("id", id);
                 toolRefs.add(ref);
             }
         }
 
         // 4. 处理 skillIds
-        Object skillIdsObj = context.getConfig("skillIds");
+        Object skillIdsObj = context.getConfig(NodeConfigConstants.CFG_LLM_SKILL_IDS);
         if (skillIdsObj instanceof List) {
             List<?> skillIds = (List<?>) skillIdsObj;
             for (Object id : skillIds) {
                 Map<String, Object> ref = new HashMap<>();
-                ref.put("type", "skill");
+                ref.put("type", NodeConfigConstants.CFG_TOOL_TYPE_SKILL);
                 ref.put("id", id);
                 toolRefs.add(ref);
             }
@@ -205,7 +213,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
 
         List<ToolBinding> toolBindings = toolProviderService.resolveBindings(toolRefs);
         List<ToolSpecification> toolSpecs = toolBindings.stream().map(ToolBinding::getSpecification).toList();
-        Boolean enableToolTrace = context.getConfigAsBoolean("enableToolTrace", false);
+        Boolean enableToolTrace = context.getConfigAsBoolean(NodeConfigConstants.CFG_LLM_ENABLE_TOOL_TRACE, false);
 
         ChatModel chatModel = null;
         StreamingChatModel streamingModel = null;
@@ -216,20 +224,20 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
             chatModel = modelBuilder.buildChatModel(model, provider.getProviderKey(), temperature, maxTokens);
         }
 
-        dev.langchain4j.model.chat.response.ChatResponse response = null;
+        ChatResponse response = null;
 
         while (true) {
             if (Boolean.TRUE.equals(streamOutput)) {
                 CountDownLatch latch = new CountDownLatch(1);
-                AtomicReference<dev.langchain4j.model.chat.response.ChatResponse> responseRef = new AtomicReference<>();
+                AtomicReference<ChatResponse> responseRef = new AtomicReference<>();
                 AtomicReference<Exception> errorRef = new AtomicReference<>();
 
-                dev.langchain4j.model.chat.response.StreamingChatResponseHandler handler = new dev.langchain4j.model.chat.response.StreamingChatResponseHandler() {
+                StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
                     @Override
                     public void onPartialResponse(String token) {
                         if (emitter != null) {
                             try {
-                                emitter.send(SseEmitter.event().data(token));
+                                emitter.send(SseEmitter.event().name(SseEventType.THINKING.getEventName()).data(token));
                             } catch (IOException e) {
                                 log.error("发送SSE消息失败", e);
                             }
@@ -237,7 +245,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                     }
 
                     @Override
-                    public void onPartialThinking(dev.langchain4j.model.chat.response.PartialThinking pt) {
+                    public void onPartialThinking(PartialThinking pt) {
                         if (emitter != null && pt.text() != null) {
                             try {
                                 emitter.send(SseEmitter.event()
@@ -250,7 +258,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                     }
 
                     @Override
-                    public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse r) {
+                    public void onCompleteResponse(ChatResponse r) {
                         responseRef.set(r);
                         latch.countDown();
                     }
@@ -326,7 +334,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                             traceData.put("type", "tool_call_start");
                             traceData.put("toolName", toolExecutionRequest.name());
                             traceData.put("arguments", toolExecutionRequest.arguments());
-                            emitter.send(SseEmitter.event().name("TOOL_TRACE").data(traceData));
+                            emitter.send(SseEmitter.event().name(SseEventType.TOOL_TRACE.getEventName()).data(traceData));
                         } catch (IOException e) {
                             log.error("发送工具追踪SSE事件失败", e);
                         }
@@ -352,7 +360,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                                 } else if (ic.image().base64Data() != null) {
                                     // base64 图片 → 构造 data URL 传给支持的模型
                                     String mimeType = ic.image().mimeType() != null ? ic.image().mimeType()
-                                            : "image/png";
+                                            : MediaTypeConstants.MIME_IMAGE_PNG;
                                     imageUrl = "data:" + mimeType + ";base64," + ic.image().base64Data();
                                     log.info("LLM_CHAT节点 - 工具返回了base64图片内容, mimeType={}", mimeType);
                                 }
@@ -375,7 +383,7 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
                             traceData.put("toolName", toolExecutionRequest.name());
                             traceData.put("result", resultText);
                             traceData.put("hasRichContent", toolResult.hasContents());
-                            emitter.send(SseEmitter.event().name("TOOL_TRACE").data(traceData));
+                            emitter.send(SseEmitter.event().name(SseEventType.TOOL_TRACE.getEventName()).data(traceData));
                         } catch (IOException e) {
                             log.error("发送工具追踪结果SSE事件失败", e);
                         }
@@ -389,25 +397,25 @@ public class LlmChatNode extends AbstractAiWorkflowNode {
         // 获取并记录 token 使用情况（基类统一处理）
         Map<String, Object> tokenUsageMap = recordTokenUsage(response, context);
         if (tokenUsageMap != null) {
-            output.addOutput("tokenUsage", tokenUsageMap);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsageMap);
         }
 
         // 保存输出
         AiMessage aiMessage = response.aiMessage();
         String responseText = aiMessage.text();
         log.info("LLM_CHAT节点执行完成, response={}", responseText);
-        output.addOutput("response", responseText);
+        output.addOutput(NodeIOConstants.OUTPUT_RESPONSE, responseText);
         if (aiMessage.thinking() != null) {
-            output.addOutput("reasoningContent", aiMessage.thinking());
+            output.addOutput(NodeIOConstants.OUTPUT_REASONING_CONTENT, aiMessage.thinking());
         }
-        context.setGlobalValue("aiResponse", responseText);
+        context.setGlobalValue(NodeIOConstants.GLOBAL_AI_RESPONSE, responseText);
 
         return output;
     }
 
     @Override
     public String getNodeType() {
-        return "LLM_CHAT";
+        return NodeTypeConstants.LLM_CHAT;
     }
 
     @Override

@@ -10,6 +10,9 @@ import org.dromara.ai.knowledge.mapper.KmDocumentMapper;
 import org.dromara.ai.knowledge.service.IKmEmbeddingService;
 import org.dromara.ai.knowledge.service.IKmEtlService;
 import org.dromara.ai.knowledge.util.StatusMetaUtils;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -46,7 +49,7 @@ import java.util.stream.IntStream;
  * @date 2026-04-02
  */
 @Slf4j
-@Component("DATASET_STORAGE")
+@Component(NodeTypeConstants.DATASET_STORAGE)
 @RequiredArgsConstructor
 public class DatasetStorageNode extends AbstractWorkflowNode {
 
@@ -63,12 +66,12 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
         log.info("执行 DATASET_STORAGE 节点");
 
         // 1. 获取必要输入
-        String text = (String) context.getInput("text");
+        String text = (String) context.getInput(NodeIOConstants.OUTPUT_TEXT);
         if (text == null) {
             throw new IllegalArgumentException("DATASET_STORAGE node requires input: text");
         }
 
-        Long documentId = (Long) context.getInput("documentId");
+        Long documentId = (Long) context.getInput(NodeIOConstants.OUTPUT_DOCUMENT_ID);
         log.info("DATASET_STORAGE resolved documentId: {}", documentId);
         if (documentId == null) {
             throw new IllegalArgumentException("DATASET_STORAGE node requires input: documentId");
@@ -96,7 +99,7 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
             log.warn("文本分块结果为空，跳过存储: documentId={}", documentId);
             updateDocumentStatus(document, 2, null);
             NodeOutput output = new NodeOutput();
-            output.addOutput("chunkCount", 0);
+            output.addOutput(NodeIOConstants.OUTPUT_CHUNK_COUNT, 0);
             return output;
         }
 
@@ -114,7 +117,7 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
         log.info("DATASET_STORAGE 完成: documentId={}, chunkCount={}", documentId, chunkResults.size());
 
         NodeOutput output = new NodeOutput();
-        output.addOutput("chunkCount", chunkResults.size());
+        output.addOutput(NodeIOConstants.OUTPUT_CHUNK_COUNT, chunkResults.size());
         return output;
     }
 
@@ -132,7 +135,7 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
 
     private int resolveChunkSize(NodeContext context, KmDataset dataset) {
         // 优先读取节点配置
-        Object nodeChunkSize = context.getConfig("chunkSize");
+        Object nodeChunkSize = context.getConfig(NodeConfigConstants.CFG_FILE_CHUNK_SIZE);
         if (nodeChunkSize instanceof Number) {
             return ((Number) nodeChunkSize).intValue();
         }
@@ -145,7 +148,7 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
 
     private int resolveOverlap(NodeContext context, KmDataset dataset) {
         // 优先读取节点配置
-        Object nodeOverlap = context.getConfig("overlap");
+        Object nodeOverlap = context.getConfig(NodeConfigConstants.CFG_FILE_OVERLAP);
         if (nodeOverlap instanceof Number) {
             return ((Number) nodeOverlap).intValue();
         }
@@ -165,7 +168,7 @@ public class DatasetStorageNode extends AbstractWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "DATASET_STORAGE";
+        return NodeTypeConstants.DATASET_STORAGE;
     }
 
     @Override

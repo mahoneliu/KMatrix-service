@@ -10,6 +10,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.model.domain.KmModel;
 import org.dromara.ai.model.domain.KmModelProvider;
+import org.dromara.ai.workflow.constant.NodeConfigConstants;
+import org.dromara.ai.workflow.constant.NodeIOConstants;
+import org.dromara.ai.workflow.constant.NodeTypeConstants;
 import org.dromara.ai.workflow.workflow.core.AbstractAiWorkflowNode;
 import org.dromara.ai.workflow.workflow.core.NodeContext;
 import org.dromara.ai.workflow.workflow.core.NodeOutput;
@@ -44,7 +47,7 @@ import java.util.regex.Pattern;
  * @date 2026-05-01
  */
 @Slf4j
-@Component("PARAMETER_EXTRACTOR")
+@Component(NodeTypeConstants.PARAMETER_EXTRACTOR)
 public class ParameterExtractorNode extends AbstractAiWorkflowNode {
 
     @Override
@@ -52,20 +55,20 @@ public class ParameterExtractorNode extends AbstractAiWorkflowNode {
         log.info("执行 PARAMETER_EXTRACTOR 节点");
 
         // 1. 获取输入文本
-        String inputText = (String) context.getInput("inputText");
+        String inputText = (String) context.getInput(NodeIOConstants.INPUT_INPUT_TEXT);
         if (StrUtil.isBlank(inputText)) {
             throw new IllegalArgumentException("PARAMETER_EXTRACTOR 节点缺少输入参数: inputText");
         }
 
         // 2. 读取参数定义列表
-        Object parametersObj = context.getConfig("parameters");
+        Object parametersObj = context.getConfig(NodeConfigConstants.CFG_PE_PARAMETERS);
         List<Map<String, Object>> parameters = parseParameterList(parametersObj);
         if (parameters.isEmpty()) {
             throw new IllegalArgumentException("PARAMETER_EXTRACTOR 节点未配置任何参数定义");
         }
 
         // 3. 读取提取指令
-        String extractionInstructions = context.getConfigAsString("extractionInstructions", "");
+        String extractionInstructions = context.getConfigAsString(NodeConfigConstants.CFG_PE_EXTRACTION_INSTRUCTIONS, "");
 
         // 4. 加载模型
         Object[] mp = loadModelAndProvider(context);
@@ -96,7 +99,7 @@ public class ParameterExtractorNode extends AbstractAiWorkflowNode {
 
         // 9. 构建输出
         NodeOutput output = new NodeOutput();
-        output.addOutput("extractedJson", extracted.toString());
+        output.addOutput(NodeIOConstants.OUTPUT_EXTRACTED_JSON, extracted.toString());
 
         // 将每个参数单独输出
         for (Map<String, Object> param : parameters) {
@@ -111,7 +114,7 @@ public class ParameterExtractorNode extends AbstractAiWorkflowNode {
         // 记录 token 使用
         Map<String, Object> tokenUsage = context.getTokenUsage();
         if (tokenUsage != null) {
-            output.addOutput("tokenUsage", tokenUsage);
+            output.addOutput(NodeIOConstants.OUTPUT_TOKEN_USAGE, tokenUsage);
         }
 
         log.info("PARAMETER_EXTRACTOR 节点执行完成");
@@ -215,7 +218,7 @@ public class ParameterExtractorNode extends AbstractAiWorkflowNode {
 
     @Override
     public String getNodeType() {
-        return "PARAMETER_EXTRACTOR";
+        return NodeTypeConstants.PARAMETER_EXTRACTOR;
     }
 
     @Override
