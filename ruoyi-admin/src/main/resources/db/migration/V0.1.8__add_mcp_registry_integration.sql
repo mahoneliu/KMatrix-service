@@ -149,7 +149,7 @@ ON CONFLICT (source_id) DO NOTHING;
 -- V0.1.8: 新增菜单数据：MCP 注册源集成
 -- Parent ID 2100 是 "MCP管理"（挂在 MCP 管理父菜单下）
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark) VALUES
-(2140, 'MCP注册源', 2100, 5, 'mcp-registry', 'extend/mcp-manager/registry/index', 1, 0, 'C', '0', '0', 'ai:mcpRegistry:list', 'mdi:store-search', 1, NOW(), 'MCP 注册源浏览与导入'),
+(2140, 'MCP注册源', 2100, 5, 'mcp-registry', 'execution/mcp-manager/registry/index', 1, 0, 'C', '0', '0', 'ai:mcpRegistry:list', 'mdi:store-search', 1, NOW(), 'MCP 注册源浏览与导入'),
 (2141, '注册源查询', 2140, 1, '', '', 1, 0, 'F', '0', '0', 'ai:mcpRegistry:list', '#', 1, NOW(), ''),
 (2142, '注册源配置', 2140, 2, '', '', 1, 0, 'F', '0', '0', 'ai:mcpRegistry:edit', '#', 1, NOW(), ''),
 (2143, '注册源删除', 2140, 3, '', '', 1, 0, 'F', '0', '0', 'ai:mcpRegistry:remove', '#', 1, NOW(), ''),
@@ -160,16 +160,3 @@ ON CONFLICT (menu_id) DO NOTHING;
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, menu_id FROM sys_menu WHERE menu_id IN (2140, 2141, 2142, 2143, 2144)
 ON CONFLICT (role_id, menu_id) DO NOTHING;
-
--- 菜单层级调整，AI往上移
-update sys_menu set parent_id=0 where parent_id=2000;
-delete from sys_menu where menu_id = 2000;
-update sys_menu set menu_name='对接与扩展',path='extend', order_num=1 where menu_id=2100;
-update sys_menu set  order_num=2 where menu_id=2400;
-update sys_menu set  order_num=3 where menu_id=2200;
-update sys_menu set  order_num=4 where menu_id=2300;
-update sys_menu set  order_num=5 where menu_id=1;
-update sys_menu set  order_num=6 where menu_id=3;
-update sys_menu set  order_num=7 where menu_id=2;
-update sys_menu set  order_num=8 where menu_id=4;
-update sys_menu set  order_num=9 where menu_id=5;
