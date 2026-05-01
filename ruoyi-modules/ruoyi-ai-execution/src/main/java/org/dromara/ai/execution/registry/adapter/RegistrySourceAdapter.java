@@ -19,7 +19,7 @@ public interface RegistrySourceAdapter {
     /**
      * 返回此适配器支持的来源平台标识
      * <p>
-     * 对应 {@link org.dromara.ai.registry.constant.McpRegistryConstants} 中的平台常量，
+     * 对应 {@link org.dromara.ai.execution.registry.constant.McpRegistryConstants} 中的平台常量，
      * 如 {@code "official"}、{@code "smithery"}。
      *
      * @return 平台标识字符串
