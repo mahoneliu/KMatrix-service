@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - develop
     paths-ignore:
       - 'README.md'
       - '.gitignore'
@@ -32,6 +33,7 @@ jobs:
 
 
     - name: 增量同步 Jar 包和依赖库 (RSYNC)
+      if: github.ref == 'refs/heads/master'
       run: |
         sudo apt-get update && sudo apt-get install -y sshpass rsync
         # 同步 Jar 包
@@ -49,6 +51,7 @@ jobs:
 
 
     - name: SSH 连接到 Ubuntu 并执行重启命令
+      if: github.ref == 'refs/heads/master'
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.UBUNTU_HOST }}
@@ -65,28 +68,33 @@ jobs:
           echo "部署命令执行完毕！"
 
     - name: 检出前端代码
+      if: github.ref == 'refs/heads/master'
       uses: actions/checkout@v4
       with:
         repository: mahoneliu/Kmatrix-ui
         path: kmatrix-ui
 
     - name: 配置 Node 环境及 pnpm
+      if: github.ref == 'refs/heads/master'
       uses: actions/setup-node@v4
       with:
         node-version: 20
 
     - name: 安装 pnpm
+      if: github.ref == 'refs/heads/master'
       uses: pnpm/action-setup@v3
       with:
         version: 9
 
     - name: 前端安装依赖并构建
+      if: github.ref == 'refs/heads/master'
       run: |
         pnpm install
         pnpm run build
       working-directory: ./kmatrix-ui
 
     - name: 登录阿里云 Docker Registry
+      if: github.ref == 'refs/heads/master'
       uses: docker/login-action@v3
       with:
         registry: registry.cn-guangzhou.aliyuncs.com
@@ -94,6 +102,7 @@ jobs:
         password: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
 
     - name: 准备并构建最新的 Docker 镜像
+      if: github.ref == 'refs/heads/master'
       run: |
         # 生成基于 Git SHA 的唯一版本号标签
         COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
