@@ -59,4 +59,19 @@ public class KmMcpServer extends BaseEntity {
      */
     private String delFlag;
 
+    /**
+     * 来源注册源 ID（关联 km_mcp_registry_source，手工导入时为 null）
+     */
+    private Long sourceRegistryId;
+
+    /**
+     * 来源注册源条目 ID（关联 km_mcp_registry_entry，手工导入时为 null）
+     */
+    private Long sourceEntryId;
+
+    /**
+     * 导入来源（manual=手工添加，registry=从注册源导入）
+     */
+    private String importSource;
+
 }

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.execution.registry.mapper.McpRegistryEntryMapper">
+
+    <!-- 全文搜索注册源条目 -->
+    <select id="searchEntries" resultType="org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO">
+        SELECT entry_id, entry_name, display_name, description, author, version,
+               transport_type, endpoint_url, command, args, source_platform,
+               dns_verified, entry_status, rating, use_count, tags, icon_url, homepage_url
+        FROM km_mcp_registry_entry
+        WHERE entry_status = 'active'
+        <if test="keyword != null and keyword != ''">
+            AND to_tsvector('simple', coalesce(entry_name, '') || ' ' || coalesce(display_name, '') || ' ' || coalesce(description, ''))
+                @@ plainto_tsquery('simple', #{keyword})
+        </if>
+        <if test="sourcePlatform != null and sourcePlatform != ''">
+            AND source_platform = #{sourcePlatform}
+        </if>
+        <if test="tags != null and tags != ''">
+            AND tags @> #{tags}::jsonb
+        </if>
+        ORDER BY
+        <if test="keyword != null and keyword != ''">
+            ts_rank(to_tsvector('simple', coalesce(entry_name, '') || ' ' || coalesce(display_name, '') || ' ' || coalesce(description, '')),
+                    plainto_tsquery('simple', #{keyword})) DESC,
+        </if>
+        entry_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计全文搜索结果总数 -->
+    <select id="countEntries" resultType="long">
+        SELECT COUNT(*)
+        FROM km_mcp_registry_entry
+        WHERE entry_status = 'active'
+        <if test="keyword != null and keyword != ''">
+            AND to_tsvector('simple', coalesce(entry_name, '') || ' ' || coalesce(display_name, '') || ' ' || coalesce(description, ''))
+                @@ plainto_tsquery('simple', #{keyword})
+        </if>
+        <if test="sourcePlatform != null and sourcePlatform != ''">
+            AND source_platform = #{sourcePlatform}
+        </if>
+        <if test="tags != null and tags != ''">
+            AND tags @> #{tags}::jsonb
+        </if>
+    </select>
+
+    <!-- 批量 UPSERT 注册源条目（PostgreSQL ON CONFLICT 语法） -->
+    <insert id="batchUpsert">
+        INSERT INTO km_mcp_registry_entry (entry_id, source_id, external_id, entry_name, display_name, description,
+            author, version, transport_type, endpoint_url, command, args, env_vars, packages,
+            dns_verified, source_platform, entry_status, rating, use_count, tags, icon_url, homepage_url,
+            create_time, update_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.entryId}, #{item.sourceId}, #{item.externalId}, #{item.entryName}, #{item.displayName},
+             #{item.description}, #{item.author}, #{item.version}, #{item.transportType}, #{item.endpointUrl},
+             #{item.command}, #{item.args}::jsonb, #{item.envVars}::jsonb, #{item.packages}::jsonb,
+             #{item.dnsVerified}, #{item.sourcePlatform}, #{item.entryStatus}, #{item.rating}, #{item.useCount},
+             #{item.tags}::jsonb, #{item.iconUrl}, #{item.homepageUrl}, #{item.createTime}, #{item.updateTime})
+        </foreach>
+        ON CONFLICT (source_id, external_id) DO UPDATE SET
+            entry_name     = EXCLUDED.entry_name,
+            display_name   = EXCLUDED.display_name,
+            description    = EXCLUDED.description,
+            author         = EXCLUDED.author,
+            version        = EXCLUDED.version,
+            transport_type = EXCLUDED.transport_type,
+            endpoint_url   = EXCLUDED.endpoint_url,
+            command        = EXCLUDED.command,
+            args           = EXCLUDED.args,
+            env_vars       = EXCLUDED.env_vars,
+            packages       = EXCLUDED.packages,
+            dns_verified   = EXCLUDED.dns_verified,
+            entry_status   = EXCLUDED.entry_status,
+            rating         = EXCLUDED.rating,
+            use_count      = EXCLUDED.use_count,
+            tags           = EXCLUDED.tags,
+            icon_url       = EXCLUDED.icon_url,
+            homepage_url   = EXCLUDED.homepage_url,
+            update_time    = EXCLUDED.update_time
+    </insert>
+
+    <!-- 将本次同步未出现的条目标记为 offline -->
+    <update id="markOfflineBySourceId">
+        UPDATE km_mcp_registry_entry
+        SET entry_status = 'offline',
+            update_time  = NOW()
+        WHERE source_id = #{sourceId}
+          AND entry_status = 'active'
+        <if test="activeExternalIds != null and activeExternalIds.size() > 0">
+            AND external_id NOT IN
+            <foreach collection="activeExternalIds" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+    </update>
+
+    <!-- 按注册源 ID 删除所有条目（用于删除注册源时级联清除） -->
+    <delete id="deleteBySourceId">
+        DELETE FROM km_mcp_registry_entry WHERE source_id = #{sourceId}
+    </delete>
+
+</mapper>

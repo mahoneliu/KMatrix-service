@@ -1,0 +1,358 @@
+{
+  "items": [
+    {
+      "id": "web-search-dashscope",
+      "name": "阿里云 Web 搜索",
+      "icon": "mdi:magnify",
+      "description": "通过阿里云 DashScope 提供的 Web 搜索能力，支持实时互联网内容检索，适用于需要获取最新信息的场景。",
+      "category": "搜索与信息检索",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp\", \"headers\": {\"Authorization\": \"Bearer ${API_KEY}\"}}",
+      "params": [
+        {
+          "key": "API_KEY",
+          "label": "DashScope API Key",
+          "required": true,
+          "description": "阿里云 DashScope API Key，可在阿里云控制台 -> 模型服务灵积 -> API-KEY 管理中获取"
+        }
+      ],
+      "configExample": "将 ${API_KEY} 替换为您的 DashScope API Key，例如：sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "id": "brave-search",
+      "name": "Brave Search",
+      "icon": "mdi:shield-search",
+      "description": "通过 Brave Search API 提供隐私优先的网络搜索能力，支持网页搜索和新闻搜索，无追踪、无过滤气泡。",
+      "category": "搜索与信息检索",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://api.search.brave.com/mcp\", \"headers\": {\"X-Subscription-Token\": \"${BRAVE_API_KEY}\"}}",
+      "params": [
+        {
+          "key": "BRAVE_API_KEY",
+          "label": "Brave Search API Key",
+          "required": true,
+          "description": "Brave Search API Key，可在 https://api.search.brave.com/app/keys 申请获取"
+        }
+      ],
+      "configExample": "将 ${BRAVE_API_KEY} 替换为您的 Brave Search API Key，例如：BSAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "id": "github-mcp",
+      "name": "GitHub MCP",
+      "icon": "mdi:github",
+      "description": "通过 GitHub MCP Server 访问 GitHub 仓库、Issues、Pull Requests、代码搜索等功能，支持代码审查和项目管理自动化。",
+      "category": "代码与开发",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://api.githubcopilot.com/mcp/\", \"headers\": {\"Authorization\": \"Bearer ${GITHUB_TOKEN}\"}}",
+      "params": [
+        {
+          "key": "GITHUB_TOKEN",
+          "label": "GitHub Personal Access Token",
+          "required": true,
+          "description": "GitHub 个人访问令牌（PAT），需要 repo、read:org 等权限，可在 GitHub Settings -> Developer settings -> Personal access tokens 中创建"
+        }
+      ],
+      "configExample": "将 ${GITHUB_TOKEN} 替换为您的 GitHub PAT，例如：ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "id": "gitlab-mcp",
+      "name": "GitLab MCP",
+      "icon": "mdi:gitlab",
+      "description": "通过 GitLab MCP Server 访问 GitLab 仓库、Issues、Merge Requests、CI/CD 流水线等功能，支持 GitLab 自托管实例。",
+      "category": "代码与开发",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"${GITLAB_URL}/api/v4/mcp\", \"headers\": {\"PRIVATE-TOKEN\": \"${GITLAB_TOKEN}\"}}",
+      "params": [
+        {
+          "key": "GITLAB_URL",
+          "label": "GitLab 实例地址",
+          "required": true,
+          "description": "GitLab 实例的根 URL，公有云使用 https://gitlab.com，自托管实例填写对应地址"
+        },
+        {
+          "key": "GITLAB_TOKEN",
+          "label": "GitLab Personal Access Token",
+          "required": true,
+          "description": "GitLab 个人访问令牌，需要 api 权限范围，可在 GitLab 用户设置 -> Access Tokens 中创建"
+        }
+      ],
+      "configExample": "将 ${GITLAB_URL} 替换为 GitLab 地址（如 https://gitlab.com），${GITLAB_TOKEN} 替换为您的 PAT"
+    },
+    {
+      "id": "aliyun-oss-mcp",
+      "name": "阿里云 OSS MCP",
+      "icon": "mdi:cloud-upload",
+      "description": "通过阿里云 OSS MCP Server 实现对象存储的文件上传、下载、列举、删除等操作，支持大文件分片上传。",
+      "category": "文件与存储",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://mcp.aliyuncs.com/oss/mcp\", \"headers\": {\"Authorization\": \"Bearer ${ACCESS_KEY_ID}:${ACCESS_KEY_SECRET}\"}, \"env\": {\"OSS_BUCKET\": \"${OSS_BUCKET}\", \"OSS_REGION\": \"${OSS_REGION}\"}}",
+      "params": [
+        {
+          "key": "ACCESS_KEY_ID",
+          "label": "AccessKey ID",
+          "required": true,
+          "description": "阿里云 AccessKey ID，可在阿里云控制台 -> 访问控制 -> AccessKey 管理中获取"
+        },
+        {
+          "key": "ACCESS_KEY_SECRET",
+          "label": "AccessKey Secret",
+          "required": true,
+          "description": "阿里云 AccessKey Secret，与 AccessKey ID 配套使用，请妥善保管"
+        },
+        {
+          "key": "OSS_BUCKET",
+          "label": "OSS Bucket 名称",
+          "required": true,
+          "description": "要操作的 OSS Bucket 名称，例如：my-bucket"
+        },
+        {
+          "key": "OSS_REGION",
+          "label": "OSS Region",
+          "required": true,
+          "description": "OSS Bucket 所在地域，例如：oss-cn-hangzhou、oss-cn-beijing"
+        }
+      ],
+      "configExample": "填写 AccessKey ID/Secret、Bucket 名称和地域信息，例如地域填写 oss-cn-hangzhou"
+    },
+    {
+      "id": "filesystem-mcp",
+      "name": "Filesystem MCP",
+      "icon": "mdi:folder-open",
+      "description": "通过 Filesystem MCP Server 访问本地文件系统，支持文件读写、目录浏览、文件搜索等操作，适用于本地文档处理场景。",
+      "category": "文件与存储",
+      "transportType": "sse",
+      "configTemplate": "{\"url\": \"http://${HOST}:${PORT}/sse\", \"env\": {\"ALLOWED_PATHS\": \"${ALLOWED_PATHS}\"}}",
+      "params": [
+        {
+          "key": "HOST",
+          "label": "服务主机地址",
+          "required": true,
+          "description": "Filesystem MCP Server 部署的主机地址，本地部署填写 localhost 或 127.0.0.1"
+        },
+        {
+          "key": "PORT",
+          "label": "服务端口",
+          "required": true,
+          "description": "Filesystem MCP Server 监听的端口号，默认为 3000"
+        },
+        {
+          "key": "ALLOWED_PATHS",
+          "label": "允许访问的路径",
+          "required": true,
+          "description": "允许 MCP Server 访问的文件系统路径，多个路径用逗号分隔，例如：/home/user/documents,/tmp"
+        }
+      ],
+      "configExample": "将 ${HOST} 替换为服务地址，${PORT} 替换为端口（如 3000），${ALLOWED_PATHS} 替换为允许访问的目录路径"
+    },
+    {
+      "id": "postgresql-mcp",
+      "name": "PostgreSQL MCP",
+      "icon": "mdi:database",
+      "description": "通过 PostgreSQL MCP Server 执行 SQL 查询、管理数据库结构、查看表信息等操作，支持只读和读写两种模式。",
+      "category": "数据库",
+      "transportType": "sse",
+      "configTemplate": "{\"url\": \"http://${HOST}:${PORT}/sse\", \"env\": {\"DATABASE_URL\": \"postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}\"}}",
+      "params": [
+        {
+          "key": "HOST",
+          "label": "MCP 服务主机地址",
+          "required": true,
+          "description": "PostgreSQL MCP Server 部署的主机地址"
+        },
+        {
+          "key": "PORT",
+          "label": "MCP 服务端口",
+          "required": true,
+          "description": "PostgreSQL MCP Server 监听的端口号，默认为 5433"
+        },
+        {
+          "key": "DB_USER",
+          "label": "数据库用户名",
+          "required": true,
+          "description": "PostgreSQL 数据库用户名"
+        },
+        {
+          "key": "DB_PASSWORD",
+          "label": "数据库密码",
+          "required": true,
+          "description": "PostgreSQL 数据库密码"
+        },
+        {
+          "key": "DB_HOST",
+          "label": "数据库主机地址",
+          "required": true,
+          "description": "PostgreSQL 数据库服务器地址，例如：localhost 或 192.168.1.100"
+        },
+        {
+          "key": "DB_PORT",
+          "label": "数据库端口",
+          "required": true,
+          "description": "PostgreSQL 数据库端口，默认为 5432"
+        },
+        {
+          "key": "DB_NAME",
+          "label": "数据库名称",
+          "required": true,
+          "description": "要连接的 PostgreSQL 数据库名称"
+        }
+      ],
+      "configExample": "填写 MCP 服务地址和 PostgreSQL 连接信息，例如：postgresql://admin:password@localhost:5432/mydb"
+    },
+    {
+      "id": "mysql-mcp",
+      "name": "MySQL MCP",
+      "icon": "mdi:database-outline",
+      "description": "通过 MySQL MCP Server 执行 SQL 查询、管理数据库结构、查看表信息等操作，支持 MySQL 5.7+ 和 MariaDB。",
+      "category": "数据库",
+      "transportType": "sse",
+      "configTemplate": "{\"url\": \"http://${HOST}:${PORT}/sse\", \"env\": {\"MYSQL_HOST\": \"${DB_HOST}\", \"MYSQL_PORT\": \"${DB_PORT}\", \"MYSQL_USER\": \"${DB_USER}\", \"MYSQL_PASSWORD\": \"${DB_PASSWORD}\", \"MYSQL_DATABASE\": \"${DB_NAME}\"}}",
+      "params": [
+        {
+          "key": "HOST",
+          "label": "MCP 服务主机地址",
+          "required": true,
+          "description": "MySQL MCP Server 部署的主机地址"
+        },
+        {
+          "key": "PORT",
+          "label": "MCP 服务端口",
+          "required": true,
+          "description": "MySQL MCP Server 监听的端口号，默认为 3306"
+        },
+        {
+          "key": "DB_HOST",
+          "label": "数据库主机地址",
+          "required": true,
+          "description": "MySQL 数据库服务器地址，例如：localhost 或 192.168.1.100"
+        },
+        {
+          "key": "DB_PORT",
+          "label": "数据库端口",
+          "required": true,
+          "description": "MySQL 数据库端口，默认为 3306"
+        },
+        {
+          "key": "DB_USER",
+          "label": "数据库用户名",
+          "required": true,
+          "description": "MySQL 数据库用户名"
+        },
+        {
+          "key": "DB_PASSWORD",
+          "label": "数据库密码",
+          "required": true,
+          "description": "MySQL 数据库密码"
+        },
+        {
+          "key": "DB_NAME",
+          "label": "数据库名称",
+          "required": true,
+          "description": "要连接的 MySQL 数据库名称"
+        }
+      ],
+      "configExample": "填写 MCP 服务地址和 MySQL 连接信息，数据库主机、端口、用户名、密码和数据库名称均为必填项"
+    },
+    {
+      "id": "feishu-mcp",
+      "name": "飞书 MCP",
+      "icon": "mdi:bird",
+      "description": "通过飞书 MCP Server 访问飞书消息、文档、日历、任务等功能，支持发送消息、创建文档、管理日程等自动化操作。",
+      "category": "通信与协作",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://open.feishu.cn/mcp/v1\", \"headers\": {\"Authorization\": \"Bearer ${FEISHU_ACCESS_TOKEN}\"}, \"env\": {\"APP_ID\": \"${FEISHU_APP_ID}\", \"APP_SECRET\": \"${FEISHU_APP_SECRET}\"}}",
+      "params": [
+        {
+          "key": "FEISHU_APP_ID",
+          "label": "飞书应用 App ID",
+          "required": true,
+          "description": "飞书开放平台应用的 App ID，可在飞书开放平台 -> 应用管理中获取"
+        },
+        {
+          "key": "FEISHU_APP_SECRET",
+          "label": "飞书应用 App Secret",
+          "required": true,
+          "description": "飞书开放平台应用的 App Secret，与 App ID 配套使用"
+        },
+        {
+          "key": "FEISHU_ACCESS_TOKEN",
+          "label": "飞书 Access Token",
+          "required": true,
+          "description": "飞书 tenant_access_token 或 user_access_token，用于 API 鉴权"
+        }
+      ],
+      "configExample": "需要先在飞书开放平台创建应用并获取 App ID 和 App Secret，然后通过 OAuth 流程获取 Access Token"
+    },
+    {
+      "id": "dingtalk-mcp",
+      "name": "钉钉 MCP",
+      "icon": "mdi:message-text",
+      "description": "通过钉钉 MCP Server 访问钉钉消息、群组、日程、文档等功能，支持发送通知、创建群聊、管理任务等自动化操作。",
+      "category": "通信与协作",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://api.dingtalk.com/mcp/v1\", \"headers\": {\"x-acs-dingtalk-access-token\": \"${DINGTALK_ACCESS_TOKEN}\"}, \"env\": {\"APP_KEY\": \"${DINGTALK_APP_KEY}\", \"APP_SECRET\": \"${DINGTALK_APP_SECRET}\"}}",
+      "params": [
+        {
+          "key": "DINGTALK_APP_KEY",
+          "label": "钉钉应用 AppKey",
+          "required": true,
+          "description": "钉钉开放平台应用的 AppKey，可在钉钉开放平台 -> 应用管理中获取"
+        },
+        {
+          "key": "DINGTALK_APP_SECRET",
+          "label": "钉钉应用 AppSecret",
+          "required": true,
+          "description": "钉钉开放平台应用的 AppSecret，与 AppKey 配套使用"
+        },
+        {
+          "key": "DINGTALK_ACCESS_TOKEN",
+          "label": "钉钉 Access Token",
+          "required": true,
+          "description": "钉钉 API 访问令牌，通过 AppKey 和 AppSecret 调用 gettoken 接口获取"
+        }
+      ],
+      "configExample": "需要先在钉钉开放平台创建应用，获取 AppKey 和 AppSecret，再调用 gettoken 接口获取 Access Token"
+    },
+    {
+      "id": "huggingface-mcp",
+      "name": "HuggingFace MCP",
+      "icon": "mdi:robot-happy",
+      "description": "通过 HuggingFace MCP Server 访问 HuggingFace Hub 上的模型、数据集、Spaces 等资源，支持模型推理、数据集查询等操作。",
+      "category": "AI 与模型",
+      "transportType": "streamable_http",
+      "configTemplate": "{\"url\": \"https://huggingface.co/mcp\", \"headers\": {\"Authorization\": \"Bearer ${HF_TOKEN}\"}}",
+      "params": [
+        {
+          "key": "HF_TOKEN",
+          "label": "HuggingFace API Token",
+          "required": true,
+          "description": "HuggingFace 用户访问令牌（User Access Token），可在 https://huggingface.co/settings/tokens 中创建，需要 read 权限"
+        }
+      ],
+      "configExample": "将 ${HF_TOKEN} 替换为您的 HuggingFace API Token，例如：hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "id": "time-mcp",
+      "name": "时间工具 MCP",
+      "icon": "mdi:clock-outline",
+      "description": "提供时间和日期相关工具，支持获取当前时间、时区转换、日期计算、时间格式化等操作，无需额外配置即可使用。",
+      "category": "其他",
+      "transportType": "sse",
+      "configTemplate": "{\"url\": \"http://${HOST}:${PORT}/sse\"}",
+      "params": [
+        {
+          "key": "HOST",
+          "label": "服务主机地址",
+          "required": true,
+          "description": "时间工具 MCP Server 部署的主机地址，本地部署填写 localhost 或 127.0.0.1"
+        },
+        {
+          "key": "PORT",
+          "label": "服务端口",
+          "required": true,
+          "description": "时间工具 MCP Server 监听的端口号，默认为 8080"
+        }
+      ],
+      "configExample": "将 ${HOST} 替换为服务地址（如 localhost），${PORT} 替换为端口号（如 8080）"
+    }
+  ]
+}
