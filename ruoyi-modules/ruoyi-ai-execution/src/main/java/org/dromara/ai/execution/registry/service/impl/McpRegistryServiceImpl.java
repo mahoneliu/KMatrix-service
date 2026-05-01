@@ -93,6 +93,8 @@ public class McpRegistryServiceImpl implements McpRegistryService {
 
             // 6. 转换 DTO -> Entity
             List<KmMcpRegistryEntry> entities = dtoList.stream()
+                    // 额外防御校验：确保唯一标识不为空
+                    .filter(dto -> StrUtil.isNotBlank(dto.getExternalId()) && StrUtil.isNotBlank(dto.getEntryName()))
                     .map(dto -> convertToEntity(dto, sourceId))
                     .collect(Collectors.toList());
 

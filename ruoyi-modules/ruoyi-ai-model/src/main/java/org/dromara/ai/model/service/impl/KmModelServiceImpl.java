@@ -209,7 +209,7 @@ public class KmModelServiceImpl implements IKmModelService {
         try {
             // 参数验证
             if (StrUtil.isBlank(bo.getModelKey())) {
-                return "基础模型不能为空";
+                return "模型标识不能为空";
             }
             if (bo.getProviderId() == null) {
                 return "供应商ID不能为空";

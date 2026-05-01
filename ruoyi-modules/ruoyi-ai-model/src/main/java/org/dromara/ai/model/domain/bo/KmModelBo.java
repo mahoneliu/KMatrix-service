@@ -41,7 +41,7 @@ public class KmModelBo extends BaseEntity {
     private String modelType;
 
     /**
-     * 基础模型（如 gpt-4）
+     * 模型标识（如 gpt-4）
      */
     private String modelKey;
 

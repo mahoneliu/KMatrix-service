@@ -156,9 +156,9 @@ public class ModelConnectionTester {
             }
 
             // 如果使用自定义端点 (通常是为了兼容 OpenAI)，则转为兼容模式测试
-//            if (StrUtil.isNotBlank(bo.getApiBase()) && bo.getApiBase().contains("/v1")) {
-//                return testOpenAiCompatible(bo, "通义千问/百炼");
-//            }
+            if (StrUtil.isNotBlank(bo.getApiBase()) && bo.getApiBase().contains("/v1")) {
+                return testOpenAiCompatible(bo, "通义千问/百炼");
+            }
 
             String type = bo.getModelType();
             if (StrUtil.isBlank(type)) {

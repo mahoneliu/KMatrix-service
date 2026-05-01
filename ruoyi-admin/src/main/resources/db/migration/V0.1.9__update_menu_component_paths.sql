@@ -61,3 +61,10 @@ UPDATE sys_menu SET parent_id=2500, component = 'execution/skill-manager/index' 
 -- 对应前端 views/execution/mcp-manager/registry/index.vue，需同步更新。
 UPDATE sys_menu SET parent_id=2500, component = 'execution/mcp-manager/registry/index' WHERE menu_id = 2140;
 
+-- 修正 Smithery 注册源的 API 基础 URL。
+-- 之前错误配置为 https://registry.smithery.ai，应为 https://api.smithery.ai。
+
+UPDATE km_mcp_registry_source
+SET api_base_url = 'https://api.smithery.ai',
+    update_time = CURRENT_TIMESTAMP
+WHERE source_id = 2 AND platform = 'smithery';

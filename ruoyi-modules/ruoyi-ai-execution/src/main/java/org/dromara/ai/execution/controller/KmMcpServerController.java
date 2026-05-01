@@ -54,6 +54,22 @@ public class KmMcpServerController extends BaseController {
     }
 
     /**
+     * 查询 MCP Server 提供的工具列表
+     */
+    @SaCheckPermission("ai:mcpServer:list")
+    @GetMapping("/{serverId}/tools")
+    public R<List<McpConnectionTestResultVo.McpToolVo>> listTools(@PathVariable Long serverId) {
+        List<ToolSpecification> tools = mcpClientManager.listTools(serverId);
+        List<McpConnectionTestResultVo.McpToolVo> toolVos = tools.stream()
+            .map(t -> McpConnectionTestResultVo.McpToolVo.builder()
+                .name(t.name())
+                .description(t.description())
+                .build())
+            .collect(Collectors.toList());
+        return R.ok(toolVos);
+    }
+
+    /**
      * 查询 MCP Server 列表
      */
     @SaCheckPermission("ai:mcpServer:list")

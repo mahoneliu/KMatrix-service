@@ -67,7 +67,7 @@ public class KmModelProviderVo implements Serializable {
     private Integer sort;
 
     /**
-     * 支持的基础模型(JSON)
+     * 支持的模型标识(JSON)
      */
     private String models;
 

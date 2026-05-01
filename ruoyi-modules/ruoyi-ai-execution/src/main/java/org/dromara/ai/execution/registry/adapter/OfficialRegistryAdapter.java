@@ -74,6 +74,10 @@ public class OfficialRegistryAdapter implements RegistrySourceAdapter {
                 }
 
                 for (OfficialServerItem item : response.getServers()) {
+                    // 校验：跳过标识符为空的条目
+                    if (item == null || cn.hutool.core.util.StrUtil.isBlank(item.getName())) {
+                        continue;
+                    }
                     McpRegistryEntryDTO dto = mapToDto(item);
                     result.add(dto);
                 }

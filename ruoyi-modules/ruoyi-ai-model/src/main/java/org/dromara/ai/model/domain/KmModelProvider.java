@@ -69,7 +69,7 @@ public class KmModelProvider extends BaseEntity {
     private Integer sort;
 
     /**
-     * 支持的基础模型(JSON)
+     * 支持的模型标识(JSON)
      */
     @TableField(typeHandler = JsonTypeHandler.class)
     private String models;

@@ -37,10 +37,10 @@ public class McpTransportFactory {
             return null;
         }
         Map<String, String> headers = extractServerHeaders(server.getServerConfig());
-        
-        log.info("MCP Server 配置: serverId={}, transportType={}, serverConfig={}", 
-                 server.getServerId(), server.getTransportType(), server.getServerConfig());
-        
+
+        log.info("MCP Server 配置: serverId={}, transportType={}, serverConfig={}",
+                server.getServerId(), server.getTransportType(), server.getServerConfig());
+
         return createHttpTransport(serverUrl, headers, server.getTransportType());
     }
 
@@ -70,7 +70,8 @@ public class McpTransportFactory {
      *
      * @param url       MCP Server 的端点 URL
      * @param headers   自定义请求 Header，可为 null
-     * @param transport 传输协议类型: "sse" (旧版) 或 "streamable-http"/"streamable_http" (新版)
+     * @param transport 传输协议类型: "sse" (旧版) 或 "streamable-http"/"streamable_http"
+     *                  (新版)
      * @return McpTransport 实例
      */
     public static McpTransport createHttpTransport(String url, Map<String, String> headers, String transport) {
@@ -80,10 +81,10 @@ public class McpTransportFactory {
         String normalizedTransport = transport != null ? transport.replace("_", "-") : "streamable-http";
 
         if ("sse".equalsIgnoreCase(normalizedTransport)) {
-            // 使用旧版 SSE 协议,暂时保留Depressed的HttpMcpTransport，后续升级langchain4j要移除，StreamableHttp已是行业标准
+            // 使用旧版 SSE 协议
             log.info("使用 HttpMcpTransport (SSE 协议)");
-            var builder = StreamableHttpMcpTransport.builder()
-                    .url(url)
+            var builder = HttpMcpTransport.builder()
+                    .sseUrl(url)
                     .logRequests(true)
                     .logResponses(true);
             if (headers != null && !headers.isEmpty()) {
@@ -101,7 +102,7 @@ public class McpTransportFactory {
                 builder.customHeaders(headers);
             }
             return builder.build();
-        }else {
+        } else {
             // 如果要对接本地MCP，可以考虑扩展stdio协议
             log.error("不支持的传输协议: {}", transport);
             return null;

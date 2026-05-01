@@ -52,7 +52,7 @@ public class KmModelVo implements Serializable {
     private String modelType;
 
     /**
-     * 基础模型（如 gpt-4）
+     * 模型标识（如 gpt-4）
      */
     private String modelKey;
 
@@ -68,7 +68,7 @@ public class KmModelVo implements Serializable {
     private String apiBase;
 
     /**
-     * 支持的基础模型(JSON)
+     * 支持的模型标识(JSON)
      */
     private String config;
 

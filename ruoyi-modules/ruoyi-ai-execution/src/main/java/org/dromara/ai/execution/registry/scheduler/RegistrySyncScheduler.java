@@ -10,6 +10,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,15 +47,8 @@ public class RegistrySyncScheduler {
         List<KmMcpRegistrySource> sources = sourceMapper.selectEnabledSources();
         log.info("[McpRegistry] 系统启动，加载 {} 个启用注册源", sources.size());
         for (KmMcpRegistrySource source : sources) {
-            // 异步触发一次全量同步（不阻塞启动）
-            taskScheduler.execute(() -> {
-                try {
-                    registryService.syncSource(source.getSourceId());
-                } catch (Exception e) {
-                    log.error("[McpRegistry] 启动同步失败: sourceId={}", source.getSourceId(), e);
-                }
-            });
-            // 注册定时任务
+            // 直接注册定时任务。scheduleWithFixedDelay 如果没有指定 initialDelay，
+            // 默认会立即触发第一次执行，因此不需要手动执行同步。
             reschedule(source);
         }
     }
@@ -69,7 +63,8 @@ public class RegistrySyncScheduler {
         if (!"1".equals(source.getIsEnabled())) {
             return;
         }
-        long intervalMs = (long) source.getSyncInterval() * 1000;
+        // 使用 Duration 代替 long，解决 Spring 6.0 废弃方法警告
+        Duration interval = Duration.ofSeconds(source.getSyncInterval());
         ScheduledFuture<?> future = taskScheduler.scheduleWithFixedDelay(
             () -> {
                 try {
@@ -78,7 +73,7 @@ public class RegistrySyncScheduler {
                     log.error("[McpRegistry] 定时同步失败: sourceId={}", source.getSourceId(), e);
                 }
             },
-            intervalMs
+            interval
         );
         scheduledTasks.put(source.getSourceId(), future);
         log.info("[McpRegistry] 注册定时任务: sourceId={}, interval={}s", source.getSourceId(), source.getSyncInterval());

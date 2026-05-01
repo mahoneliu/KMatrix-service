@@ -57,7 +57,7 @@ public class KmModelProviderBo extends BaseEntity {
     private String configSchema;
 
     /**
-     * 支持的基础模型(JSON)
+     * 支持的模型标识(JSON)
      */
     private String models;
 

@@ -61,7 +61,7 @@ public class SmitheryRegistryAdapter implements RegistrySourceAdapter {
 
         try {
             while (true) {
-                String uri = "/v1/servers?page=" + page + "&pageSize=" + PAGE_SIZE;
+                String uri = "/servers?page=" + page + "&pageSize=" + PAGE_SIZE;
                 log.debug("[SmitheryRegistry] 拉取第 {} 页", page);
 
                 SmitheryServersResponse response = restClient.get()
@@ -74,6 +74,10 @@ public class SmitheryRegistryAdapter implements RegistrySourceAdapter {
                 }
 
                 for (SmitheryServerItem item : response.getServers()) {
+                    // 校验：跳过标识符为空的条目
+                    if (item == null || !org.springframework.util.StringUtils.hasText(item.getQualifiedName())) {
+                        continue;
+                    }
                     McpRegistryEntryDTO dto = mapToDto(item);
                     result.add(dto);
                 }
