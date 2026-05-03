@@ -19,9 +19,9 @@ import org.dromara.ai.execution.registry.domain.bo.McpImportBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySearchBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySourceBo;
 import org.dromara.ai.execution.registry.domain.bo.McpServerManualBo;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVO;
-import org.dromara.ai.execution.registry.domain.vo.SyncResultVO;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVo;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVo;
+import org.dromara.ai.execution.registry.domain.vo.SyncResultVo;
 import org.dromara.ai.execution.registry.mapper.McpRegistryEntryMapper;
 import org.dromara.ai.execution.registry.mapper.McpRegistrySourceMapper;
 import org.dromara.ai.execution.registry.service.McpRegistryService;
@@ -67,7 +67,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
      * 整体方法不加事务，每批 UPSERT 通过 {@link #batchUpsertEntries} 独立事务保证原子性。
      */
     @Override
-    public SyncResultVO syncSource(Long sourceId) {
+    public SyncResultVo syncSource(Long sourceId) {
         // 1. 查询注册源配置
         KmMcpRegistrySource source = sourceMapper.selectById(sourceId);
         if (source == null) {
@@ -117,7 +117,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
                     LocalDateTime.now(), entities.size(), null);
 
             // 10. 构建返回结果
-            SyncResultVO result = new SyncResultVO();
+            SyncResultVo result = new SyncResultVo();
             result.setSourceId(sourceId);
             result.setSourceName(source.getSourceName());
             result.setSyncCount(entities.size());
@@ -130,7 +130,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
             log.error("[McpRegistry] 同步失败: sourceId={}, error={}", sourceId, e.getMessage(), e);
             updateSyncStatus(sourceId, McpRegistryConstants.SYNC_STATUS_FAILED, null, null, e.getMessage());
 
-            SyncResultVO result = new SyncResultVO();
+            SyncResultVo result = new SyncResultVo();
             result.setSourceId(sourceId);
             result.setSourceName(source.getSourceName());
             result.setSyncCount(0);
@@ -160,7 +160,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
      * 搜索注册源条目
      */
     @Override
-    public TableDataInfo<McpRegistryEntryVO> searchEntries(McpRegistrySearchBo bo) {
+    public TableDataInfo<McpRegistryEntryVo> searchEntries(McpRegistrySearchBo bo) {
         // 1. 计算分页偏移量
         int pageNum = bo.getPageNum() < 1 ? 1 : bo.getPageNum();
         int pageSize = bo.getPageSize() < 1 ? 20 : bo.getPageSize();
@@ -173,7 +173,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
         String sourcePlatform = StrUtil.isBlank(bo.getSourcePlatform()) ? null : bo.getSourcePlatform().trim();
 
         // 3. 查询条目列表
-        List<McpRegistryEntryVO> rows = entryMapper.searchEntries(keyword, sourcePlatform, tagsJson, offset, pageSize);
+        List<McpRegistryEntryVo> rows = entryMapper.searchEntries(keyword, sourcePlatform, tagsJson, offset, pageSize);
 
         // 4. 查询总数
         long total = entryMapper.countEntries(keyword, sourcePlatform, tagsJson);
@@ -185,7 +185,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
         }
 
         // 6. 构建分页返回
-        TableDataInfo<McpRegistryEntryVO> tableData = new TableDataInfo<>();
+        TableDataInfo<McpRegistryEntryVo> tableData = new TableDataInfo<>();
         tableData.setRows(rows);
         tableData.setTotal(total);
         tableData.setCode(200);
@@ -197,9 +197,9 @@ public class McpRegistryServiceImpl implements McpRegistryService {
      * 获取注册源条目详情
      */
     @Override
-    public McpRegistryEntryVO getEntryDetail(Long entryId) {
+    public McpRegistryEntryVo getEntryDetail(Long entryId) {
         // 1. 查询条目
-        McpRegistryEntryVO vo = entryMapper.selectVoById(entryId);
+        McpRegistryEntryVo vo = entryMapper.selectVoById(entryId);
         if (vo == null) {
             throw new ServiceException("注册源条目不存在，entryId=" + entryId);
         }
@@ -382,7 +382,7 @@ public class McpRegistryServiceImpl implements McpRegistryService {
      * 列出所有注册源配置
      */
     @Override
-    public List<McpRegistrySourceVO> listSources() {
+    public List<McpRegistrySourceVo> listSources() {
         LambdaQueryWrapper<KmMcpRegistrySource> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KmMcpRegistrySource::getDelFlag, "0");
         return sourceMapper.selectVoList(wrapper);

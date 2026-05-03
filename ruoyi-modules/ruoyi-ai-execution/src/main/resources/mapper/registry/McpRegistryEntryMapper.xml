@@ -5,7 +5,7 @@
 <mapper namespace="org.dromara.ai.execution.registry.mapper.McpRegistryEntryMapper">
 
     <!-- 全文搜索注册源条目 -->
-    <select id="searchEntries" resultType="org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO">
+    <select id="searchEntries" resultType="org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVo">
         SELECT entry_id, entry_name, display_name, description, author, version,
                transport_type, endpoint_url, command, args, source_platform,
                dns_verified, entry_status, rating, use_count, tags, icon_url, homepage_url

@@ -15,7 +15,7 @@ import java.math.BigDecimal;
  */
 @Data
 @AutoMapper(target = KmMcpRegistryEntry.class)
-public class McpRegistryEntryVO implements Serializable {
+public class McpRegistryEntryVo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

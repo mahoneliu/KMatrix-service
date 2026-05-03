@@ -92,13 +92,13 @@ if [ -z "$(ls -A "$PGDATA" 2>/dev/null)" ]; then
     su - postgres -c "psql -d \"kmatrix\" -c \"CREATE EXTENSION IF NOT EXISTS vector;\""
     
     # Init SQL scripts
-    SQL_FILE="/docker-entrypoint-initdb.d/source_sql/postgres/kmatrix_complete.sql"
-    if [ -f "$SQL_FILE" ]; then
-        echo "Running init script: $SQL_FILE..."
-        su - postgres -c "psql -d \"kmatrix\" -f \"$SQL_FILE\""
-    else
-        echo "Warning: $SQL_FILE not found!"
-    fi
+    # SQL_FILE="/docker-entrypoint-initdb.d/source_sql/postgres/kmatrix_complete.sql"
+    # if [ -f "$SQL_FILE" ]; then
+    #     echo "Running init script: $SQL_FILE..."
+    #     su - postgres -c "psql -d \"kmatrix\" -f \"$SQL_FILE\""
+    # else
+    #     echo "Warning: $SQL_FILE not found!"
+    # fi
     
     su - postgres -c "/usr/lib/postgresql/17/bin/pg_ctl -D \"$PGDATA\" -m fast -w stop"
 else

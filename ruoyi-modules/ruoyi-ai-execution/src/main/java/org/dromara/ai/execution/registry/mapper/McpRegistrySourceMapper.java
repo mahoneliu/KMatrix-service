@@ -1,7 +1,7 @@
 package org.dromara.ai.execution.registry.mapper;
 
 import org.dromara.ai.execution.registry.domain.KmMcpRegistrySource;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVO;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.List;
  *
  * @author Mahone
  */
-public interface McpRegistrySourceMapper extends BaseMapperPlus<KmMcpRegistrySource, McpRegistrySourceVO> {
+public interface McpRegistrySourceMapper extends BaseMapperPlus<KmMcpRegistrySource, McpRegistrySourceVo> {
 
     /**
      * 查询所有启用状态的注册源（is_enabled='1' 且 del_flag='0'）

@@ -6,9 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.dromara.ai.execution.registry.domain.bo.McpImportBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySearchBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySourceBo;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVO;
-import org.dromara.ai.execution.registry.domain.vo.SyncResultVO;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVo;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVo;
+import org.dromara.ai.execution.registry.domain.vo.SyncResultVo;
 import org.dromara.ai.execution.registry.service.McpRegistryService;
 import org.dromara.common.core.domain.R;
 import org.dromara.common.log.annotation.Log;
@@ -43,7 +43,7 @@ public class McpRegistryController extends BaseController {
      */
     @SaCheckPermission("ai:mcpRegistry:list")
     @GetMapping("/sources")
-    public R<List<McpRegistrySourceVO>> listSources() {
+    public R<List<McpRegistrySourceVo>> listSources() {
         return R.ok(registryService.listSources());
     }
 
@@ -76,8 +76,8 @@ public class McpRegistryController extends BaseController {
     @SaCheckPermission("ai:mcpRegistry:sync")
     @Log(title = "MCP 注册源管理", businessType = BusinessType.OTHER)
     @PostMapping("/sources/{id}/sync")
-    public R<SyncResultVO> syncSource(@PathVariable Long id) {
-        SyncResultVO result = registryService.syncSource(id);
+    public R<SyncResultVo> syncSource(@PathVariable Long id) {
+        SyncResultVo result = registryService.syncSource(id);
         return R.ok(result);
     }
 
@@ -90,7 +90,7 @@ public class McpRegistryController extends BaseController {
      */
     @SaCheckPermission("ai:mcpRegistry:list")
     @GetMapping("/entries")
-    public TableDataInfo<McpRegistryEntryVO> searchEntries(McpRegistrySearchBo bo) {
+    public TableDataInfo<McpRegistryEntryVo> searchEntries(McpRegistrySearchBo bo) {
         return registryService.searchEntries(bo);
     }
 
@@ -99,7 +99,7 @@ public class McpRegistryController extends BaseController {
      */
     @SaCheckPermission("ai:mcpRegistry:list")
     @GetMapping("/entries/{id}")
-    public R<McpRegistryEntryVO> getEntryDetail(@PathVariable Long id) {
+    public R<McpRegistryEntryVo> getEntryDetail(@PathVariable Long id) {
         return R.ok(registryService.getEntryDetail(id));
     }
 

@@ -4,9 +4,9 @@ import org.dromara.ai.execution.registry.domain.bo.McpImportBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySearchBo;
 import org.dromara.ai.execution.registry.domain.bo.McpRegistrySourceBo;
 import org.dromara.ai.execution.registry.domain.bo.McpServerManualBo;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVO;
-import org.dromara.ai.execution.registry.domain.vo.SyncResultVO;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVo;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistrySourceVo;
+import org.dromara.ai.execution.registry.domain.vo.SyncResultVo;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 
 import java.util.List;
@@ -25,7 +25,7 @@ public interface McpRegistryService {
      * @param sourceId 注册源 ID
      * @return 同步结果
      */
-    SyncResultVO syncSource(Long sourceId);
+    SyncResultVo syncSource(Long sourceId);
 
     /**
      * 搜索注册源条目（支持关键词、来源平台、标签筛选，分页返回）
@@ -33,7 +33,7 @@ public interface McpRegistryService {
      * @param bo 搜索请求对象
      * @return 分页条目列表
      */
-    TableDataInfo<McpRegistryEntryVO> searchEntries(McpRegistrySearchBo bo);
+    TableDataInfo<McpRegistryEntryVo> searchEntries(McpRegistrySearchBo bo);
 
     /**
      * 获取注册源条目详情
@@ -41,7 +41,7 @@ public interface McpRegistryService {
      * @param entryId 条目 ID
      * @return 条目视图对象
      */
-    McpRegistryEntryVO getEntryDetail(Long entryId);
+    McpRegistryEntryVo getEntryDetail(Long entryId);
 
     /**
      * 从注册源条目导入为 MCP Server 配置
@@ -57,7 +57,7 @@ public interface McpRegistryService {
      *
      * @return 注册源配置列表
      */
-    List<McpRegistrySourceVO> listSources();
+    List<McpRegistrySourceVo> listSources();
 
     /**
      * 更新注册源配置（启用/禁用、同步间隔等）

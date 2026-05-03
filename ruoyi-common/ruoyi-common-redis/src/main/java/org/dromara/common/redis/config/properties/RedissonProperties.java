@@ -47,32 +47,32 @@ public class RedissonProperties {
         /**
          * 客户端名称
          */
-        private String clientName;
+        private String clientName = "KMatrix";
 
         /**
          * 最小空闲连接数
          */
-        private int connectionMinimumIdleSize;
+        private int connectionMinimumIdleSize = 8;
 
         /**
          * 连接池大小
          */
-        private int connectionPoolSize;
+        private int connectionPoolSize = 32;
 
         /**
          * 连接空闲超时，单位：毫秒
          */
-        private int idleConnectionTimeout;
+        private int idleConnectionTimeout = 10000;
 
         /**
          * 命令等待超时，单位：毫秒
          */
-        private int timeout;
+        private int timeout = 3000;
 
         /**
          * 发布和订阅连接池大小
          */
-        private int subscriptionConnectionPoolSize;
+        private int subscriptionConnectionPoolSize = 50;
 
     }
 

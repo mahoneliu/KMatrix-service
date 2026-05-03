@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * @author Mahone
  */
 @Data
-public class SyncResultVO implements Serializable {
+public class SyncResultVo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

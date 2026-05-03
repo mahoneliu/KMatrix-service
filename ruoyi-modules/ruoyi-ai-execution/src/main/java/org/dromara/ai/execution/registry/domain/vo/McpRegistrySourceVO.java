@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @AutoMapper(target = KmMcpRegistrySource.class)
-public class McpRegistrySourceVO implements Serializable {
+public class McpRegistrySourceVo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

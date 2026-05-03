@@ -2,7 +2,7 @@ package org.dromara.ai.execution.registry.mapper;
 
 import org.apache.ibatis.annotations.Param;
 import org.dromara.ai.execution.registry.domain.KmMcpRegistryEntry;
-import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVO;
+import org.dromara.ai.execution.registry.domain.vo.McpRegistryEntryVo;
 import org.dromara.common.mybatis.core.mapper.BaseMapperPlus;
 
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.List;
  *
  * @author Mahone
  */
-public interface McpRegistryEntryMapper extends BaseMapperPlus<KmMcpRegistryEntry, McpRegistryEntryVO> {
+public interface McpRegistryEntryMapper extends BaseMapperPlus<KmMcpRegistryEntry, McpRegistryEntryVo> {
 
     /**
      * 全文搜索注册源条目（支持关键词 + 来源平台筛选 + 标签筛选）
@@ -24,7 +24,7 @@ public interface McpRegistryEntryMapper extends BaseMapperPlus<KmMcpRegistryEntr
      * @param limit          每页条数
      * @return 匹配的条目列表
      */
-    List<McpRegistryEntryVO> searchEntries(@Param("keyword") String keyword,
+    List<McpRegistryEntryVo> searchEntries(@Param("keyword") String keyword,
                                            @Param("sourcePlatform") String sourcePlatform,
                                            @Param("tags") String tags,
                                            @Param("offset") long offset,
