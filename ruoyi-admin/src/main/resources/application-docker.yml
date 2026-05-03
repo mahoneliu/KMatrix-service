@@ -27,6 +27,9 @@ ai:
     # 容器内的模型路径
     model-path: /opt/models/model.onnx
     tokenizer-path: /opt/models/tokenizer.json
+  execution:
+    # Docker 容器内的 Python 路径
+    python-path: /usr/bin/python3
 
 logging:
   level:

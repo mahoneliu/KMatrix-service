@@ -28,6 +28,11 @@ public class McpRegistrySearchBo {
     private List<String> tags;
 
     /**
+     * 传输类型筛选 (sse / stdio / streamable_http)
+     */
+    private String transportType;
+
+    /**
      * 页码
      */
     private int pageNum = 1;

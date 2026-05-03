@@ -29,13 +29,13 @@ public class KmMcpServerBo extends BaseEntity {
      * MCP Server 名称
      */
     @NotBlank(message = "MCP Server 名称不能为空")
-    @Size(max = 64, message = "MCP Server 名称长度不能超过64个字符")
+    @Size(max = 128, message = "MCP Server 名称长度不能超过128个字符")
     private String serverName;
 
     /**
      * 描述
      */
-    @Size(max = 128, message = "描述长度不能超过128个字符")
+    @Size(max = 5000, message = "描述长度不能超过5000个字符")
     private String description;
 
     /**

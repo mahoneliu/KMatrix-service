@@ -26,6 +26,7 @@ public interface McpRegistryEntryMapper extends BaseMapperPlus<KmMcpRegistryEntr
      */
     List<McpRegistryEntryVo> searchEntries(@Param("keyword") String keyword,
                                            @Param("sourcePlatform") String sourcePlatform,
+                                           @Param("transportType") String transportType,
                                            @Param("tags") String tags,
                                            @Param("offset") long offset,
                                            @Param("limit") int limit);
@@ -40,6 +41,7 @@ public interface McpRegistryEntryMapper extends BaseMapperPlus<KmMcpRegistryEntr
      */
     long countEntries(@Param("keyword") String keyword,
                       @Param("sourcePlatform") String sourcePlatform,
+                      @Param("transportType") String transportType,
                       @Param("tags") String tags);
 
     /**

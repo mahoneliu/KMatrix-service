@@ -17,6 +17,9 @@ public interface McpRegistryConstants {
     /** Smithery 社区市场平台 */
     String PLATFORM_SMITHERY = "smithery";
 
+    /** Pulsar (mcp.run) 托管平台 / PulseMCP */
+    String PLATFORM_PULSAR = "pulsar";
+
     // =========================================================================
     // 条目状态
     // =========================================================================
@@ -75,5 +78,18 @@ public interface McpRegistryConstants {
 
     /** 同步间隔最大值：604800 秒（7 天） */
     int SYNC_INTERVAL_MAX = 604800;
+
+    // =========================================================================
+    // 传输类型
+    // =========================================================================
+
+    /** 传输类型：SSE */
+    String TRANSPORT_TYPE_SSE = "sse";
+
+    /** 传输类型：Stdio */
+    String TRANSPORT_TYPE_STDIO = "stdio";
+
+    /** 传输类型：Streamable HTTP */
+    String TRANSPORT_TYPE_HTTP = "streamable_http";
 
 }

@@ -25,3 +25,9 @@ ai:
       child-chunk-size: 200
       # 子块重叠大小（字符数），默认 20。可被数据集级别配置覆盖
       child-chunk-overlap: 20
+  # 执行层配置
+  execution:
+    # Python 可执行文件路径 (可选，未指定时系统将尝试自动探测)
+    # Windows 示例: C:\Users\YourName\AppData\Local\Programs\Python\Python312\python.exe
+    # Linux 示例: /usr/bin/python3
+    python-path: 

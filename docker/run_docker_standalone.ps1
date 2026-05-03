@@ -23,7 +23,7 @@ Write-Host "Starting new container..." -ForegroundColor Yellow
 
 # Use direct command with line continuation but ENSURE NO TRAILING SPACES
 # Or just one long line to be safe
-docker run -d --name kmatrix-standalone -p 80:80 -p 8080:8090 -p 5432:5432 -v "${PWD}/kmatrix-data:/kmatrix-data" kmatrix:standalone
+docker run -d --name kmatrix-standalone -p 80:80 -p 8080:8080 -p 5432:5432 -v "${PWD}/kmatrix-data:/kmatrix-data" kmatrix:standalone
 
 if ($?) {
     Write-Host ""

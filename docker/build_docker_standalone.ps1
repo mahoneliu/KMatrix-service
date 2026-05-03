@@ -30,7 +30,7 @@ if ($?) {
     Write-Host '  .\kmatrix-service\docker\run_docker_standalone.ps1' -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Or run manually:' -ForegroundColor White
-    Write-Host '  docker run -d --name kmatrix-standalone -p 80:80 -p 8080:8090 -p 5432:5432 kmatrix:standalone' -ForegroundColor Cyan
+    Write-Host '  docker run -d --name kmatrix-standalone -p 80:80 -p 8080:8080 -p 5432:5432 kmatrix:standalone' -ForegroundColor Cyan
     Write-Host ''
 }
 else {

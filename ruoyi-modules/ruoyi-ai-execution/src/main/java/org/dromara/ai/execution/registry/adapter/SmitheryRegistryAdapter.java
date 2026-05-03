@@ -60,9 +60,9 @@ public class SmitheryRegistryAdapter implements RegistrySourceAdapter {
         int page = 1;
 
         try {
+            log.debug("[SmitheryRegistry] 开始拉取...........");
             while (true) {
                 String uri = "/servers?page=" + page + "&pageSize=" + PAGE_SIZE;
-                log.debug("[SmitheryRegistry] 拉取第 {} 页", page);
 
                 SmitheryServersResponse response = restClient.get()
                     .uri(uri)
@@ -118,7 +118,9 @@ public class SmitheryRegistryAdapter implements RegistrySourceAdapter {
 
         RestClient.Builder builder = RestClient.builder()
             .baseUrl(baseUrl)
-            .requestFactory(factory);
+            .requestFactory(factory)
+            .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 KMatrix/1.0")
+            .defaultHeader("Accept", "application/json");
 
         if (StringUtils.hasText(apiKey)) {
             builder.defaultHeader("Authorization", "Bearer " + apiKey);
@@ -167,6 +169,14 @@ public class SmitheryRegistryAdapter implements RegistrySourceAdapter {
         if (item.getCreatedAt() != null) {
             dto.setCreateTime(parseDateTime(item.getCreatedAt()));
         }
+
+        // 传输信息：Smithery 条目绝大多数为 stdio 模式，通过 npx 运行
+        dto.setTransportType(McpRegistryConstants.TRANSPORT_TYPE_STDIO);
+        dto.setCommand("npx");
+        List<String> args = new ArrayList<>();
+        args.add("-y");
+        args.add(item.getQualifiedName());
+        dto.setArgs(args);
 
         return dto;
     }

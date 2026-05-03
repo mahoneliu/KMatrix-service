@@ -13,7 +13,7 @@ docker rm kmatrix-container
 docker run -d `
     --name kmatrix-container `
     -p 80:80 `
-    -p 8080:8090 `
+    -p 8080:8080 `
     -p 5432:5432 `
     -v ${PWD}/kmatrix-data:/kmatrix-data `
     kmatrix

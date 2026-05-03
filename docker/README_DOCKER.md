@@ -34,7 +34,7 @@ KMatrix 的 Docker 相关文件位于 `kmatrix-service/docker` 目录。
 或者直接使用 Docker 命令：
 
 ```powershell
-docker run -d --name kmatrix -p 80:80 -p 8080:8090 -p 5432:5432 registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
+docker run -d --name kmatrix -p 80:80 -p 8080:8080 -p 5432:5432 registry.cn-guangzhou.aliyuncs.com/kyxxjs/kmatrix:standalone
 ```
 
 ---

@@ -18,6 +18,9 @@
         <if test="sourcePlatform != null and sourcePlatform != ''">
             AND source_platform = #{sourcePlatform}
         </if>
+        <if test="transportType != null and transportType != ''">
+            AND transport_type = #{transportType}
+        </if>
         <if test="tags != null and tags != ''">
             AND tags @> #{tags}::jsonb
         </if>
@@ -41,6 +44,9 @@
         </if>
         <if test="sourcePlatform != null and sourcePlatform != ''">
             AND source_platform = #{sourcePlatform}
+        </if>
+        <if test="transportType != null and transportType != ''">
+            AND transport_type = #{transportType}
         </if>
         <if test="tags != null and tags != ''">
             AND tags @> #{tags}::jsonb

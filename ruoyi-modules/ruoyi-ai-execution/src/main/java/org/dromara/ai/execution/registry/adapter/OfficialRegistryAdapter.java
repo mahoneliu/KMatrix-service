@@ -59,10 +59,10 @@ public class OfficialRegistryAdapter implements RegistrySourceAdapter {
         String cursor = null;
 
         try {
+            log.debug("[OfficialRegistry] 开始拉取页面...");
             do {
                 // 构建请求 URI
                 String uri = buildUri(cursor);
-                log.debug("[OfficialRegistry] 拉取页面，cursor={}", cursor);
 
                 OfficialServersResponse response = restClient.get()
                     .uri(uri)
@@ -117,6 +117,8 @@ public class OfficialRegistryAdapter implements RegistrySourceAdapter {
         return RestClient.builder()
             .baseUrl(baseUrl)
             .requestFactory(factory)
+            .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 KMatrix/1.0")
+            .defaultHeader("Accept", "application/json")
             .build();
     }
 
@@ -179,9 +181,9 @@ public class OfficialRegistryAdapter implements RegistrySourceAdapter {
      */
     private String mapTransportType(String officialType) {
         return switch (officialType.toLowerCase()) {
-            case "sse" -> "sse";
-            case "stdio" -> "stdio";
-            case "http", "streamable_http", "streamablehttp" -> "streamable_http";
+            case "sse" -> McpRegistryConstants.TRANSPORT_TYPE_SSE;
+            case "stdio" -> McpRegistryConstants.TRANSPORT_TYPE_STDIO;
+            case "http", "streamable_http", "streamablehttp" -> McpRegistryConstants.TRANSPORT_TYPE_HTTP;
             default -> officialType.toLowerCase();
         };
     }

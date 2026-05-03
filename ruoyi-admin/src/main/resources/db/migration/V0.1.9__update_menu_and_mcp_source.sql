@@ -68,3 +68,20 @@ UPDATE km_mcp_registry_source
 SET api_base_url = 'https://api.smithery.ai',
     update_time = CURRENT_TIMESTAMP
 WHERE source_id = 2 AND platform = 'smithery';
+
+-- 修正阿里云百炼的 API 基础 URL。
+-- 之前错误配置为 https://dashscope.aliyuncs.com/api/v1，应为 https://dashscope.aliyuncs.com/compatible-mode/v1。
+UPDATE km_model_provider
+SET api_base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+update_time = CURRENT_TIMESTAMP
+WHERE provider_id = 7 AND platform = 'bailian';
+
+-- 扩大 km_mcp_server 的字段长度，以支持从注册源导入更长的名称和描述信息
+ALTER TABLE km_mcp_server ALTER COLUMN server_name TYPE VARCHAR(128);
+ALTER TABLE km_mcp_server ALTER COLUMN description TYPE TEXT;
+-- 新增 Pulsar (PulseMCP) 作为开箱即用的 MCP 注册源。
+
+-- 插入 Pulsar 注册源配置
+INSERT INTO km_mcp_registry_source (source_id, source_type,source_name, platform, api_base_url, sync_interval, is_enabled, remark, create_time)
+VALUES (3, 'community','Pulsar (mcp.run)', 'pulsar', 'https://api.pulsemcp.com/v0.1', 86400, '1', '包含大量已托管、开箱即用（SSE/HTTP）服务的远程 MCP 目录', CURRENT_TIMESTAMP)
+ON CONFLICT (source_id) DO NOTHING;

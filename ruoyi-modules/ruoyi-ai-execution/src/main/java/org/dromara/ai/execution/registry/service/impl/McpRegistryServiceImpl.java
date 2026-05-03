@@ -173,10 +173,9 @@ public class McpRegistryServiceImpl implements McpRegistryService {
         String sourcePlatform = StrUtil.isBlank(bo.getSourcePlatform()) ? null : bo.getSourcePlatform().trim();
 
         // 3. 查询条目列表
-        List<McpRegistryEntryVo> rows = entryMapper.searchEntries(keyword, sourcePlatform, tagsJson, offset, pageSize);
-
-        // 4. 查询总数
-        long total = entryMapper.countEntries(keyword, sourcePlatform, tagsJson);
+        List<McpRegistryEntryVo> rows = entryMapper.searchEntries(keyword, sourcePlatform, bo.getTransportType(), tagsJson, offset, pageSize);
+        // 4. 统计总数
+        long total = entryMapper.countEntries(keyword, sourcePlatform, bo.getTransportType(), tagsJson);
 
         // 5. 查询已导入的 entry_id 集合，设置 isImported 字段
         if (CollUtil.isNotEmpty(rows)) {

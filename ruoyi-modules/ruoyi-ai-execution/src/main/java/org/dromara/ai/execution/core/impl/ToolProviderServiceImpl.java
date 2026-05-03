@@ -8,7 +8,9 @@ import org.dromara.ai.execution.mapper.KmBuiltinToolMapper;
 import org.dromara.ai.execution.mcp.client.McpToolAdapter;
 import org.dromara.ai.execution.mcp.service.McpClientManager;
 import org.dromara.ai.execution.skill.service.SkillOrchestrationService;
+import org.dromara.ai.execution.config.properties.AiExecutionProperties;
 import org.dromara.ai.execution.tool.executor.PythonBuiltinExecutor;
+import org.dromara.ai.execution.tool.util.PythonDetectionUtils;
 import org.dromara.ai.execution.tool.util.ToolJsonSchemaUtils;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class ToolProviderServiceImpl implements IToolProvider {
     private final KmBuiltinToolMapper builtinToolMapper;
     private final McpClientManager mcpClientManager;
     private final SkillOrchestrationService skillOrchestrationService;
+    private final AiExecutionProperties executionProperties;
 
     /**
      * 根据节点 tools 配置解析工具绑定列表
@@ -116,7 +119,9 @@ public class ToolProviderServiceImpl implements IToolProvider {
                 tool.getSpec(),
                 tool.getInputSchema());
 
-        ToolExecutor executor = new PythonBuiltinExecutor(tool.getToolName(), tool.getPythonCode());
+        String pythonPath = PythonDetectionUtils.detect(executionProperties.getPythonPath());
+
+        ToolExecutor executor = new PythonBuiltinExecutor(tool.getToolName(), tool.getPythonCode(), pythonPath);
 
         result.add(ToolBinding.builder()
                 .toolName(tool.getToolName())
