@@ -102,6 +102,9 @@
                 <version>3.14.0</version>
                 <configuration>
                     <useIncrementalCompilation>false</useIncrementalCompilation>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                     <fork>true</fork>
                     <compilerArgs>
                         <arg>-AadapterPackage=org.dromara.ai.execution.convert</arg>
