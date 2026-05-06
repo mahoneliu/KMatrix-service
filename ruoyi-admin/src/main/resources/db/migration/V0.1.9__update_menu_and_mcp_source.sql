@@ -72,9 +72,9 @@ WHERE source_id = 2 AND platform = 'smithery';
 -- 修正阿里云百炼的 API 基础 URL。
 -- 之前错误配置为 https://dashscope.aliyuncs.com/api/v1，应为 https://dashscope.aliyuncs.com/compatible-mode/v1。
 UPDATE km_model_provider
-SET api_base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
-update_time = CURRENT_TIMESTAMP
-WHERE provider_id = 7 AND platform = 'bailian';
+SET default_endpoint ='https://dashscope.aliyuncs.com/compatible-mode/v1',
+    update_time = CURRENT_TIMESTAMP
+WHERE provider_id = 7 ;
 
 -- 扩大 km_mcp_server 的字段长度，以支持从注册源导入更长的名称和描述信息
 ALTER TABLE km_mcp_server ALTER COLUMN server_name TYPE VARCHAR(128);
