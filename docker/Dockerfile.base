@@ -27,6 +27,7 @@ WORKDIR /app
 RUN mkdir -p /var/log/supervisor \
     && mkdir -p /usr/share/nginx/html/admin \
     && mkdir -p /usr/share/nginx/html/chat \
+    && mkdir -p /usr/share/nginx/html/blog \
     && mkdir -p /opt/models \
     && mkdir -p /data/uploads \
     && mkdir -p /data/temp

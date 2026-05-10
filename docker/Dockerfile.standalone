@@ -12,6 +12,7 @@ COPY kmatrix-service/ruoyi-admin/target/ruoyi-admin.jar /app/ruoyi-admin.jar
 # Copy Frontend Artifacts (Pre-built)
 COPY kmatrix-ui/apps/admin/dist /usr/share/nginx/html/admin
 COPY kmatrix-ui/apps/chat/dist /usr/share/nginx/html/chat
+COPY kmatrix-ui/apps/blog/dist /usr/share/nginx/html/blog
 
 # Copy Config Files - 所有配置文件都复制到镜像内
 COPY kmatrix-service/docker/redis.conf /etc/redis/redis.conf
