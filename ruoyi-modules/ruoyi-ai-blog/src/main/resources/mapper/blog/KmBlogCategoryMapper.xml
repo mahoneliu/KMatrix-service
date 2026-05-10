@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.blog.mapper.KmBlogCategoryMapper">
+
+    <select id="selectByPath" resultType="org.dromara.ai.blog.domain.KmBlogCategory">
+        SELECT * FROM km_blog_category
+        WHERE path = #{path} AND del_flag = '0'
+        LIMIT 1
+    </select>
+
+    <select id="selectTopics" resultType="org.dromara.ai.blog.domain.vo.BlogCategoryVo">
+        SELECT c.*,
+               COALESCE(a.article_count, 0) AS article_count,
+               d.name AS dataset_name,
+               kb.name AS kb_name
+        FROM km_blog_category c
+        LEFT JOIN km_dataset d ON d.id = c.dataset_id
+        LEFT JOIN km_knowledge_base kb ON kb.id = d.kb_id
+        LEFT JOIN (
+            SELECT bc.id AS topic_id,
+                   COUNT(ka.id) AS article_count
+            FROM km_blog_category bc
+            LEFT JOIN km_blog_category sub ON sub.path LIKE CONCAT(bc.path, '%') AND sub.del_flag = '0'
+            LEFT JOIN km_blog_article ka ON ka.category_id = sub.id
+                AND ka.status = 'PUBLISHED'
+                AND ka.del_flag = '0'
+            WHERE bc.is_topic = '1' AND bc.del_flag = '0'
+            GROUP BY bc.id
+        ) a ON a.topic_id = c.id
+        WHERE c.is_topic = '1' AND c.del_flag = '0'
+        ORDER BY c.order_num ASC, c.create_time ASC
+    </select>
+
+    <select id="selectCategoryTreeWithCount" resultType="org.dromara.ai.blog.domain.vo.BlogCategoryVo">
+        SELECT c.*,
+               COALESCE(cnt.article_count, 0) AS article_count,
+               d.name AS dataset_name,
+               kb.name AS kb_name
+        FROM km_blog_category c
+        LEFT JOIN km_dataset d ON d.id = c.dataset_id
+        LEFT JOIN km_knowledge_base kb ON kb.id = d.kb_id
+        LEFT JOIN (
+            SELECT category_id, COUNT(*) AS article_count
+            FROM km_blog_article
+            WHERE status = 'PUBLISHED' AND del_flag = '0'
+            GROUP BY category_id
+        ) cnt ON cnt.category_id = c.id
+        WHERE c.del_flag = '0'
+        <if test="topicId != null">
+            AND (c.id = #{topicId} OR c.path LIKE CONCAT((
+                SELECT path FROM km_blog_category WHERE id = #{topicId} AND del_flag = '0'
+            ), '/%'))
+        </if>
+        ORDER BY c.parent_id ASC, c.order_num ASC, c.create_time ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.dromara.ai.blog.mapper.KmBlogArticleMapper">
+
+    <select id="selectPageVoList" resultType="org.dromara.ai.blog.domain.vo.KmBlogArticleVo">
+        SELECT a.id,
+               a.category_id,
+               a.title,
+               a.slug,
+               a.content,
+               a.description,
+               a.cover_image,
+               a.tags,
+               a.status,
+               a.source,
+               a.dataset_id,
+               a.km_document_id,
+               a.source_path,
+               a.content_hash,
+               a.published_at,
+               a.view_count,
+               a.create_time,
+               a.update_time,
+               c.name  AS category_name,
+               c.path  AS category_path,
+               c.source AS category_source
+        FROM km_blog_article a
+        LEFT JOIN km_blog_category c ON a.category_id = c.id AND c.del_flag = '0'
+        WHERE a.del_flag = '0'
+        <if test="ew.sqlSegment != null and ew.sqlSegment != ''">
+            AND ${ew.sqlSegment}
+        </if>
+        ORDER BY a.published_at DESC, a.create_time DESC
+    </select>
+
+    <select id="selectBySourcePath" resultType="org.dromara.ai.blog.domain.KmBlogArticle">
+        SELECT * FROM km_blog_article
+        WHERE source_path = #{sourcePath} AND del_flag = '0'
+        LIMIT 1
+    </select>
+
+    <select id="selectBySlug" resultType="org.dromara.ai.blog.domain.KmBlogArticle">
+        SELECT * FROM km_blog_article
+        WHERE slug = #{slug} AND del_flag = '0'
+        LIMIT 1
+    </select>
+
+    <select id="selectPrev" resultType="org.dromara.ai.blog.domain.KmBlogArticle">
+        SELECT id, title, slug, published_at
+        FROM km_blog_article
+        WHERE category_id = #{categoryId}
+          AND status = 'PUBLISHED'
+          AND del_flag = '0'
+          AND published_at &lt; #{publishedAt}
+        ORDER BY published_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectNext" resultType="org.dromara.ai.blog.domain.KmBlogArticle">
+        SELECT id, title, slug, published_at
+        FROM km_blog_article
+        WHERE category_id = #{categoryId}
+          AND status = 'PUBLISHED'
+          AND del_flag = '0'
+          AND published_at &gt; #{publishedAt}
+        ORDER BY published_at ASC
+        LIMIT 1
+    </select>
+
+    <update id="incrementViewCount">
+        UPDATE km_blog_article
+        SET view_count = view_count + #{delta}
+        WHERE id = #{articleId}
+    </update>
+
+</mapper>

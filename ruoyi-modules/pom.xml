@@ -22,6 +22,8 @@
         <module>ruoyi-ai-execution</module>
         <module>ruoyi-ai-workflow</module>
         <module>ruoyi-ai-app</module>
+        <module>ruoyi-ai-blog</module>
+<!--        <module>ruoyi-ai-scan</module>-->
     </modules>
 
     <artifactId>ruoyi-modules</artifactId>

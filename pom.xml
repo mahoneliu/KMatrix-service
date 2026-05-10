@@ -532,6 +532,16 @@
                 <artifactId>ruoyi-ai-app</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>org.dromara</groupId>
+                <artifactId>ruoyi-ai-blog</artifactId>
+                <version>${revision}</version>
+            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>org.dromara</groupId>-->
+<!--                <artifactId>ruoyi-ai-scan</artifactId>-->
+<!--                <version>${revision}</version>-->
+<!--            </dependency>-->
 
         </dependencies>
     </dependencyManagement>
