@@ -25,7 +25,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/portal/blog/category")
+@RequestMapping("/blog/category")
 public class BlogCategoryController extends BaseController {
 
     private final IBlogCategoryService blogCategoryService;

@@ -132,22 +132,22 @@ VALUES
     ('2600', '博客管理', '0', '6', 'blog', null, '', '1', '0', 'M', '0', '0', '', 'mdi-post', 103, 1, now(), null, null, '博客管理模块'),
 
     -- 文章管理（二级菜单）
-    ('2610', '文章管理', '2600', '1', 'article', 'blog/article/index', '', '1', '0', 'C', '0', '0', 'portal:blog:article:list', 'mdi-file-document-edit', 103, 1, now(), null, null, '博客文章管理'),
+    ('2610', '文章管理', '2600', '1', 'article', 'blog/article/index', '', '1', '0', 'C', '0', '0', 'blog:article:list', 'mdi-file-document-edit', 103, 1, now(), null, null, '博客文章管理'),
     -- 文章管理按钮权限
-    ('2611', '文章查询', '2610', '1', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:query', '#', 103, 1, now(), null, null, ''),
-    ('2612', '文章新增', '2610', '2', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:add', '#', 103, 1, now(), null, null, ''),
-    ('2613', '文章修改', '2610', '3', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:edit', '#', 103, 1, now(), null, null, ''),
-    ('2614', '文章删除', '2610', '4', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:remove', '#', 103, 1, now(), null, null, ''),
-    ('2615', '状态切换', '2610', '5', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:status', '#', 103, 1, now(), null, null, ''),
-    ('2616', '同步知识库', '2610', '6', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:article:syncKb', '#', 103, 1, now(), null, null, ''),
+    ('2611', '文章查询', '2610', '1', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:query', '#', 103, 1, now(), null, null, ''),
+    ('2612', '文章新增', '2610', '2', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:add', '#', 103, 1, now(), null, null, ''),
+    ('2613', '文章修改', '2610', '3', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:edit', '#', 103, 1, now(), null, null, ''),
+    ('2614', '文章删除', '2610', '4', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:remove', '#', 103, 1, now(), null, null, ''),
+    ('2615', '状态切换', '2610', '5', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:status', '#', 103, 1, now(), null, null, ''),
+    ('2616', '同步知识库', '2610', '6', '', '', '', '1', '0', 'F', '0', '0', 'blog:article:syncKb', '#', 103, 1, now(), null, null, ''),
 
     -- 分类管理（二级菜单）
-    ('2620', '分类管理', '2600', '2', 'category', 'blog/category/index', '', '1', '0', 'C', '0', '0', 'portal:blog:category:list', 'mdi-folder-tree', 103, 1, now(), null, null, '博客分类与专题管理'),
+    ('2620', '分类管理', '2600', '2', 'category', 'blog/category/index', '', '1', '0', 'C', '0', '0', 'blog:category:list', 'mdi-file-tree', 103, 1, now(), null, null, '博客分类与专题管理'),
     -- 分类管理按钮权限
-    ('2621', '分类查询', '2620', '1', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:category:query', '#', 103, 1, now(), null, null, ''),
-    ('2622', '分类新增', '2620', '2', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:category:add', '#', 103, 1, now(), null, null, ''),
-    ('2623', '分类修改', '2620', '3', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:category:edit', '#', 103, 1, now(), null, null, ''),
-    ('2624', '分类删除', '2620', '4', '', '', '', '1', '0', 'F', '0', '0', 'portal:blog:category:remove', '#', 103, 1, now(), null, null, '')
+    ('2621', '分类查询', '2620', '1', '', '', '', '1', '0', 'F', '0', '0', 'blog:category:query', '#', 103, 1, now(), null, null, ''),
+    ('2622', '分类新增', '2620', '2', '', '', '', '1', '0', 'F', '0', '0', 'blog:category:add', '#', 103, 1, now(), null, null, ''),
+    ('2623', '分类修改', '2620', '3', '', '', '', '1', '0', 'F', '0', '0', 'blog:category:edit', '#', 103, 1, now(), null, null, ''),
+    ('2624', '分类删除', '2620', '4', '', '', '', '1', '0', 'F', '0', '0', 'blog:category:remove', '#', 103, 1, now(), null, null, '')
     ON CONFLICT (menu_id) DO NOTHING;
 
 -- ======================================================================

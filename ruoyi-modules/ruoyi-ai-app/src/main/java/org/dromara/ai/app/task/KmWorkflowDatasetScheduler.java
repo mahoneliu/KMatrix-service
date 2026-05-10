@@ -46,9 +46,9 @@ public class KmWorkflowDatasetScheduler {
     private final ObjectMapper objectMapper;
 
     /**
-     * 每 5 秒执行一次轮询
+     * 每 60 秒执行一次轮询
      */
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 60000)
     public void schedule() {
         try {
             processWorkflowDatasets();

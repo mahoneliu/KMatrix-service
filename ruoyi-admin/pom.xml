@@ -116,6 +116,11 @@
         </dependency>
 
         <dependency>
+            <groupId>org.dromara</groupId>
+            <artifactId>ruoyi-ai-blog</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>de.codecentric</groupId>
             <artifactId>spring-boot-admin-starter-client</artifactId>
         </dependency>

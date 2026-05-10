@@ -96,9 +96,10 @@ public interface IKmDocumentService {
          * @param datasetId 数据集ID
          * @param title     文档标题
          * @param content   文档内容 (富文本HTML)
+         * @param fileType  文件类型
          * @return 文档信息
          */
-        KmDocumentVo createOnlineDocument(Long datasetId, String title, String content);
+        KmDocumentVo createOnlineDocument(Long datasetId, String title, String content, String fileType);
 
         /**
          * 创建网页链接文档

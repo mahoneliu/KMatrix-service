@@ -23,7 +23,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/portal/blog/article")
+@RequestMapping("/blog/article")
 public class BlogArticleController extends BaseController {
 
     private final IBlogArticleService blogArticleService;

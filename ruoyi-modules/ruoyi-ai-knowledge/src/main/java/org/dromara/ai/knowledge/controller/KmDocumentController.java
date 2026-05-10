@@ -1,6 +1,7 @@
 package org.dromara.ai.knowledge.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.drew.imaging.FileType;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.dromara.ai.knowledge.domain.bo.BatchChunkPreviewBo;
@@ -126,7 +127,7 @@ public class KmDocumentController extends BaseController {
             @NotNull(message = "{ai.val.dataset.id_required}") @RequestParam Long datasetId,
             @NotNull(message = "{ai.val.common.title_required}") @RequestParam String title,
             @NotNull(message = "{ai.val.common.content_required}") @RequestParam String content) {
-        return R.ok(documentService.createOnlineDocument(datasetId, title, content));
+        return R.ok(documentService.createOnlineDocument(datasetId, title, content, "html"));
     }
 
     /**

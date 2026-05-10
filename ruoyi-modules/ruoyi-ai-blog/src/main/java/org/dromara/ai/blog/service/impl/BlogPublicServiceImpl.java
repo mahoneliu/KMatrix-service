@@ -59,7 +59,9 @@ public class BlogPublicServiceImpl implements IBlogPublicService {
 
         Long topicId = null;
         if (StringUtils.hasText(topicSlug)) {
-            KmBlogCategory topic = categoryMapper.selectByPath("/" + topicSlug);
+            KmBlogCategory topic = categoryMapper.selectOne(new LambdaQueryWrapper<KmBlogCategory>()
+                    .eq(KmBlogCategory::getTopicSlug, topicSlug)
+                    .eq(KmBlogCategory::getDelFlag, "0"));
             if (topic != null) topicId = topic.getId();
         }
 
@@ -179,7 +181,9 @@ public class BlogPublicServiceImpl implements IBlogPublicService {
     }
 
     private List<Long> getCategoryIdsUnderTopic(String topicSlug) {
-        KmBlogCategory topic = categoryMapper.selectByPath("/" + topicSlug);
+        KmBlogCategory topic = categoryMapper.selectOne(new LambdaQueryWrapper<KmBlogCategory>()
+                .eq(KmBlogCategory::getTopicSlug, topicSlug)
+                .eq(KmBlogCategory::getDelFlag, "0"));
         if (topic == null) return new ArrayList<>();
         List<BlogCategoryVo> flatList = categoryMapper.selectCategoryTreeWithCount(topic.getId());
         return flatList.stream().map(BlogCategoryVo::getId).collect(Collectors.toList());
@@ -188,7 +192,8 @@ public class BlogPublicServiceImpl implements IBlogPublicService {
     private List<BlogCategoryVo> buildTree(List<BlogCategoryVo> flatList, Long parentId) {
         List<BlogCategoryVo> result = new ArrayList<>();
         for (BlogCategoryVo vo : flatList) {
-            if (parentId.equals(vo.getParentId())) {
+            Long pid = vo.getParentId() == null ? 0L : vo.getParentId();
+            if (parentId.equals(pid)) {
                 vo.setChildren(buildTree(flatList, vo.getId()));
                 result.add(vo);
             }

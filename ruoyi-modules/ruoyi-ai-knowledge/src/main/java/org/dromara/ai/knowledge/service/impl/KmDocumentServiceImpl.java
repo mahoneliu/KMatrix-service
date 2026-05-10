@@ -213,13 +213,15 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public KmDocumentVo createOnlineDocument(Long datasetId, String title, String content) {
+    public KmDocumentVo createOnlineDocument(Long datasetId, String title, String content, String fileType) {
         // 0. 获取知识库ID
         KmDataset dataset = datasetMapper.selectById(datasetId);
         if (dataset == null) {
             throw new RuntimeException(MessageUtils.message("ai.msg.knowledge.dataset_not_found"));
         }
-
+        if (StringUtils.isBlank(fileType)) {
+            fileType = "html";
+        }
         // 1. 创建文档记录
         KmDocument document = new KmDocument();
         document.setDatasetId(datasetId);
@@ -227,7 +229,7 @@ public class KmDocumentServiceImpl implements IKmDocumentService {
         document.setTitle(title);
         document.setContent(content);
         document.setOriginalFilename(title); // 使用 title 作为文件名
-        document.setFileType("html");
+        document.setFileType(fileType);
         document.setEmbeddingStatus(1); // 1 = 生成中
         document.setStatusMeta(
                 StatusMetaUtils.updateStateTime(null, StatusMetaUtils.TASK_EMBEDDING, StatusMetaUtils.STATUS_PENDING));

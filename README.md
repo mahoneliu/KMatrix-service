@@ -79,7 +79,7 @@ Adhering to the philosophy of ease of use, KMatrix provides an **out-of-the-box*
 
 ## 📸 System Screenshot Example
 
-![Screenshot](./docs/images/sample.gif)
+![Screenshot](images/sample.gif)
 
 ## 📂 Project Structure
 
@@ -175,7 +175,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 - **Tech Documentation**: [Quick Start](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **WeChat**: Scan to join the community or for business cooperation, please note kmatrix
 
-  ![WeChat](./docs/images/wechat.jpg)
+  ![WeChat](images/wechat.jpg)
 - **Email**: <service@mail.kykms.cn>
 
 ## 💪 Contributing

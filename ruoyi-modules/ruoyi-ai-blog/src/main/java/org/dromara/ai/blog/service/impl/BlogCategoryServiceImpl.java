@@ -80,6 +80,7 @@ public class BlogCategoryServiceImpl implements IBlogCategoryService {
         category.setDatasetId(bo.getDatasetId());
         category.setTopicSlug(bo.getTopicSlug());
         category.setCustomDomain(bo.getCustomDomain());
+        category.setDelFlag("0");
 
         categoryMapper.insert(category);
         evictCategoryCache();
@@ -158,6 +159,7 @@ public class BlogCategoryServiceImpl implements IBlogCategoryService {
         category.setGitRepo(repo);
         category.setGitBranch(StringUtils.hasText(bo.getGitBranch()) ? bo.getGitBranch() : "main");
         category.setGitRootPath(bo.getGitRootPath());
+        category.setDelFlag("0");
 
         categoryMapper.insert(category);
         evictCategoryCache();

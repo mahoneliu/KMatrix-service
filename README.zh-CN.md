@@ -81,7 +81,7 @@ KMatrix 秉承易用至上的理念，提供 **开箱即用** 的体验，简单
 
 ## 📸 系统截图示例
 
-  ![截图](./docs/images/sample.gif)
+  ![截图](images/sample.gif)
   
 ## 📂 项目结构
 
@@ -177,7 +177,7 @@ docker run -d --name kmatrix-standalone -p 80:80 -v c:\kmatrix-data:/kmatrix-dat
 - **技术文档**: [快速开始](http://docs.kykms.cn/docs/kmatrix/kmatrix-1h4rc8em9u0c4)
 - **微信**: 加群或者商业合作洽谈，请备注kmatrix
 
-  ![微信](./docs/images/wechat.jpg)
+  ![微信](images/wechat.jpg)
 - **邮箱**: <service@mail.kykms.cn>
 
 ## 💪 参与贡献

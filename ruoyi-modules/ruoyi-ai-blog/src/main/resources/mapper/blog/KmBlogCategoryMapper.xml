@@ -13,6 +13,7 @@
         SELECT c.*,
                COALESCE(a.article_count, 0) AS article_count,
                d.name AS dataset_name,
+               d.kb_id AS kb_id,
                kb.name AS kb_name
         FROM km_blog_category c
         LEFT JOIN km_dataset d ON d.id = c.dataset_id
@@ -21,7 +22,7 @@
             SELECT bc.id AS topic_id,
                    COUNT(ka.id) AS article_count
             FROM km_blog_category bc
-            LEFT JOIN km_blog_category sub ON sub.path LIKE CONCAT(bc.path, '%') AND sub.del_flag = '0'
+            LEFT JOIN km_blog_category sub ON (sub.path = bc.path OR sub.path LIKE CONCAT(bc.path, '/%')) AND sub.del_flag = '0'
             LEFT JOIN km_blog_article ka ON ka.category_id = sub.id
                 AND ka.status = 'PUBLISHED'
                 AND ka.del_flag = '0'
@@ -36,6 +37,7 @@
         SELECT c.*,
                COALESCE(cnt.article_count, 0) AS article_count,
                d.name AS dataset_name,
+               d.kb_id AS kb_id,
                kb.name AS kb_name
         FROM km_blog_category c
         LEFT JOIN km_dataset d ON d.id = c.dataset_id

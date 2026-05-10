@@ -22,6 +22,7 @@ public class BlogCategoryVo implements Serializable {
     private String source;
     private String isTopic;
     private Long datasetId;
+    private Long kbId;
     private String topicSlug;
     private String customDomain;
     private String kbName;

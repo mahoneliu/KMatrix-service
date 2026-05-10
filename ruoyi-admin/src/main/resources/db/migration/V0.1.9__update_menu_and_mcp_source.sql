@@ -7,11 +7,11 @@ update sys_menu set  order_num=1 where menu_id=2100;
 update sys_menu set  order_num=3 where menu_id=2400;
 update sys_menu set  order_num=4 where menu_id=2200;
 update sys_menu set  order_num=5 where menu_id=2300;
-update sys_menu set  order_num=6 where menu_id=1;
-update sys_menu set  order_num=7 where menu_id=3;
-update sys_menu set  order_num=8 where menu_id=2;
-update sys_menu set  order_num=9 where menu_id=4;
-update sys_menu set  order_num=10 where menu_id=5;
+update sys_menu set  order_num=100 where menu_id=1;
+update sys_menu set  order_num=101 where menu_id=3;
+update sys_menu set  order_num=102 where menu_id=2;
+update sys_menu set  order_num=103 where menu_id=4;
+update sys_menu set  order_num=114 where menu_id=5;
 
 -- 新增工具执行一级菜单
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query_param, is_frame, is_cache, menu_type, visible, status, perms, icon, create_dept, create_by, create_time, update_by, update_time, remark)

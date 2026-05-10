@@ -31,7 +31,7 @@ public class KmBlogKnowledgeSyncPort implements IBlogKnowledgeSyncPort {
                             existingDocId, e.getMessage());
                 }
             }
-            KmDocumentVo docVo = kmDocumentService.createOnlineDocument(datasetId, title, content);
+            KmDocumentVo docVo = kmDocumentService.createOnlineDocument(datasetId, title, content,"md");
             if (docVo != null && docVo.getId() != null) {
                 log.info("[KmBlogKnowledgeSyncPort] 文章已同步到知识库: articleId={}, kmDocumentId={}",
                         articleId, docVo.getId());
