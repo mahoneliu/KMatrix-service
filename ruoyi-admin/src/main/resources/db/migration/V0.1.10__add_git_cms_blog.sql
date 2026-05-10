@@ -3,9 +3,9 @@
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS km_blog_category (
-                                                id            BIGSERIAL       NOT NULL,
-                                                parent_id     BIGINT          NOT NULL DEFAULT 0,           -- 父分类ID，0=根节点（专题节点）
-                                                name          VARCHAR(100)    NOT NULL,                     -- 分类名称
+    id            BIGSERIAL       NOT NULL,
+    parent_id     BIGINT          NOT NULL DEFAULT 0,           -- 父分类ID，0=根节点（专题节点）
+    name          VARCHAR(100)    NOT NULL,                     -- 分类名称
     path          VARCHAR(500)    NOT NULL,                     -- 完整路径，如 "/ai/workflow"
     order_num     INT             NOT NULL DEFAULT 0,           -- 排序
     source        VARCHAR(20)     NOT NULL DEFAULT 'FILE',      -- 来源：FILE=扫描入库, ONLINE=管理端创建
@@ -117,11 +117,6 @@ VALUES
         'N',
         '博客文章同步到知识库时的默认数据集ID。优先级：文章Frontmatter > 专题_topic.yml > 此配置。值为0表示未配置，跳过知识库同步。'
     )ON CONFLICT (config_id) DO NOTHING;
-
--- 为文件夹扫描配置表增加 handler_type 字段，支持 BLOG_MD 处理器类型
-ALTER TABLE km_folder_scan_config
-    ADD COLUMN IF NOT EXISTS handler_type VARCHAR(50) NOT NULL DEFAULT 'KM_DOCUMENT';
-COMMENT ON COLUMN km_folder_scan_config.handler_type IS '处理器类型：KM_DOCUMENT=知识库文档（默认）, BLOG_MD=博客Markdown文章';
 
 -- ======================================================================
 --  新增博客管理菜单
