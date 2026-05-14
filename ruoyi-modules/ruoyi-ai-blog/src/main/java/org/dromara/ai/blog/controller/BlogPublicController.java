@@ -10,9 +10,19 @@ import org.dromara.common.mybatis.core.page.PageQuery;
 import org.dromara.common.mybatis.core.page.TableDataInfo;
 import org.dromara.common.web.core.BaseController;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -86,5 +96,62 @@ public class BlogPublicController extends BaseController {
             return R.fail(403, "无效的内部服务密钥");
         }
         return R.ok(blogCategoryService.getGitCategoryToken(categoryId));
+    }
+
+    private static final String ALLOWED_IMG_HOST = "raw.githubusercontent.com";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
+    /**
+     * 图片代理：由后端服务器代理 raw.githubusercontent.com 图片，
+     * 解决 EdgeOne Node Function 无法直接访问 GitHub 的问题。
+     */
+    @SaIgnore
+    @GetMapping("/proxy-img")
+    public ResponseEntity<byte[]> proxyImg(@RequestParam String url) {
+        String decodedUrl;
+        try {
+            decodedUrl = java.net.URLDecoder.decode(url, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        URI uri;
+        try {
+            uri = URI.create(decodedUrl);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (!ALLOWED_IMG_HOST.equals(uri.getHost())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(uri)
+                    .timeout(Duration.ofSeconds(15))
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                return ResponseEntity.status(response.statusCode()).build();
+            }
+
+            byte[] body = response.body().readAllBytes();
+            String contentType = response.headers().firstValue("Content-Type").orElse("image/png");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.setCacheControl("public, max-age=86400");
+
+            return new ResponseEntity<>(body, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+        }
     }
 }
