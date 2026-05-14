@@ -33,6 +33,7 @@ public class BlogCategoryVo implements Serializable {
     private String gitBranch;
     private String gitRootPath;
     private Boolean hasToken;
+    private String gitPlatform;
     private Integer articleCount;
     private List<BlogCategoryVo> children;
 }
