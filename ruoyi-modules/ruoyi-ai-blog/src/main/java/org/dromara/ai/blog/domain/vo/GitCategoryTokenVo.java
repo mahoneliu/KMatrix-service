@@ -21,4 +21,6 @@ public class GitCategoryTokenVo implements Serializable {
     private String repo;
     private String branch;
     private String rootPath;
+    /** Git 平台：github / gitee */
+    private String platform;
 }

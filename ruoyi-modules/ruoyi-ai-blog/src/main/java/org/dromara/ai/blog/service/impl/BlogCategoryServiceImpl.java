@@ -159,6 +159,7 @@ public class BlogCategoryServiceImpl implements IBlogCategoryService {
         category.setGitRepo(repo);
         category.setGitBranch(StringUtils.hasText(bo.getGitBranch()) ? bo.getGitBranch() : "main");
         category.setGitRootPath(bo.getGitRootPath());
+        category.setGitPlatform(StringUtils.hasText(bo.getGitPlatform()) ? bo.getGitPlatform() : "github");
         category.setDelFlag("0");
 
         categoryMapper.insert(category);
@@ -181,6 +182,7 @@ public class BlogCategoryServiceImpl implements IBlogCategoryService {
         if (StringUtils.hasText(bo.getGitRepo())) category.setGitRepo(bo.getGitRepo());
         if (StringUtils.hasText(bo.getGitBranch())) category.setGitBranch(bo.getGitBranch());
         if (bo.getGitRootPath() != null) category.setGitRootPath(bo.getGitRootPath());
+        if (StringUtils.hasText(bo.getGitPlatform())) category.setGitPlatform(bo.getGitPlatform());
         if (StringUtils.hasText(bo.getGitToken())) {
             category.setGitTokenEncrypted(SecureUtil.aes(aesKey.getBytes()).encryptHex(bo.getGitToken()));
         }
@@ -218,6 +220,7 @@ public class BlogCategoryServiceImpl implements IBlogCategoryService {
         vo.setRepo(category.getGitRepo());
         vo.setBranch(category.getGitBranch());
         vo.setRootPath(category.getGitRootPath());
+        vo.setPlatform(StringUtils.hasText(category.getGitPlatform()) ? category.getGitPlatform() : "github");
         if (org.dromara.common.core.utils.StringUtils.isNotBlank(category.getGitTokenEncrypted())) {
             vo.setToken(SecureUtil.aes(aesKey.getBytes()).decryptStr(category.getGitTokenEncrypted()));
         }

@@ -49,4 +49,6 @@ public class KmBlogCategory extends BaseEntity {
     private String gitRepo;
     private String gitBranch;
     private String gitRootPath;
+    /** Git 平台：github / gitee，默认 github */
+    private String gitPlatform;
 }

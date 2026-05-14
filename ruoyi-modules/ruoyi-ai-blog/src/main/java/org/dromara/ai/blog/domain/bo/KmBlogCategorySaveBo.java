@@ -29,4 +29,6 @@ public class KmBlogCategorySaveBo {
     private String gitBranch;
     private String gitRootPath;
     private String source;
+    /** Git 平台：github / gitee，默认 github */
+    private String gitPlatform;
 }
