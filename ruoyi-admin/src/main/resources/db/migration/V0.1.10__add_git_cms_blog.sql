@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS km_blog_category (
     git_repo      VARCHAR(200)    DEFAULT NULL,
     git_branch    VARCHAR(100)    DEFAULT 'master',
     git_root_path VARCHAR(500)    DEFAULT NULL,
-    git_platform  VARCHAR(20)     DEFAULT 'github',
+    git_platform  VARCHAR(20)     DEFAULT 'gitee',
     CONSTRAINT pk_km_blog_category PRIMARY KEY (id),
     CONSTRAINT uq_blog_category_path UNIQUE (path),
     CONSTRAINT uq_blog_category_topic_slug UNIQUE (topic_slug)
@@ -51,7 +51,7 @@ COMMENT ON COLUMN km_blog_category.git_owner           IS 'Git 仓库 owner（�
 COMMENT ON COLUMN km_blog_category.git_repo            IS 'Git 仓库名称';
 COMMENT ON COLUMN km_blog_category.git_branch          IS 'Git 默认分支，默认为 main';
 COMMENT ON COLUMN km_blog_category.git_root_path       IS 'Git 仓库子目录路径，NULL 表示仓库根目录';
-COMMENT ON COLUMN km_blog_category.git_platform IS 'Git 平台（github=GitHub，gitee=Gitee），默认 github';
+COMMENT ON COLUMN km_blog_category.git_platform IS 'Git 平台（github=GitHub，gitee=Gitee），默认 gitee';
 
 -- ======================================================================
 -- 表: km_blog_article（博客文章）
